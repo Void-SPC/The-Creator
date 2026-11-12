@@ -60,7 +60,7 @@ end
 
 local specs = {
 	"MathSpec", "AnimSpec", "FormatSpec", "OpsSpec", "ModelSpec", "LogicSpec",
-	"ClosetSpec", "StoreSpec", "UiTextSpec",
+	"ClosetSpec", "StoreSpec", "UiTextSpec", "ScenarioSpec",
 }
 for _, name in specs do
 	local spec = require((script.Parent :: any)[name])

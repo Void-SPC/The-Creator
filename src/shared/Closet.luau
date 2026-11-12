@@ -1,4 +1,4 @@
---!strict
+--!nonstrict
 -- Шкаф: состояния «Свободен» -> «Вход» -> «Внутри» -> «Выход» -> «Свободен»
 -- Точки входа, внутри и выхода хранятся относительно шкафа, поэтому при
 -- перемещении и повороте шкафа они переезжают вместе с ним
@@ -94,9 +94,10 @@ local function key(clip, track, t, pose)
 	Anim.setKey(clip, track, t, pose.pos, pose.rot, "smooth")
 end
 
--- Поза камеры: на уровне глаз над точкой персонажа
+-- Поза камеры: на уровне глаз над точкой персонажа (точки шкафа стоят на полу)
+Closet.EYE_HEIGHT = 4.6
 local function eye(pose)
-	return { pos = { pose.pos[1], pose.pos[2] + 1.5, pose.pos[3] }, rot = { pose.rot[1], pose.rot[2], pose.rot[3] } }
+	return { pos = { pose.pos[1], pose.pos[2] + Closet.EYE_HEIGHT, pose.pos[3] }, rot = { pose.rot[1], pose.rot[2], pose.rot[3] } }
 end
 
 function Closet.defaultClips(entry, inside, exit)

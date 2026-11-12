@@ -1,0 +1,41 @@
+{
+  "name": "Workshop",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Workshop": {
+        "$className": "Folder",
+        "Shared": {
+          "$path": "src/shared"
+        }
+      }
+    },
+    "ServerScriptService": {
+      "Workshop": {
+        "$path": "src/server"
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "Workshop": {
+          "$path": "src/client"
+        }
+      },
+      "$properties": {
+        "CharacterWalkSpeed": 14,
+        "CameraMaxZoomDistance": 40
+      }
+    },
+    "Workspace": {
+      "$properties": {
+        "FilteringEnabled": true
+      }
+    },
+    "Lighting": {
+      "$properties": {
+        "ClockTime": 0,
+        "Brightness": 1
+      }
+    }
+  }
+}

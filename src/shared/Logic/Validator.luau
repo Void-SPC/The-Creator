@@ -1,4 +1,4 @@
---!strict
+--!nonstrict
 -- Проверка логики карты. Одна и та же проверка работает в редакторе (подсветка
 -- блока или строки) и на сервере перед запуском. Сервер не исполняет сценарий,
 -- который ссылается на чужие объекты или неизвестные команды
@@ -19,7 +19,7 @@ local function clipNames(obj)
 	return names
 end
 
-function Validator.validate(script, project)
+function Validator.validate(tree, project)
 	local errors = {}
 	local objects = project.map.objects
 	local statements = 0
@@ -34,11 +34,11 @@ function Validator.validate(script, project)
 		table.insert(errors, e)
 	end
 
-	if type(script) ~= "table" or type(script.handlers) ~= "table" then
+	if type(tree) ~= "table" or type(tree.handlers) ~= "table" then
 		report(nil, "логика повреждена")
 		return errors
 	end
-	if #script.handlers > Validator.LIMITS.handlers then
+	if #tree.handlers > Validator.LIMITS.handlers then
 		report(nil, "слишком много событий в логике")
 	end
 
@@ -176,7 +176,7 @@ function Validator.validate(script, project)
 		end
 	end
 
-	for _, h in script.handlers do
+	for _, h in tree.handlers do
 		local def = Commands.events[h.event]
 		if not def then
 			report(h, "неизвестное событие «" .. tostring(h.event) .. "»")

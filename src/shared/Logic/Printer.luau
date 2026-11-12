@@ -1,4 +1,4 @@
---!strict
+--!nonstrict
 -- Печать дерева логики в текстовый режим (блоки -> текст)
 
 local Printer = {}
@@ -97,6 +97,19 @@ function Printer.print(script, nameOf: (string) -> string): string
 		emit(0, "end")
 	end
 	return table.concat(out, "\n") .. (if #out > 0 then "\n" else "")
+end
+
+-- Текст одного выражения (для подписи в блоке)
+function Printer.exprText(e, nameOf: (string) -> string): string
+	local text = Printer.print({ handlers = { { event = "X", args = { e }, body = {} } } }, nameOf)
+	return string.match(text, "^on X%((.*)%) do\nend\n$") or text
+end
+
+-- Текст одной команды без отступа
+function Printer.stmtText(st, nameOf: (string) -> string): string
+	local text = Printer.print({ handlers = { { event = "X", args = {}, body = { st } } } }, nameOf)
+	local inner = string.match(text, "^on X%(%) do\n(.*)\nend\n$") or text
+	return (string.gsub(inner, "\n  ", "\n"):gsub("^  ", ""))
 end
 
 return Printer

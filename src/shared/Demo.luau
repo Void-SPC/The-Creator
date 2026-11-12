@@ -1,10 +1,9 @@
---!strict
+--!nonstrict
 -- Демонстрационная сцена: игрок открывает дверь, лисик выбирается из книжного шкафа
 -- и бежит на шум; на метке клипа «Скример» гаснет лампа, затем лисик убегает
 -- Любой объект сцены можно заменить в редакторе: логика ссылается на ID, а не на имена
 
 local Format = require(script.Parent.Format)
-local Ids = require(script.Parent.Ids)
 local Prefabs = require(script.Parent.Prefabs)
 local Logic = require(script.Parent.Logic)
 
@@ -50,11 +49,11 @@ function Demo.build(projectId: string, ownerId: number)
 	local p = Format.newProject(projectId, "Шум за дверью", ownerId)
 
 	put(p, Prefabs.room(p, 28, 24, 10))
-	local spawn = put(p, Prefabs.build(p, "spawn", { 0, 0, -20 }))
+	local spawn = put(p, Prefabs.build(p, "spawn", { 0, 0, -30 }))
 	spawn.latin = "Start"
 
 	-- коридор перед дверью
-	local corridor = Prefabs.build(p, "corridor", { 0, 0, -24 }) :: any
+	local corridor = Prefabs.build(p, "corridor", { 0, 0, -23.5 }) :: any
 	put(p, corridor)
 
 	local door = put(p, Prefabs.build(p, "door", { 0, 0, -11.5 }))
@@ -65,13 +64,14 @@ function Demo.build(projectId: string, ownerId: number)
 	lamp.name = "Лампа в холле"
 	lamp.latin = "HallLamp"
 
-	local shelf = put(p, Prefabs.build(p, "bookshelf", { 8, 0, 10 }))
+	local shelf = put(p, Prefabs.build(p, "bookshelf", { 8, 1, 10 }))
 	shelf.rot = { 0, 0, 0 }
 	shelf.latin = "Bookshelf01"
 
-	local fox = put(p, Prefabs.build(p, "fox", { 8, 0, 9 }))
+	-- лисик стоит перед полками; клип «Появление» начинается с позы внутри шкафа
+	local fox = put(p, Prefabs.build(p, "fox", { 8, 1, 7 }))
 	fox.latin = "Fox"
-	fox.rot = { 0, 180, 0 }
+	fox.rot = { 0, 0, 0 }
 	fox.hidden = true
 
 	local noise = put(p, Prefabs.build(p, "waypoint", { -6, 0, -4 }))
@@ -82,18 +82,18 @@ function Demo.build(projectId: string, ownerId: number)
 	escape.name = "Точка побега"
 	escape.latin = "EscapePoint"
 
-	local closet = put(p, Prefabs.build(p, "closet", { -10, 0, -6 }))
-	closet.rot = { 0, 90, 0 }
+	local closet = put(p, Prefabs.build(p, "closet", { -11, 1, -6 }))
+	closet.rot = { 0, -90, 0 } -- дверцами в комнату
 	closet.latin = "Closet01"
 
-	local sign = put(p, Prefabs.build(p, "sign", { 4, 0, -11.2 }))
+	local sign = put(p, Prefabs.build(p, "sign", { 0, 5, -12.15 }))
 	sign.label.text = "Не открывай после полуночи"
 	sign.latin = "WarningSign"
 
-	local npc = put(p, Prefabs.build(p, "npcNew", { -6, 0, -20 }))
+	local npc = put(p, Prefabs.build(p, "npcNew", { -2.5, 1, -20 }))
 	npc.name = "Сторож"
 	npc.latin = "Keeper"
-	npc.rot = { 0, 90, 0 }
+	npc.rot = { 0, -90, 0 }
 	npc.role.lines = {
 		{ text = "Здравствуй! Говорят, в этом доме по ночам кто-то шуршит за книжным шкафом. Если услышишь шум, спрячься в шкаф у стены и не выходи, пока свет снова не загорится.", delay = 0, duration = 7 },
 		{ text = "Удачи!", delay = 7.5, duration = 2 },

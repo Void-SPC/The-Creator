@@ -205,6 +205,15 @@ end
 		T.eq(errs[1].bid, "b99")
 	end)
 
+	T.test("printer helpers for block labels", function()
+		local p = Demo.build("p", 1)
+		local nameOf = Logic.nameOf(p)
+		local e = { kind = "bin", op = "+", a = { kind = "num", value = 1 }, b = { kind = "var", name = "x" } }
+		T.eq(Logic.Printer.exprText(e, nameOf), "1 + x")
+		local st = { kind = "local", name = "x", value = { kind = "num", value = 2 } }
+		T.eq(Logic.Printer.stmtText(st, nameOf), "local x = 2")
+	end)
+
 	T.test("reserved names", function()
 		T.ok(Logic.isReservedName("Wait"))
 		T.ok(Logic.isReservedName("end"))

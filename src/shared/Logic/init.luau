@@ -1,4 +1,4 @@
---!strict
+--!nonstrict
 -- Логика карты: общий вход для блоков и текста
 
 local Parser = require(script.Parser)
@@ -69,7 +69,7 @@ function Logic.refreshText(project): boolean
 end
 
 -- Собирает таблицу ссылок для сохранения текста
-function Logic.collectRefs(script)
+function Logic.collectRefs(tree)
 	local refs = {}
 	local function walk(v)
 		if type(v) ~= "table" then
@@ -84,29 +84,29 @@ function Logic.collectRefs(script)
 			end
 		end
 	end
-	walk(script)
+	walk(tree)
 	return refs
 end
 
 -- Возвращает дерево и список ошибок (пустой, если всё в порядке)
 function Logic.compile(project)
 	local lg = project.logic
-	local script
+	local tree
 	if lg.mode == "text" then
-		local tree, parseErrors = Parser.parse(lg.text.source, Logic.nameResolver(project))
+		local parsed, parseErrors = Parser.parse(lg.text.source, Logic.nameResolver(project))
 		if parseErrors then
-			return tree, parseErrors
+			return parsed, parseErrors
 		end
-		script = tree
+		tree = parsed
 	else
-		script = lg.blocks
+		tree = lg.blocks
 	end
-	local errors = Validator.validate(script, project)
-	return script, errors
+	local errors = Validator.validate(tree, project)
+	return tree, errors
 end
 
-function Logic.toText(project, script): string
-	return Printer.print(script, Logic.nameOf(project))
+function Logic.toText(project, tree): string
+	return Printer.print(tree, Logic.nameOf(project))
 end
 
 -- Объекты и роли, которые ссылаются на удалённые цели
@@ -124,8 +124,8 @@ function Logic.brokenBindings(project)
 			end
 		end
 	end
-	local script, errors = Logic.compile(project)
-	if script then
+	local tree, errors = Logic.compile(project)
+	if tree then
 		for _, e in errors do
 			if e.broken then
 				table.insert(out, { logic = true, line = e.line, bid = e.bid, message = e.message, ref = e.ref })

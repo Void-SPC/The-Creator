@@ -1,4 +1,4 @@
---!strict
+--!nonstrict
 -- Склейка деталей в модель, копирование с новыми ID, «Мои модели»
 
 local Util = require(script.Parent.Util)

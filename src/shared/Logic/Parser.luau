@@ -1,4 +1,4 @@
---!strict
+--!nonstrict
 -- Разбор текстового режима логики карты. Синтаксис похож на Luau:
 --
 --   on DoorOpened(FrontDoor) do

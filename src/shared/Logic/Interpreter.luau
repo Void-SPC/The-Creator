@@ -1,4 +1,4 @@
---!strict
+--!nonstrict
 -- Исполнитель логики карты. Работает только с деревом, которое прошло Validator,
 -- и только через команды хоста (сервер реализует их для объектов текущей карты)
 -- Каждый запуск обработчика — отдельный поток с лимитом операций и времени жизни
@@ -28,13 +28,13 @@ local function sameValue(a, b): boolean
 	return a == b
 end
 
-function Interpreter.new(script, host, limits)
+function Interpreter.new(tree, host, limits)
 	local L = {}
 	for k, v in Interpreter.DEFAULT_LIMITS do
 		L[k] = (limits and limits[k]) or v
 	end
 	local rt = {
-		script = script,
+		tree = tree,
 		host = host,
 		limits = L,
 		threads = {},
@@ -243,7 +243,7 @@ function Interpreter.new(script, host, limits)
 			return 0
 		end
 		local started = 0
-		for _, h in rt.script.handlers do
+		for _, h in rt.tree.handlers do
 			if h.event == event then
 				local match = true
 				for i, a in h.args do
