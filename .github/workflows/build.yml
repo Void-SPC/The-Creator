@@ -1,0 +1,47 @@
+name: Сборка и публикация плейса
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Тесты ядра
+        run: |
+          curl -sSL -o luau.zip https://github.com/luau-lang/luau/releases/download/0.700/luau-ubuntu.zip
+          unzip -o luau.zip -d luau-bin
+          tools/run_tests.sh luau-bin/luau
+
+      - name: Сборка плейса Rojo
+        run: |
+          curl -sSL -o rojo.zip https://github.com/rojo-rbx/rojo/releases/download/v7.4.4/rojo-7.4.4-linux-x86_64.zip
+          unzip -o rojo.zip -d rojo-bin
+          chmod +x rojo-bin/rojo
+          rojo-bin/rojo build default.project.json -o Workshop.rbxl
+
+      - name: Файл плейса
+        uses: actions/upload-artifact@v4
+        with:
+          name: Workshop-place
+          path: Workshop.rbxl
+
+      # Публикация в Roblox через Open Cloud, если заданы секреты репозитория:
+      # ROBLOX_API_KEY, ROBLOX_UNIVERSE_ID, ROBLOX_PLACE_ID
+      - name: Публикация в Roblox
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+          UNIVERSE_ID: ${{ secrets.ROBLOX_UNIVERSE_ID }}
+          PLACE_ID: ${{ secrets.ROBLOX_PLACE_ID }}
+        if: env.ROBLOX_API_KEY != ''
+        run: |
+          curl --fail-with-body -sS -X POST \
+            "https://apis.roblox.com/universes/v1/${UNIVERSE_ID}/places/${PLACE_ID}/versions?versionType=Published" \
+            -H "x-api-key: ${ROBLOX_API_KEY}" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary @Workshop.rbxl
+          echo
+          echo "Ссылка на игру: https://www.roblox.com/games/${PLACE_ID}"
