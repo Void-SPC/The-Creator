@@ -62,7 +62,9 @@ function Format.newSettings()
 			bob = 0.5, -- 0 отключает покачивание
 		},
 		hud = { health = false },
-		lighting = { ambient = { 40, 40, 48 }, clockTime = 0, brightness = 1 },
+		-- clockTime — время суток в часах; dayNight включает смену дня и ночи,
+		-- dayMinutes — сколько реальных минут длятся одни игровые сутки
+		lighting = { ambient = { 40, 40, 48 }, clockTime = 14, brightness = 1, dayNight = false, dayMinutes = 12 },
 	}
 end
 
@@ -570,7 +572,38 @@ function Format.validateSettings(s): string?
 	if type(s.hud.health) ~= "boolean" then
 		return "hud.health"
 	end
+	local lt = s.lighting
+	if lt ~= nil then
+		if type(lt) ~= "table" then
+			return "lighting"
+		end
+		if lt.clockTime ~= nil and (not isNum(lt.clockTime) or lt.clockTime < 0 or lt.clockTime > 24) then
+			return "lighting.clockTime"
+		end
+		if lt.dayNight ~= nil and type(lt.dayNight) ~= "boolean" then
+			return "lighting.dayNight"
+		end
+		if lt.dayMinutes ~= nil and (not isNum(lt.dayMinutes) or lt.dayMinutes < 1 or lt.dayMinutes > 240) then
+			return "lighting.dayMinutes"
+		end
+		if lt.brightness ~= nil and (not isNum(lt.brightness) or lt.brightness < 0 or lt.brightness > 10) then
+			return "lighting.brightness"
+		end
+	end
 	return nil
+end
+
+-- Время суток в момент now (секунды), если сутки начались в момент at со значения base
+function Format.clockAt(lighting, base: number, at: number, now: number): number
+	if not lighting or not lighting.dayNight then
+		return base
+	end
+	local minutes = lighting.dayMinutes or 12
+	return (base + (now - at) / (minutes * 60) * 24) % 24
+end
+
+function Format.isNight(clock: number): boolean
+	return clock < 6 or clock >= 18
 end
 
 function Format.validateProject(p): string?

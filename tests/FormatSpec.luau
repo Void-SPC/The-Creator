@@ -25,6 +25,22 @@ return function(T)
 			end
 		end
 	end)
+	T.test("day and night cycle", function()
+		local lt = { dayNight = true, dayMinutes = 12, clockTime = 6 }
+		T.near(Format.clockAt(lt, 6, 0, 0), 6)
+		T.near(Format.clockAt(lt, 6, 0, 6 * 60), 18, 1e-6, "half of a 12 minute day passes 12 hours")
+		T.near(Format.clockAt(lt, 22, 0, 2 * 60), 2, 1e-6, "wraps after midnight")
+		lt.dayNight = false
+		T.near(Format.clockAt(lt, 6, 0, 600), 6, 1e-6, "without the cycle time stands still")
+		T.ok(Format.isNight(23) and Format.isNight(3) and not Format.isNight(12))
+		local p = Format.newProject("p", "Карта", 1)
+		p.settings.lighting.dayMinutes = 0
+		T.ok(Format.validateSettings(p.settings) ~= nil)
+		p.settings.lighting.dayMinutes = 30
+		p.settings.lighting.clockTime = 25
+		T.ok(Format.validateSettings(p.settings) ~= nil)
+	end)
+
 	T.test("v1 data migrates", function()
 		local old = {
 			format = 1,

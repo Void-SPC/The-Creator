@@ -12,6 +12,7 @@ local UiText = require(Shared.UiText)
 local Remotes = require(Shared.Roblox.Remotes)
 local Convert = require(Shared.Roblox.Convert)
 local Closet = require(Shared.Closet)
+local Format = require(Shared.Format)
 
 local Kit = require(script.Parent.Parent.UI.Kit)
 local CameraController = require(script.Parent.CameraController)
@@ -41,8 +42,14 @@ function PlayClient.new(app, msg)
 	self.camera = CameraController.new(msg.settings)
 	self.savedLighting = { ClockTime = Lighting.ClockTime, Ambient = Lighting.Ambient, Brightness = Lighting.Brightness }
 	local lt = msg.settings.lighting
+	-- смена дня и ночи считается на каждом клиенте по общему серверному времени
+	self.time = { clock = (lt and lt.clockTime) or 14, at = workspace:GetServerTimeNow(), dayNight = lt and lt.dayNight == true, dayMinutes = (lt and lt.dayMinutes) or 12 }
+	self.timeConn = game:GetService("RunService").RenderStepped:Connect(function()
+		local t = self.time
+		Lighting.ClockTime = Format.clockAt(t, t.clock, t.at, workspace:GetServerTimeNow())
+	end)
 	if lt then
-		Lighting.ClockTime = lt.clockTime or 0
+		Lighting.ClockTime = lt.clockTime or 14
 		Lighting.Brightness = lt.brightness or 1
 		if lt.ambient then
 			Lighting.Ambient = Color3.fromRGB(lt.ambient[1], lt.ambient[2], lt.ambient[3])
@@ -190,6 +197,8 @@ function PlayClient:onMessage(msg)
 		self:onCloset(msg)
 	elseif t == "cutscene" then
 		self.camera:playTrack(msg.base, msg.clip, if self.closetId then "inside" else "player", nil)
+	elseif t == "time" then
+		self.time = { clock = msg.clock, at = msg.at, dayNight = msg.dayNight, dayMinutes = msg.dayMinutes }
 	elseif t == "respawn" then
 		self.closetId = nil
 		self.leaveButton.Visible = false
@@ -203,6 +212,9 @@ function PlayClient:onMessage(msg)
 end
 
 function PlayClient:destroy()
+	if self.timeConn then
+		self.timeConn:Disconnect()
+	end
 	ContextActionService:UnbindAction("WsLeaveCloset")
 	for _, bb in self.bubbles do
 		bb:Destroy()

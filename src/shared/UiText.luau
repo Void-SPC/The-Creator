@@ -39,7 +39,7 @@ UiText.L = {
 	TabCreatures = "Существа",
 	TabAnimation = "Анимация",
 	TabLogic = "Логика",
-	TabCamera = "Камера",
+	TabCamera = "Камера и время",
 	TabTexts = "Тексты",
 
 	ToolSelect = "Выбор",
@@ -126,6 +126,9 @@ UiText.L = {
 	TextureTile = "Размер плитки",
 	TextureIdPlaceholder = "Число или rbxassetid://",
 	ObjectsCount = "Объектов: %d",
+	TimeOfDay = "Время суток, ч",
+	DayNight = "Смена дня и ночи",
+	DayLength = "Длина суток, мин",
 	PlayersCount = "Игроков: %d",
 
 	AssignCloset = "Назначить как шкаф",
@@ -292,6 +295,7 @@ UiText.H = {
 	FlyHint = "Держите стрелки, чтобы лететь, а кнопки ⇧ и ⇩ поднимают и опускают камеру.",
 	TextureIdHint = "Вставьте ID изображения Roblox, например 6372755229.",
 	HideUiHint = "Интерфейс скрыт, кнопка в углу возвращает его.",
+	DayNightHint = "Ночь длится с 18 до 6 часов. Время можно менять и из логики командой «Установить время суток».",
 }
 
 -- Проверка правила точек. Возвращает список нарушений

@@ -51,6 +51,19 @@ function SettingsPanel.render(editor, panel: Frame)
 	Kit.toggle(list, L.HealthBar, project.settings.hud.health, function(v)
 		set({ "settings", "hud", "health" }, v)
 	end, 7)
+
+	-- время суток и смена дня и ночи
+	local lt = project.settings.lighting or {}
+	Kit.slider(list, L.TimeOfDay, lt.clockTime or 14, 0, 24, function(v)
+		set({ "settings", "lighting", "clockTime" }, math.floor(v * 4 + 0.5) / 4 % 24)
+	end, 8)
+	Kit.toggle(list, L.DayNight, lt.dayNight == true, function(v)
+		set({ "settings", "lighting", "dayNight" }, v)
+	end, 9)
+	Kit.stepper(list, L.DayLength, lt.dayMinutes or 12, 1, 1, 240, function(v)
+		set({ "settings", "lighting", "dayMinutes" }, v)
+	end, 10)
+	Kit.label(list, H.DayNightHint, { TextColor3 = Kit.C.dim, TextSize = 13, LayoutOrder = 11, Size = UDim2.new(1, 0, 0, 40) })
 	return nil
 end
 

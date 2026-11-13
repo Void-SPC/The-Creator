@@ -8,6 +8,7 @@ local TweenService = game:GetService("TweenService")
 
 local Shared = game:GetService("ReplicatedStorage").Workshop.Shared
 local Logic = require(Shared.Logic)
+local Format = require(Shared.Format)
 local Closet = require(Shared.Closet)
 local Anim = require(Shared.Anim)
 local UiText = require(Shared.UiText)
@@ -71,6 +72,10 @@ function PlaySession.new(service, opts)
 	self.errors = {}
 	self.destroyed = false
 	self.playEvent = Remotes.event("Play")
+	-- время суток: начальное значение и момент, от которого идут сутки
+	local lt = self.project.settings.lighting or {}
+	self.clockBase = lt.clockTime or 14
+	self.clockAt = workspace:GetServerTimeNow()
 	return self
 end
 
@@ -83,6 +88,15 @@ function PlaySession:objCF(id: string): CFrame
 		return h.part.CFrame
 	end
 	return WorldBuilder.objectCFrame(h.obj, self.origin)
+end
+
+function PlaySession:clock(): number
+	return Format.clockAt(self.project.settings.lighting, self.clockBase, self.clockAt, workspace:GetServerTimeNow())
+end
+
+function PlaySession:timeMessage()
+	local lt = self.project.settings.lighting or {}
+	return { type = "time", clock = self.clockBase, at = self.clockAt, dayNight = lt.dayNight == true, dayMinutes = lt.dayMinutes or 12 }
 end
 
 function PlaySession:broadcast(msg)
@@ -272,6 +286,14 @@ function PlaySession:action(name: string, args, _node)
 	elseif name == "SetVisible" then
 		local _, h = self:target(args[1], "SetVisible")
 		WorldBuilder.setVisible(h, args[2] == true)
+	elseif name == "SetTime" then
+		local h = tonumber(args[1])
+		if not h then
+			error("время суток должно быть числом", 0)
+		end
+		self.clockBase = math.clamp(h, 0, 24) % 24
+		self.clockAt = workspace:GetServerTimeNow()
+		self:broadcast(self:timeMessage())
 	elseif name == "PlayCutscene" then
 		local id = self:target(args[1], "PlayCutscene")
 		local a = self.animators[id]
@@ -300,6 +322,8 @@ function PlaySession:condition(name: string, args)
 		local id = self:target(args[1], "ClosetOccupied")
 		local c = self.closets[id]
 		return c ~= nil and c.state.state ~= Closet.FREE
+	elseif name == "IsNight" then
+		return Format.isNight(self:clock())
 	elseif name == "Chance" then
 		return math.random() * 100 < (tonumber(args[1]) or 0)
 	end
@@ -805,6 +829,7 @@ function PlaySession:addPlayer(player: Player)
 		settings = self.project.settings,
 		isOwner = player.UserId == self.ownerId,
 	})
+	self.playEvent:FireClient(player, self:timeMessage())
 	local conn = player.CharacterAdded:Connect(function()
 		task.wait()
 		if self.players[player] then

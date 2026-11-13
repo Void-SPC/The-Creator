@@ -835,7 +835,9 @@ function Format.newSettings()
 			bob = 0.5, -- 0 отключает покачивание
 		},
 		hud = { health = false },
-		lighting = { ambient = { 40, 40, 48 }, clockTime = 0, brightness = 1 },
+		-- clockTime — время суток в часах; dayNight включает смену дня и ночи,
+		-- dayMinutes — сколько реальных минут длятся одни игровые сутки
+		lighting = { ambient = { 40, 40, 48 }, clockTime = 14, brightness = 1, dayNight = false, dayMinutes = 12 },
 	}
 end
 
@@ -1343,7 +1345,38 @@ function Format.validateSettings(s): string?
 	if type(s.hud.health) ~= "boolean" then
 		return "hud.health"
 	end
+	local lt = s.lighting
+	if lt ~= nil then
+		if type(lt) ~= "table" then
+			return "lighting"
+		end
+		if lt.clockTime ~= nil and (not isNum(lt.clockTime) or lt.clockTime &lt; 0 or lt.clockTime &gt; 24) then
+			return "lighting.clockTime"
+		end
+		if lt.dayNight ~= nil and type(lt.dayNight) ~= "boolean" then
+			return "lighting.dayNight"
+		end
+		if lt.dayMinutes ~= nil and (not isNum(lt.dayMinutes) or lt.dayMinutes &lt; 1 or lt.dayMinutes &gt; 240) then
+			return "lighting.dayMinutes"
+		end
+		if lt.brightness ~= nil and (not isNum(lt.brightness) or lt.brightness &lt; 0 or lt.brightness &gt; 10) then
+			return "lighting.brightness"
+		end
+	end
 	return nil
+end
+
+-- Время суток в момент now (секунды), если сутки начались в момент at со значения base
+function Format.clockAt(lighting, base: number, at: number, now: number): number
+	if not lighting or not lighting.dayNight then
+		return base
+	end
+	local minutes = lighting.dayMinutes or 12
+	return (base + (now - at) / (minutes * 60) * 24) % 24
+end
+
+function Format.isNight(clock: number): boolean
+	return clock &lt; 6 or clock &gt;= 18
 end
 
 function Format.validateProject(p): string?
@@ -1670,6 +1703,7 @@ Commands.conditions = {
 	DoorIsOpen = { title = "Дверь открыта", args = { arg("door", "door", "Дверь") } },
 	ZoneHasPlayer = { title = "В зоне есть игрок", args = { arg("zone", "zone", "Зона") } },
 	ClosetOccupied = { title = "Шкаф занят", args = { arg("closet", "closet", "Шкаф") } },
+	IsNight = { title = "Сейчас ночь", args = {} },
 	Chance = { title = "Случайно с шансом", args = { arg("percent", "number", "Шанс, %", { min = 0, max = 100 }) } },
 }
 
@@ -1714,6 +1748,10 @@ Commands.actions = {
 	ShowLabel = {
 		title = "Показать надпись",
 		args = { arg("target", "any", "Объект с надписью"), arg("visible", "bool", "Видна") },
+	},
+	SetTime = {
+		title = "Установить время суток",
+		args = { arg("hours", "number", "Часы, 0–24", { min = 0, max = 24 }) },
 	},
 	PlayCutscene = {
 		title = "Кат-сцена камеры",
@@ -5018,7 +5056,7 @@ UiText.L = {
 	TabCreatures = "Существа",
 	TabAnimation = "Анимация",
 	TabLogic = "Логика",
-	TabCamera = "Камера",
+	TabCamera = "Камера и время",
 	TabTexts = "Тексты",
 
 	ToolSelect = "Выбор",
@@ -5105,6 +5143,9 @@ UiText.L = {
 	TextureTile = "Размер плитки",
 	TextureIdPlaceholder = "Число или rbxassetid://",
 	ObjectsCount = "Объектов: %d",
+	TimeOfDay = "Время суток, ч",
+	DayNight = "Смена дня и ночи",
+	DayLength = "Длина суток, мин",
 	PlayersCount = "Игроков: %d",
 
 	AssignCloset = "Назначить как шкаф",
@@ -5271,6 +5312,7 @@ UiText.H = {
 	FlyHint = "Держите стрелки, чтобы лететь, а кнопки ⇧ и ⇩ поднимают и опускают камеру.",
 	TextureIdHint = "Вставьте ID изображения Roblox, например 6372755229.",
 	HideUiHint = "Интерфейс скрыт, кнопка в углу возвращает его.",
+	DayNightHint = "Ночь длится с 18 до 6 часов. Время можно менять и из логики командой «Установить время суток».",
 }
 
 -- Проверка правила точек. Возвращает список нарушений
@@ -7115,6 +7157,7 @@ local TweenService = game:GetService("TweenService")
 
 local Shared = game:GetService("ReplicatedStorage").Workshop.Shared
 local Logic = require(Shared.Logic)
+local Format = require(Shared.Format)
 local Closet = require(Shared.Closet)
 local Anim = require(Shared.Anim)
 local UiText = require(Shared.UiText)
@@ -7178,6 +7221,10 @@ function PlaySession.new(service, opts)
 	self.errors = {}
 	self.destroyed = false
 	self.playEvent = Remotes.event("Play")
+	-- время суток: начальное значение и момент, от которого идут сутки
+	local lt = self.project.settings.lighting or {}
+	self.clockBase = lt.clockTime or 14
+	self.clockAt = workspace:GetServerTimeNow()
 	return self
 end
 
@@ -7190,6 +7237,15 @@ function PlaySession:objCF(id: string): CFrame
 		return h.part.CFrame
 	end
 	return WorldBuilder.objectCFrame(h.obj, self.origin)
+end
+
+function PlaySession:clock(): number
+	return Format.clockAt(self.project.settings.lighting, self.clockBase, self.clockAt, workspace:GetServerTimeNow())
+end
+
+function PlaySession:timeMessage()
+	local lt = self.project.settings.lighting or {}
+	return { type = "time", clock = self.clockBase, at = self.clockAt, dayNight = lt.dayNight == true, dayMinutes = lt.dayMinutes or 12 }
 end
 
 function PlaySession:broadcast(msg)
@@ -7379,6 +7435,14 @@ function PlaySession:action(name: string, args, _node)
 	elseif name == "SetVisible" then
 		local _, h = self:target(args[1], "SetVisible")
 		WorldBuilder.setVisible(h, args[2] == true)
+	elseif name == "SetTime" then
+		local h = tonumber(args[1])
+		if not h then
+			error("время суток должно быть числом", 0)
+		end
+		self.clockBase = math.clamp(h, 0, 24) % 24
+		self.clockAt = workspace:GetServerTimeNow()
+		self:broadcast(self:timeMessage())
 	elseif name == "PlayCutscene" then
 		local id = self:target(args[1], "PlayCutscene")
 		local a = self.animators[id]
@@ -7407,6 +7471,8 @@ function PlaySession:condition(name: string, args)
 		local id = self:target(args[1], "ClosetOccupied")
 		local c = self.closets[id]
 		return c ~= nil and c.state.state ~= Closet.FREE
+	elseif name == "IsNight" then
+		return Format.isNight(self:clock())
 	elseif name == "Chance" then
 		return math.random() * 100 &lt; (tonumber(args[1]) or 0)
 	end
@@ -7912,6 +7978,7 @@ function PlaySession:addPlayer(player: Player)
 		settings = self.project.settings,
 		isOwner = player.UserId == self.ownerId,
 	})
+	self.playEvent:FireClient(player, self:timeMessage())
 	local conn = player.CharacterAdded:Connect(function()
 		task.wait()
 		if self.players[player] then
@@ -11595,6 +11662,19 @@ function SettingsPanel.render(editor, panel: Frame)
 	Kit.toggle(list, L.HealthBar, project.settings.hud.health, function(v)
 		set({ "settings", "hud", "health" }, v)
 	end, 7)
+
+	-- время суток и смена дня и ночи
+	local lt = project.settings.lighting or {}
+	Kit.slider(list, L.TimeOfDay, lt.clockTime or 14, 0, 24, function(v)
+		set({ "settings", "lighting", "clockTime" }, math.floor(v * 4 + 0.5) / 4 % 24)
+	end, 8)
+	Kit.toggle(list, L.DayNight, lt.dayNight == true, function(v)
+		set({ "settings", "lighting", "dayNight" }, v)
+	end, 9)
+	Kit.stepper(list, L.DayLength, lt.dayMinutes or 12, 1, 1, 240, function(v)
+		set({ "settings", "lighting", "dayMinutes" }, v)
+	end, 10)
+	Kit.label(list, H.DayNightHint, { TextColor3 = Kit.C.dim, TextSize = 13, LayoutOrder = 11, Size = UDim2.new(1, 0, 0, 40) })
 	return nil
 end
 
@@ -12663,6 +12743,7 @@ local UiText = require(Shared.UiText)
 local Remotes = require(Shared.Roblox.Remotes)
 local Convert = require(Shared.Roblox.Convert)
 local Closet = require(Shared.Closet)
+local Format = require(Shared.Format)
 
 local Kit = require(script.Parent.Parent.UI.Kit)
 local CameraController = require(script.Parent.CameraController)
@@ -12692,8 +12773,14 @@ function PlayClient.new(app, msg)
 	self.camera = CameraController.new(msg.settings)
 	self.savedLighting = { ClockTime = Lighting.ClockTime, Ambient = Lighting.Ambient, Brightness = Lighting.Brightness }
 	local lt = msg.settings.lighting
+	-- смена дня и ночи считается на каждом клиенте по общему серверному времени
+	self.time = { clock = (lt and lt.clockTime) or 14, at = workspace:GetServerTimeNow(), dayNight = lt and lt.dayNight == true, dayMinutes = (lt and lt.dayMinutes) or 12 }
+	self.timeConn = game:GetService("RunService").RenderStepped:Connect(function()
+		local t = self.time
+		Lighting.ClockTime = Format.clockAt(t, t.clock, t.at, workspace:GetServerTimeNow())
+	end)
 	if lt then
-		Lighting.ClockTime = lt.clockTime or 0
+		Lighting.ClockTime = lt.clockTime or 14
 		Lighting.Brightness = lt.brightness or 1
 		if lt.ambient then
 			Lighting.Ambient = Color3.fromRGB(lt.ambient[1], lt.ambient[2], lt.ambient[3])
@@ -12841,6 +12928,8 @@ function PlayClient:onMessage(msg)
 		self:onCloset(msg)
 	elseif t == "cutscene" then
 		self.camera:playTrack(msg.base, msg.clip, if self.closetId then "inside" else "player", nil)
+	elseif t == "time" then
+		self.time = { clock = msg.clock, at = msg.at, dayNight = msg.dayNight, dayMinutes = msg.dayMinutes }
 	elseif t == "respawn" then
 		self.closetId = nil
 		self.leaveButton.Visible = false
@@ -12854,6 +12943,9 @@ function PlayClient:onMessage(msg)
 end
 
 function PlayClient:destroy()
+	if self.timeConn then
+		self.timeConn:Disconnect()
+	end
 	ContextActionService:UnbindAction("WsLeaveCloset")
 	for _, bb in self.bubbles do
 		bb:Destroy()

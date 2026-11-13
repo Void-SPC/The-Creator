@@ -43,6 +43,7 @@ Commands.conditions = {
 	DoorIsOpen = { title = "Дверь открыта", args = { arg("door", "door", "Дверь") } },
 	ZoneHasPlayer = { title = "В зоне есть игрок", args = { arg("zone", "zone", "Зона") } },
 	ClosetOccupied = { title = "Шкаф занят", args = { arg("closet", "closet", "Шкаф") } },
+	IsNight = { title = "Сейчас ночь", args = {} },
 	Chance = { title = "Случайно с шансом", args = { arg("percent", "number", "Шанс, %", { min = 0, max = 100 }) } },
 }
 
@@ -87,6 +88,10 @@ Commands.actions = {
 	ShowLabel = {
 		title = "Показать надпись",
 		args = { arg("target", "any", "Объект с надписью"), arg("visible", "bool", "Видна") },
+	},
+	SetTime = {
+		title = "Установить время суток",
+		args = { arg("hours", "number", "Часы, 0–24", { min = 0, max = 24 }) },
 	},
 	PlayCutscene = {
 		title = "Кат-сцена камеры",

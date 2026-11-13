@@ -214,6 +214,15 @@ end
 		T.eq(Logic.Printer.stmtText(st, nameOf), "local x = 2")
 	end)
 
+	T.test("time of day commands", function()
+		local p = Demo.build("p", 1)
+		p.logic.mode = "text"
+		p.logic.text.source = "on MapStarted() do\n  if IsNight() then\n    SetTime(12)\n  end\n  SetTime(30)\nend\n"
+		local _, errs = Logic.compile(p)
+		T.eq(#errs, 1, "30 hours is out of range")
+		T.eq(errs[1].line, 5)
+	end)
+
 	T.test("reserved names", function()
 		T.ok(Logic.isReservedName("Wait"))
 		T.ok(Logic.isReservedName("end"))
