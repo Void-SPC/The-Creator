@@ -178,8 +178,10 @@ function PlaySession:setupLogic()
 	for id in interactTargets do
 		local obj = self.project.map.objects[id]
 		local role = obj and obj.role and obj.role.type
-		if obj and role ~= "door" and role ~= "closet" and role ~= "npc" then
-			local prompt = self:prompt(id, L.Interact)
+		-- у двери, шкафа и NPC с приветствием «После взаимодействия» своя кнопка
+		local ownPrompt = role == "door" or role == "closet" or (role == "npc" and obj.role.trigger == "interact")
+		if obj and not ownPrompt then
+			local prompt = self:prompt(id, if role == "npc" then L.Talk else L.Interact)
 			if prompt then
 				table.insert(self.connections, prompt.Triggered:Connect(function(player)
 					if self.players[player] then

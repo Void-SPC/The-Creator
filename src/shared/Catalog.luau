@@ -10,6 +10,7 @@ Catalog.SHAPES = {
 	{ id = "Cylinder", title = "Цилиндр" },
 	{ id = "Wedge", title = "Клин" },
 	{ id = "CornerWedge", title = "Угловой клин" },
+	{ id = "Ellipsoid", title = "Эллипсоид" },
 }
 
 Catalog.MATERIAL_TITLES = {
@@ -75,6 +76,9 @@ Catalog.PREFABS = {
 	{ id = "npcNew", title = "NPC «Новый»", group = "Персонажи" },
 	{ id = "npcRetro", title = "NPC «Ретро»", group = "Персонажи" },
 	{ id = "fox", title = "Лисик", group = "Персонажи" },
+	{ id = "officeInspector", title = "Инспектор", group = "Из игры «Офисы»" },
+	{ id = "officeCoin", title = "Монета-джентльмен", group = "Из игры «Офисы»" },
+	{ id = "officeCoinMoustache", title = "Монета-джентльмен с усами", group = "Из игры «Офисы»" },
 }
 
 return Catalog

@@ -20,7 +20,13 @@ local function newBasePart(shape: string): BasePart
 		return Instance.new("CornerWedgePart")
 	end
 	local p = Instance.new("Part")
-	if shape == "Ball" then
+	if shape == "Ellipsoid" then
+		-- как в Office: блок со сферическим мешем, вписанным в размер детали
+		p.Shape = Enum.PartType.Block
+		local mesh = Instance.new("SpecialMesh")
+		mesh.MeshType = Enum.MeshType.Sphere
+		mesh.Parent = p
+	elseif shape == "Ball" then
 		p.Shape = Enum.PartType.Ball
 	elseif shape == "Cylinder" then
 		p.Shape = Enum.PartType.Cylinder

@@ -8,7 +8,9 @@ Config.ADMIN_USER_IDS = {} :: { number }
 -- Группа: { id = 123, minRank = 200 } или nil
 Config.ADMIN_GROUP = nil :: { id: number, minRank: number }?
 
-Config.DATASTORE_NAME = "Workshop_v1"
+-- Отдельное имя хранилища мастерской. Office DataStore не использует (проверено по
+-- исходникам 0.2.0-test), но имя выбрано так, чтобы не совпасть с будущими данными Office
+Config.DATASTORE_NAME = "CreatorWorkshop_Projects_v1"
 Config.AUTOSAVE_SECONDS = 20
 Config.SAVE_RETRY_SECONDS = 8
 Config.READONLY_RETRY_SECONDS = 10

@@ -7,6 +7,7 @@ local Ids = require(script.Parent.Ids)
 local Anim = require(script.Parent.Anim)
 local Closet = require(script.Parent.Closet)
 local MathX = require(script.Parent.MathX)
+local OfficeModels = require(script.Parent.OfficeModels)
 
 local Prefabs = {}
 
@@ -419,6 +420,66 @@ function Prefabs.fox(project)
 	return { m }
 end
 
+-- Модели из игры «Офисы»: оригинальные детали, суставы и клипы (tools/import_office.py)
+-- Логика Office (оплата, проверка карточки, таймер, погоня, захват игрока, урон) не входит
+-- в модель: по умолчанию монета — обычный объект, Инспектор — NPC без автоматических реакций
+local function fromOffice(project, data, latinBase: string)
+	local m = newModel(project, data.name, latinBase)
+	for i, src in data.parts do
+		m.model.parts[src.id] = {
+			id = src.id,
+			name = src.id,
+			shape = src.shape,
+			size = table.clone(src.size),
+			pos = table.clone(src.pos),
+			rot = table.clone(src.rot),
+			color = table.clone(src.color),
+			material = src.material,
+			texture = nil,
+			transparency = src.transparency,
+			pivot = table.clone(src.pivot),
+			parent = src.parent,
+		}
+		m.model.nextPart = i + 1
+	end
+	for i, c in data.clips do
+		local clip = Format.newClip("c" .. tostring(i), c.name)
+		clip.length = c.length
+		clip.loop = c.loop
+		for trackId, keys in c.tracks do
+			local track = { keys = {} }
+			for _, k in keys do
+				table.insert(track.keys, { t = k[1], pos = { k[2], k[3], k[4] }, rot = { k[5], k[6], k[7] }, ease = "linear" })
+			end
+			clip.tracks[trackId] = track
+		end
+		m.model.clips[clip.id] = clip
+	end
+	return m
+end
+
+function Prefabs.officeInspector(project)
+	local m = fromOffice(project, OfficeModels.inspector, "Inspector")
+	m.role = {
+		type = "npc",
+		trigger = "logic", -- сам по себе ни на что не реагирует
+		zone = nil,
+		greetingClip = nil,
+		lines = {},
+		anchor = nil,
+		textSize = 22,
+	}
+	return { m }
+end
+
+function Prefabs.officeCoin(project)
+	return { fromOffice(project, OfficeModels.coinEye, "Coin") }
+end
+
+function Prefabs.officeCoinMoustache(project)
+	return { fromOffice(project, OfficeModels.coinMoustache, "Coin") }
+end
+
 local BUILDERS = {
 	room = Prefabs.room,
 	corridor = Prefabs.corridor,
@@ -439,6 +500,9 @@ local BUILDERS = {
 	npcNew = Prefabs.npcNew,
 	npcRetro = Prefabs.npcRetro,
 	fox = Prefabs.fox,
+	officeInspector = Prefabs.officeInspector,
+	officeCoin = Prefabs.officeCoin,
+	officeCoinMoustache = Prefabs.officeCoinMoustache,
 }
 
 -- Строит объекты готовой модели в точке origin. Объекты ещё не добавлены в проект

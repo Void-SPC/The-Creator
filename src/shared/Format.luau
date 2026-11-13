@@ -21,13 +21,13 @@ Format.LIMITS = {
 	textLen = 600,
 	codeLen = 20000,
 	coord = 20000,
-	sizeMin = 0.05,
+	sizeMin = 0.01, -- Roblox допускает от 0.001; у деталей Office встречается 0.03
 	sizeMax = 512,
 	clipLength = 120,
 	dataBytes = 3_500_000,
 }
 
-Format.SHAPES = { Block = true, Ball = true, Cylinder = true, Wedge = true, CornerWedge = true }
+Format.SHAPES = { Block = true, Ball = true, Cylinder = true, Wedge = true, CornerWedge = true, Ellipsoid = true }
 
 Format.MATERIALS = {
 	"Plastic", "SmoothPlastic", "Wood", "WoodPlanks", "Brick", "Concrete", "Marble", "Granite",
