@@ -190,6 +190,56 @@ return function(T)
 		T.ok(not s:getShowcase(), "read error is reported, not treated as off")
 	end)
 
+	T.test("ten saves per player, names unique per player", function()
+		local ad = memoryAdapter()
+		local s = store(ad)
+		for i = 1, 10 do
+			T.ok(s:createProject(1, "Сохранение_" .. i, nil))
+		end
+		local ok, err = s:createProject(1, "Ещё одно", nil)
+		T.ok(not ok)
+		T.eq(err, "too_many_projects")
+		local ad2 = memoryAdapter()
+		local s2 = store(ad2)
+		T.ok(s2:createProject(1, "Дом_1", nil))
+		local okDup, errDup = s2:createProject(1, "  дом_1 ", nil)
+		T.ok(not okDup, "same name for the same player is refused")
+		T.eq(errDup, "name_taken")
+		T.ok(s2:createProject(2, "Дом_1", nil), "another player may use the same name")
+		local _, list = s2:listProjects(1)
+		T.ok(not s2:canRename(1, "other", "ДОМ_1"))
+		T.ok(s2:canRename(1, list[1].id, "Дом_1"), "keeping its own name is fine")
+		-- удаление освобождает место и название
+		T.ok(s2:deleteProject(1, list[1].id))
+		T.ok(not s2:openDraft(1, list[1].id), "deleted save does not open")
+		T.ok(s2:createProject(1, "Дом_1", nil), "name is free again")
+	end)
+
+	T.test("corporation template", function()
+		local ad = memoryAdapter()
+		local s = store(ad)
+		local ok, p = s:createProject(1, "Корпорация", "corp")
+		T.ok(ok, tostring(p))
+		local Logic = require(Shared.Logic)
+		local _, errs = Logic.compile(p)
+		T.eq(#errs, 0, T.show(errs))
+		local statues, owned, desks = 0, 0, 0
+		for _, o in p.map.objects do
+			if o.role and o.role.type == "statue" then
+				statues += 1
+				T.eq(o.role.username, "Nataliaavira13")
+				T.eq(o.role.pose, "admire")
+			elseif o.role and o.role.type == "door" and o.role.owned then
+				owned += 1
+			elseif o.latin and string.match(o.latin, "^Desk%d") then
+				desks += 1
+			end
+		end
+		T.eq(statues, 1)
+		T.eq(owned, 6, "six personal rooms")
+		T.eq(desks, 8, "a desk for everyone")
+	end)
+
 	T.test("library models", function()
 		local ad = memoryAdapter()
 		local s = store(ad)

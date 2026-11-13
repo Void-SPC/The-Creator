@@ -145,23 +145,56 @@ function CameraController:update(dt: number)
 	end
 	cam.CameraType = Enum.CameraType.Scriptable
 	cam.FieldOfView = self.settings.fov
+	-- заставка: игрока ведут к дому, камера плавно идёт сзади и чуть сбоку
+	if self.walkMode then
+		hum.AutoRotate = true
+		local look = hrp.CFrame.LookVector
+		local flatLook = Vector3.new(look.X, 0, look.Z)
+		flatLook = if flatLook.Magnitude > 0.01 then flatLook.Unit else Vector3.new(0, 0, -1)
+		local right = Vector3.new(-flatLook.Z, 0, flatLook.X)
+		local want = CFrame.lookAt(hrp.Position - flatLook * 10 + Vector3.new(0, 4.5, 0) + right * 2.5, hrp.Position + flatLook * 8 + Vector3.new(0, 2.5, 0))
+		self.walkCF = if self.walkCF then self.walkCF:Lerp(want, 1 - math.exp(-dt * 3)) else want
+		cam.CFrame = self.walkCF
+		setCharacterVisible(true)
+		return
+	end
+	self.walkCF = nil
 	if UserInputService.MouseEnabled and not UserInputService.TouchEnabled then
 		UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
 		UserInputService.MouseIconEnabled = false
 	end
-	-- покачивание при ходьбе; интенсивность 0 полностью его отключает
-	local speed = Vector3.new(hrp.AssemblyLinearVelocity.X, 0, hrp.AssemblyLinearVelocity.Z).Magnitude
+	-- мягкая камера от первого лица: взгляд догоняет поворот, шаги дают плавное
+	-- покачивание вверх-вниз и из стороны в сторону, при шаге вбок камера слегка
+	-- наклоняется, на месте едва заметно «дышит». Интенсивность 0 всё отключает
+	local vel = hrp.AssemblyLinearVelocity
+	local speed = Vector3.new(vel.X, 0, vel.Z).Magnitude
 	local bob = self.settings.bob
-	local offset = Vector3.zero
-	if bob > 0 and speed > 0.5 and hum.FloorMaterial ~= Enum.Material.Air then
-		self.bobT += dt * math.clamp(speed / 16, 0.4, 1.6) * 9
-		offset = Vector3.new(math.cos(self.bobT * 0.5) * 0.06, math.abs(math.sin(self.bobT)) * 0.12, 0) * bob
-	else
-		self.bobT = 0
-	end
+	local onGround = hum.FloorMaterial ~= Enum.Material.Air
+	local moving = speed > 0.5 and onGround
+	self.bobAmp = (self.bobAmp or 0) + ((if moving then 1 else 0) - (self.bobAmp or 0)) * math.min(1, dt * 6)
+	self.bobT += dt * math.clamp(speed / 14, 0.5, 1.7) * 8.5
+	self.idleT = (self.idleT or 0) + dt
+	local amp = self.bobAmp * bob
+	local offset = Vector3.new(
+		math.sin(self.bobT * 0.5) * 0.08 * amp,
+		(math.abs(math.sin(self.bobT * 0.5)) * 0.16 - 0.08) * amp + math.sin(self.idleT * 1.6) * 0.015 * bob,
+		0
+	)
+	-- наклон при шаге и при движении вбок
+	local localVel = CFrame.fromOrientation(0, self.yaw, 0):VectorToObjectSpace(vel)
+	local strafe = math.clamp(localVel.X / 16, -1, 1)
+	local rollTarget = (-strafe * math.rad(2.2) + math.sin(self.bobT * 0.5) * math.rad(0.6) * self.bobAmp) * bob
+	self.roll = (self.roll or 0) + (rollTarget - (self.roll or 0)) * math.min(1, dt * 8)
+	-- сглаживание взгляда
+	self.viewYaw = self.viewYaw or self.yaw
+	self.viewPitch = self.viewPitch or self.pitch
+	local k = 1 - math.exp(-dt * 22)
+	local dy = (self.yaw - self.viewYaw + math.pi) % (2 * math.pi) - math.pi
+	self.viewYaw += dy * k
+	self.viewPitch += (self.pitch - self.viewPitch) * k
 	local headY = if hum.RigType == Enum.HumanoidRigType.R6 then 1.5 else hum.HipHeight * 0.75
 	local eye = hrp.Position + Vector3.new(0, headY, 0)
-	local rot = CFrame.fromOrientation(self.pitch, self.yaw, 0)
+	local rot = CFrame.fromOrientation(self.viewPitch, self.viewYaw, 0) * CFrame.Angles(0, 0, self.roll)
 	cam.CFrame = CFrame.new(eye) * rot * CFrame.new(offset)
 	-- персонаж поворачивается вслед за взглядом
 	if not hrp.Anchored then
@@ -170,6 +203,22 @@ function CameraController:update(dt: number)
 		hrp.CFrame = CFrame.new(hrp.Position) * flat
 	end
 	setCharacterVisible(false)
+end
+
+-- Режим заставки при проводке по маршруту
+function CameraController:setWalk(on: boolean)
+	self.walkMode = on
+	if not on then
+		local char = player.Character
+		local hrp = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if hrp then
+			local _, y = hrp.CFrame:ToOrientation()
+			self.yaw = y
+			self.viewYaw = y
+			self.pitch = 0
+			self.viewPitch = 0
+		end
+	end
 end
 
 -- Временная траектория камеры (дорожка Camera клипа в системе координат base)

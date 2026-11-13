@@ -159,6 +159,14 @@ function EditorService.init(projectStore)
 			editAck:FireClient(player, seq, false, "too_large", s.project)
 			return
 		end
+		-- название карты должно отличаться от других сохранений этого игрока
+		if type(op) == "table" and op.op == "setProject" and type(op.path) == "table" and op.path[1] == "meta" and op.path[2] == "name" and type(op.value) == "string" then
+			local okName = store:canRename(s.userId, s.project.id, op.value)
+			if not okName then
+				editAck:FireClient(player, seq, false, "name_taken", s.project)
+				return
+			end
+		end
 		local ok, res = Ops.apply(s.project, op, { validate = true })
 		if ok and Format.validateProject(s.project) ~= nil then
 			Ops.apply(s.project, res, { validate = false })
@@ -246,7 +254,7 @@ function EditorService.createProject(player: Player, name: any, template: any)
 	if name == "" or utf8.len(name) == nil or (utf8.len(name) :: number) > 60 then
 		return { ok = false, error = "bad_name" }
 	end
-	local tpl = if template == "demo" then "demo" else nil
+	local tpl = if template == "demo" or template == "corp" then template else nil
 	local ok, project, rev = store:createProject(player.UserId, name, tpl)
 	return open(player, ok, project, rev, false)
 end
@@ -261,6 +269,18 @@ function EditorService.openProject(player: Player, projectId: any)
 	end
 	local ok, project, rev, readOnly = store:openDraft(player.UserId, projectId)
 	return open(player, ok, project, rev, readOnly)
+end
+
+function EditorService.deleteProject(player: Player, projectId: any)
+	if type(projectId) ~= "string" then
+		return { ok = false }
+	end
+	local s = sessions[player]
+	if s and s.project.id == projectId then
+		close(player)
+	end
+	local ok, err = store:deleteProject(player.UserId, projectId)
+	return { ok = ok, error = err }
 end
 
 function EditorService.closeProject(player: Player)

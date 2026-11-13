@@ -46,7 +46,7 @@ Format.MATERIAL_SET = MATERIAL_SET
 
 Format.ROLES = {
 	closet = true, door = true, light = true, npc = true, creature = true,
-	zone = true, waypoint = true, spawn = true,
+	zone = true, waypoint = true, spawn = true, statue = true,
 }
 
 local function vec(x: number, y: number, z: number)
@@ -359,6 +359,25 @@ local function validateRole(role): string?
 		local e = checkVec(role.hinge, -200, 200, "door.hinge")
 		if e then
 			return e
+		end
+		-- личная комната: дверь достаётся одному игроку, запереть её может только он
+		if role.owned ~= nil and type(role.owned) ~= "boolean" then
+			return "door.owned"
+		end
+	elseif t == "statue" then
+		-- каменная статуя аватара Roblox по имени пользователя
+		local e = checkStr(role.username, 20, "statue.username")
+		if e then
+			return e
+		end
+		if not string.match(role.username, "^[%w_]+$") then
+			return "statue.username"
+		end
+		if role.pose ~= "admire" and role.pose ~= "stand" then
+			return "statue.pose"
+		end
+		if role.orb ~= nil and type(role.orb) ~= "boolean" then
+			return "statue.orb"
 		end
 	elseif t == "light" then
 		if type(role.on) ~= "boolean" then

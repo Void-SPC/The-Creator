@@ -55,6 +55,21 @@ function Access.isCreator(player: Player): boolean
 	return result
 end
 
+-- Создатель по ID (для карт: валюту выдают только карты создателей)
+function Access.isCreatorUserId(userId: number): boolean
+	if RunService:IsStudio() then
+		return true
+	end
+	if game.CreatorType == Enum.CreatorType.User and game.CreatorId == userId then
+		return true
+	end
+	if resolvedIds[userId] or table.find(Config.CREATOR_USER_IDS, userId) then
+		return true
+	end
+	local p = Players:GetPlayerByUserId(userId)
+	return p ~= nil and Access.isCreator(p)
+end
+
 function Access.forget(player: Player)
 	cache[player.UserId] = nil
 end

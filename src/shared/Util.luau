@@ -65,6 +65,25 @@ function Util.clamp(v: number, lo: number, hi: number): number
 	return v
 end
 
+-- Нижний регистр с учётом кириллицы (string.lower меняет только латиницу)
+function Util.lower(s: string): string
+	if utf8.len(s) == nil then
+		return string.lower(s)
+	end
+	local out = {}
+	for _, cp in utf8.codes(s) do
+		if cp >= 0x41 and cp <= 0x5A then
+			cp += 0x20
+		elseif cp >= 0x410 and cp <= 0x42F then
+			cp += 0x20
+		elseif cp == 0x401 then
+			cp = 0x451
+		end
+		table.insert(out, utf8.char(cp))
+	end
+	return table.concat(out)
+end
+
 function Util.trim(s: string): string
 	return (string.gsub(s, "^%s*(.-)%s*$", "%1"))
 end

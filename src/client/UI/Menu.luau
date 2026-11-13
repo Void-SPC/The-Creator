@@ -41,6 +41,9 @@ function Menu.new(app)
 	Kit.button(actions, L.NewMap, function()
 		self:createMap(nil)
 	end, { BackgroundColor3 = Kit.C.accent })
+	Kit.button(actions, L.TemplateCorp, function()
+		self:createMap("corp")
+	end)
 	Kit.button(actions, L.NewDemo, function()
 		self:createMap("demo")
 	end)
@@ -72,7 +75,7 @@ function Menu.new(app)
 
 	self.nameBox = Kit.textbox(box, "", L.MapNamePlaceholder, nil, { Position = UDim2.fromOffset(0, if Kit.compact() then 200 else 140), Size = UDim2.new(1, 0, 0, Kit.TAP) })
 	local listTop = if Kit.compact() then 252 else 192
-	Kit.label(box, L.MyMaps, { Font = Kit.FONT_BOLD, TextSize = 18, Position = UDim2.fromOffset(0, listTop), Size = UDim2.new(1, 0, 0, 26) })
+	self.mapsTitle = Kit.label(box, L.MyMaps, { Font = Kit.FONT_BOLD, TextSize = 18, Position = UDim2.fromOffset(0, listTop), Size = UDim2.new(1, 0, 0, 26) })
 	self.listTop = listTop + 32
 	self.list = Kit.scroll(box, { Position = UDim2.fromOffset(0, listTop + 32), Size = UDim2.new(1, 0, 1, -(listTop + 32)) })
 	Kit.list(self.list, 6)
@@ -103,15 +106,28 @@ function Menu:refresh()
 			Kit.label(self.list, H.EmptyMaps, { TextColor3 = Kit.C.dim, Size = UDim2.new(1, 0, 0, 44) })
 			return
 		end
+		self.mapsTitle.Text = L.MyMaps .. "   " .. string.format(L.SavesCount, #res.projects, 10)
 		for i, p in res.projects do
 			local sub = if p.publishCode then string.format(L.PublishedAs, p.publishCode) else nil
 			local text = p.name
 			if sub then
 				text = p.name .. "\n" .. string.gsub(sub, "\n", " ")
 			end
-			Kit.button(self.list, text, function()
+			local row = Kit.frame(self.list, { BackgroundTransparency = 1, LayoutOrder = i, Size = UDim2.new(1, -8, 0, 56) })
+			Kit.button(row, text, function()
 				self.app:openProject(p.id)
-			end, { LayoutOrder = i, Size = UDim2.new(1, -8, 0, 56), TextXAlignment = Enum.TextXAlignment.Left })
+			end, { Size = UDim2.new(1, -62, 1, 0), TextXAlignment = Enum.TextXAlignment.Left })
+			Kit.button(row, "✕", function()
+				Kit.choose(self.gui, L.Delete .. "\n" .. p.name, {
+					{ id = "yes", title = L.Delete },
+					{ id = "no", title = L.Cancel },
+				}, function(choice)
+					if choice == "yes" then
+						Remotes.fn("Request"):InvokeServer("DeleteProject", p.id)
+						self:refresh()
+					end
+				end)
+			end, { Size = UDim2.new(0, 56, 1, 0), Position = UDim2.new(1, -56, 0, 0), BackgroundColor3 = Kit.C.bad })
 		end
 	end)
 end
@@ -119,11 +135,15 @@ end
 function Menu:createMap(template: string?)
 	local name = self.nameBox.Text
 	if name == "" then
-		name = if template == "demo" then L.DemoMapName else L.NewMap
+		name = if template == "demo" then L.DemoMapName elseif template == "corp" then L.TemplateCorp else L.NewMap
 	end
 	local res = Remotes.fn("Request"):InvokeServer("CreateProject", name, template)
 	if res and res.ok then
 		self.app:openEditor(res.project, res.readOnly)
+	elseif res and res.error == "name_taken" then
+		Kit.toast(self.gui, H.NameTakenHint, Kit.C.bad, 4)
+	elseif res and res.error == "too_many_projects" then
+		Kit.toast(self.gui, H.TooManyHint, Kit.C.bad, 4)
 	else
 		Kit.toast(self.gui, H.LoadFailedHint, Kit.C.bad)
 	end

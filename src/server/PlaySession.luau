@@ -17,6 +17,9 @@ local WorldBuilder = require(Shared.Roblox.WorldBuilder)
 local Animator = require(Shared.Roblox.Animator)
 local Remotes = require(Shared.Roblox.Remotes)
 local Config = require(script.Parent.Config)
+local Statue = require(script.Parent.Statue)
+local CurrencyService = require(script.Parent.CurrencyService)
+local Access = require(script.Parent.Access)
 
 local PlaySession = {}
 PlaySession.__index = PlaySession
@@ -151,6 +154,21 @@ function PlaySession:start()
 			elseif role.type == "npc" then
 				self:setupNpc(id)
 			end
+		end
+	end
+	-- статуи: заготовка прячется, на её месте встаёт каменная копия аватара
+	for id, obj in objects do
+		if obj.role and obj.role.type == "statue" then
+			local h = self.handles[id]
+			WorldBuilder.setVisible(h, false)
+			local feet = WorldBuilder.objectCFrame(obj, self.origin) * CFrame.new(0, -(obj.size and obj.size[2] or 5) / 2, 0)
+			task.spawn(function()
+				local model = Statue.spawn(obj.role.username, obj.role.pose, obj.role.orb ~= false, feet, folder)
+				if not model then
+					-- аватар не загрузился: оставляем каменную заготовку
+					WorldBuilder.setVisible(h, true)
+				end
+			end)
 		end
 	end
 	self:setupLogic()
@@ -390,6 +408,20 @@ function PlaySession:action(name: string, args, _node, eventArgs)
 		for _, p in self:targetPlayers(eventArgs) do
 			self.playEvent:FireClient(p, msg)
 		end
+	elseif name == "WalkPlayer" then
+		local pointId = self:target(args[1], "WalkPlayer")
+		for _, pl in self:targetPlayers(eventArgs) do
+			self:walk(pl, pointId)
+		end
+	elseif name == "GiveCoins" or name == "TakeCoins" then
+		-- валюта общая для всей игры, поэтому выдавать её могут только карты создателей
+		if name == "GiveCoins" and not Access.isCreatorUserId(self.ownerId) then
+			error("выдавать монеты могут только карты создателей игры", 0)
+		end
+		local n = math.floor(tonumber(args[1]) or 0)
+		for _, pl in self:targetPlayers(eventArgs) do
+			CurrencyService.add(pl, if name == "GiveCoins" then n else -n)
+		end
 	elseif name == "AddScore" then
 		for _, p in self:targetPlayers(eventArgs) do
 			local v = self:score(p)
@@ -443,6 +475,13 @@ function PlaySession:condition(name: string, args, eventArgs)
 		end
 		local hum = humanoidOf(p)
 		return hum ~= nil and hum.Health < (tonumber(args[1]) or 0)
+	elseif name == "HasCoins" then
+		local pl = eventArgs and eventArgs.player
+		if not pl then
+			error("условие про игрока работает только в событиях с игроком", 0)
+		end
+		local have = CurrencyService.get(pl)
+		return have ~= nil and have >= (tonumber(args[1]) or 0)
 	elseif name == "IsNight" then
 		return Format.isNight(self:clock())
 	elseif name == "Chance" then
@@ -501,12 +540,52 @@ function PlaySession:setupDoor(id: string)
 	local h = self.handles[id]
 	local role = h.obj.role
 	local closed = WorldBuilder.objectCFrame(h.obj, self.origin)
-	local door = { open = false, closed = closed, role = role, tween = nil, value = nil }
+	local door = { open = false, closed = closed, role = role, tween = nil, value = nil, owner = nil, locked = false, plate = nil, lockPrompt = nil }
 	self.doors[id] = door
 	local prompt = self:prompt(id, L.DoorOpen)
 	door.prompt = prompt
+	if role.owned then
+		-- личная комната: табличка с именем хозяина и замок, который может закрыть только он
+		local gui = Instance.new("BillboardGui")
+		gui.Name = "RoomPlate"
+		gui.Size = UDim2.fromOffset(180, 50)
+		gui.StudsOffsetWorldSpace = Vector3.new(0, (h.obj.size and h.obj.size[2] or 7) / 2 + 1.2, 0)
+		gui.MaxDistance = 40
+		gui.LightInfluence = 0
+		local t = Instance.new("TextLabel")
+		t.Size = UDim2.fromScale(1, 1)
+		t.BackgroundTransparency = 1
+		t.TextColor3 = Color3.fromRGB(235, 228, 210)
+		t.TextStrokeTransparency = 0.5
+		t.Font = Enum.Font.GothamMedium
+		t.TextScaled = true
+		t.Text = ""
+		t.Parent = gui
+		gui.Parent = h.primary
+		door.plate = t
+		local lock = self:prompt(id, L.LockRoom)
+		if lock then
+			lock.KeyboardKeyCode = Enum.KeyCode.F
+			lock.UIOffset = Vector2.new(0, 70)
+			lock.Enabled = false
+			door.lockPrompt = lock
+			table.insert(self.connections, lock.Triggered:Connect(function(player)
+				if player == door.owner then
+					door.locked = not door.locked
+					lock.ActionText = if door.locked then L.UnlockRoom else L.LockRoom
+					if door.locked and door.open then
+						self:setDoor(id, false, nil, player)
+					end
+				end
+			end))
+		end
+	end
 	if prompt then
 		table.insert(self.connections, prompt.Triggered:Connect(function(player)
+			if door.locked and player ~= door.owner then
+				self.playEvent:FireClient(player, { type = "message", text = UiText.H.RoomLockedHint, seconds = 2 })
+				return
+			end
 			if self.players[player] and not role.locked then
 				self:setDoor(id, not door.open, nil, player)
 				self:emit("Interacted", { { ref = id } }, player)
@@ -983,6 +1062,7 @@ function PlaySession:addPlayer(player: Player)
 			watchDeath()
 		end
 	end)
+	self:assignRoom(player)
 	task.defer(function()
 		if self.players[player] then
 			self:emit("PlayerJoined", {}, player)
@@ -992,9 +1072,123 @@ function PlaySession:addPlayer(player: Player)
 	self.charConns[player] = conn
 end
 
+-- Каждому игроку — свободная личная комната (в порядке входа)
+function PlaySession:assignRoom(player: Player)
+	local ids = {}
+	for id, d in self.doors do
+		if d.role.owned then
+			table.insert(ids, id)
+		end
+	end
+	table.sort(ids, function(a, b)
+		local la = self.handles[a].obj.latin or a
+		local lb = self.handles[b].obj.latin or b
+		return la < lb
+	end)
+	for _, id in ids do
+		local d = self.doors[id]
+		if not d.owner then
+			d.owner = player
+			d.locked = false
+			if d.plate then
+				d.plate.Text = string.format(L.RoomOf, player.DisplayName)
+			end
+			if d.lockPrompt then
+				d.lockPrompt.Enabled = true
+				d.lockPrompt.ActionText = L.LockRoom
+			end
+			return
+		end
+	end
+end
+
+function PlaySession:freeRoom(player: Player)
+	for _, d in self.doors do
+		if d.owner == player then
+			d.owner = nil
+			d.locked = false
+			if d.plate then
+				d.plate.Text = ""
+			end
+			if d.lockPrompt then
+				d.lockPrompt.Enabled = false
+			end
+		end
+	end
+end
+
+-- Провести игрока по цепочке точек. Несколько игроков идут строем, а не в одну точку
+function PlaySession:walk(player: Player, firstPoint: string)
+	self.walking = self.walking or {}
+	if self.walking[player] then
+		self.walking[player].cancel = true
+	end
+	local slot = 0
+	local used = {}
+	for _, w in self.walking do
+		used[w.slot] = true
+	end
+	while used[slot] do
+		slot += 1
+	end
+	local job = { slot = slot, cancel = false }
+	self.walking[player] = job
+	local side = ((slot % 3) - 1) * 3.5
+	local back = (slot // 3) * 3.5
+	task.spawn(function()
+		self.playEvent:FireClient(player, { type = "walk", on = true })
+		local pointId: string? = firstPoint
+		local hops = 0
+		while pointId and not job.cancel and not self.destroyed and self.players[player] and hops < 32 do
+			hops += 1
+			local h = self.handles[pointId]
+			local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+			local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if not h or not hum or not hrp or hum.Health <= 0 then
+				break
+			end
+			local target = WorldBuilder.objectCFrame(h.obj, self.origin).Position
+			local dir = Vector3.new(target.X - hrp.Position.X, 0, target.Z - hrp.Position.Z)
+			if dir.Magnitude > 0.1 then
+				dir = dir.Unit
+				local right = Vector3.new(-dir.Z, 0, dir.X)
+				target += right * side - dir * back
+			end
+			hum:MoveTo(target)
+			local reached = false
+			local conn = hum.MoveToFinished:Connect(function(r)
+				reached = true
+				local _ = r
+			end)
+			local t0 = os.clock()
+			while not reached and os.clock() - t0 < 12 and not job.cancel do
+				task.wait(0.1)
+			end
+			conn:Disconnect()
+			if job.cancel then
+				break
+			end
+			self:emit("PlayerArrived", { { ref = pointId } }, player)
+			local nextRef = h.obj.role and h.obj.role.next and h.obj.role.next.ref
+			pointId = if nextRef and self.handles[nextRef] then nextRef else nil
+		end
+		if self.walking[player] == job then
+			self.walking[player] = nil
+			if player.Parent then
+				self.playEvent:FireClient(player, { type = "walk", on = false })
+			end
+		end
+	end)
+end
+
 function PlaySession:removePlayer(player: Player)
 	if not self.players[player] then
 		return
+	end
+	self:freeRoom(player)
+	if self.walking and self.walking[player] then
+		self.walking[player].cancel = true
+		self.walking[player] = nil
 	end
 	local closetId = self.closetOf[player]
 	if closetId then

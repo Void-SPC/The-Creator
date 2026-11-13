@@ -20,7 +20,7 @@ local MapPanel = {}
 
 local ROLE_TITLES = {
 	closet = L.RoleCloset, door = L.RoleDoor, light = L.RoleLight, npc = L.RoleNpc,
-	creature = L.RoleCreature, zone = L.RoleZone, waypoint = L.RoleWaypoint, spawn = L.RoleSpawn,
+	creature = L.RoleCreature, zone = L.RoleZone, waypoint = L.RoleWaypoint, spawn = L.RoleSpawn, statue = L.RoleStatue,
 }
 
 local ASSIGN = {
@@ -32,6 +32,7 @@ local ASSIGN = {
 	{ id = "zone", title = L.AssignZone },
 	{ id = "waypoint", title = L.AssignWaypoint },
 	{ id = "spawn", title = L.AssignSpawn },
+	{ id = "statue", title = L.AssignStatue },
 }
 
 local function section(list: Instance, title: string, order: number)
@@ -263,6 +264,30 @@ local function roleProps(editor, list: Instance, obj, order: number)
 		Kit.toggle(list, L.Locked, role.locked == true, function(v)
 			set({ "locked" }, v)
 		end, order + 5)
+		Kit.toggle(list, L.OwnedRoom, role.owned == true, function(v)
+			set({ "owned" }, v)
+		end, order + 6)
+	elseif t == "statue" then
+		Kit.textbox(list, role.username, L.StatueUser, function(text)
+			local name = string.match(text, "^%s*@?([%w_]+)%s*$")
+			if name and #name <= 20 then
+				set({ "username" }, name)
+			end
+			editor:renderPanel()
+		end, { LayoutOrder = order + 1 })
+		local _, poseSlot = Kit.row(list, L.StatuePose, order + 2)
+		Kit.button(poseSlot, if role.pose == "stand" then L.PoseStand else L.PoseAdmire, function()
+			Kit.choose(editor.gui, L.StatuePose, {
+				{ id = "admire", title = L.PoseAdmire },
+				{ id = "stand", title = L.PoseStand },
+			}, function(v)
+				set({ "pose" }, v)
+				editor:renderPanel()
+			end)
+		end)
+		Kit.toggle(list, L.StatueOrb, role.orb ~= false, function(v)
+			set({ "orb" }, v)
+		end, order + 3)
 	elseif t == "light" then
 		Kit.toggle(list, L.LightOn, role.on, function(v)
 			set({ "on" }, v)

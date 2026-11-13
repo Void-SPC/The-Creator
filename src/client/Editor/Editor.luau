@@ -81,6 +81,8 @@ function Editor.new(app, project, readOnly: boolean)
 	self.state.rejected.connect(function(reason)
 		if reason == "frozen" then
 			Kit.toast(self.gui, H.FrozenHint)
+		elseif reason == "name_taken" then
+			Kit.toast(self.gui, H.NameTakenHint, Kit.C.bad, 4)
 		end
 	end)
 	self.preview.onRebuilt = function(id)
@@ -1138,6 +1140,8 @@ function Editor:assignRole(roleType: string?)
 		role = { type = "light", on = true, brightness = 3, range = 24, color = { 255, 214, 170 } }
 	elseif roleType == "npc" then
 		role = Prefabs.npcRole()
+	elseif roleType == "statue" then
+		role = { type = "statue", username = self.app.playerGui.Parent.Name, pose = "admire", orb = true }
 	elseif roleType == "creature" then
 		role = { type = "creature", speed = 14 }
 	elseif roleType then

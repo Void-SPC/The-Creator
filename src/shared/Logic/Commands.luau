@@ -41,6 +41,7 @@ Commands.events = {
 	},
 	PlayerJoined = { title = "Когда игрок зашёл на карту", args = {} },
 	PlayerDied = { title = "Когда игрок погиб", args = {} },
+	PlayerArrived = { title = "Когда игрок дошёл до точки", args = { arg("point", "waypoint", "Точка") } },
 	Arrived = { title = "Когда модель дошла до точки", args = { arg("model", "model", "Модель"), arg("point", "waypoint", "Точка") } },
 }
 
@@ -50,6 +51,7 @@ Commands.conditions = {
 	ZoneHasPlayer = { title = "В зоне есть игрок", args = { arg("zone", "zone", "Зона") } },
 	ClosetOccupied = { title = "Шкаф занят", args = { arg("closet", "closet", "Шкаф") } },
 	IsNight = { title = "Сейчас ночь", args = {} },
+	HasCoins = { title = "У игрока монет не меньше", args = { arg("coins", "number", "Монеты", { min = 0, max = 100000000 }) } },
 	IsWeather = { title = "Сейчас погода", args = { arg("weather", "weather", "Погода") } },
 	ScoreAtLeast = { title = "У игрока очков не меньше", args = { arg("score", "number", "Очки", { min = -1000000, max = 1000000 }) } },
 	HealthBelow = { title = "Здоровье игрока ниже", args = { arg("health", "number", "Здоровье", { min = 0, max = 1000 }) } },
@@ -120,6 +122,12 @@ Commands.actions = {
 		title = "Сообщение на экран",
 		args = { arg("text", "text", "Текст"), arg("seconds", "number", "Секунд", { optional = true, min = 0.5, max = 60 }) },
 	},
+	WalkPlayer = {
+		title = "Провести игрока по маршруту",
+		args = { arg("point", "waypoint", "Первая точка маршрута") },
+	},
+	GiveCoins = { title = "Дать монеты", args = { arg("coins", "number", "Монеты", { min = 1, max = 100000 }) } },
+	TakeCoins = { title = "Забрать монеты", args = { arg("coins", "number", "Монеты", { min = 1, max = 100000 }) } },
 	AddScore = { title = "Добавить очки", args = { arg("amount", "number", "Очки", { min = -100000, max = 100000 }) } },
 	SetTime = {
 		title = "Установить время суток",

@@ -459,6 +459,9 @@ Catalog.PALETTE = {
 Catalog.PREFABS = {
 	{ id = "baseplate", title = "Платформа", group = "Строения" },
 	{ id = "room", title = "Комната", group = "Строения" },
+	{ id = "railing", title = "Перила", group = "Строения" },
+	{ id = "statue", title = "Статуя на постаменте", group = "Мебель" },
+	{ id = "desk", title = "Рабочее место", group = "Мебель" },
 	{ id = "corridor", title = "Коридор", group = "Строения" },
 	{ id = "floorAbove", title = "Этаж выше", group = "Строения" },
 	{ id = "stairs", title = "Лестница", group = "Строения" },
@@ -641,6 +644,234 @@ return Closet
         </Item>
         <Item class="ModuleScript" referent="RBX0000000C">
           <Properties>
+            <string name="Name">Corp</string>
+            <ProtectedString name="Source">--!nonstrict
+-- Шаблон «Корпорация»: дорога к небольшому дому-вестибюлю со статуей создателя,
+-- большой зал со столами для каждого, второй этаж с деревянными перилами и личными
+-- комнатами. При входе игрока ведут к дому (около 15 секунд), несколько игроков идут строем
+-- Всё собрано из обычных объектов мастерской, поэтому шаблон можно менять в редакторе
+
+local Format = require(script.Parent.Format)
+local Ids = require(script.Parent.Ids)
+local Prefabs = require(script.Parent.Prefabs)
+local Logic = require(script.Parent.Logic)
+
+local Corp = {}
+
+Corp.SOURCE = [[
+-- Вход: игрока ведут по дороге к дому
+on PlayerJoined() do
+  ShowMessage("Добро пожаловать в корпорацию", 4)
+  WalkPlayer(Path1)
+end
+
+-- У входа дверь открывается, игрок проходит мимо статуи в зал
+on PlayerArrived(Path3) do
+  OpenDoor(MainDoor)
+  WalkPlayer(Path4)
+end
+
+on PlayerArrived(Path5) do
+  Wait(4)
+  CloseDoor(MainDoor)
+end
+]]
+
+local WALL = { 222, 216, 204 }
+
+function Corp.build(projectId: string, ownerId: number, ownerName: string?)
+	local p = Format.newProject(projectId, "Корпорация", ownerId)
+	local function add(objs)
+		for _, o in objs do
+			p.map.objects[o.id] = o
+		end
+		return objs[1]
+	end
+	local function block(name, size, pos, color, material, latin)
+		local o = Format.newPart(Ids.alloc(p, "o"), "Block")
+		o.name = name
+		o.size = size
+		o.pos = pos
+		o.color = color or WALL
+		o.material = material or "Plaster"
+		o.frozen = true
+		if latin then
+			o.latin = latin
+		end
+		p.map.objects[o.id] = o
+		return o
+	end
+	local function prefab(id, at, rot)
+		local o = add(Prefabs.build(p, id, at))
+		if rot then
+			o.rot = rot
+		end
+		return o
+	end
+
+	-- земля и дорога
+	local ground = add(Prefabs.build(p, "baseplate", { 0, 0, -35 }))
+	ground.name = "Газон"
+	ground.color = { 75, 120, 60 }
+	ground.material = "Grass"
+	local spawn = prefab("spawn", { 0, 0, -150 })
+	spawn.latin = "Start"
+	local route = { { 0, -150 }, { -14, -110 }, { 12, -60 }, { 0, -16 }, { 0, -9 } }
+	for i = 1, #route - 1 do
+		local a, b = route[i], route[i + 1]
+		local dx, dz = b[1] - a[1], b[2] - a[2]
+		local len = math.sqrt(dx * dx + dz * dz)
+		local road = block("Дорожка", { 6, 0.2, len + 3 }, { (a[1] + b[1]) / 2, 1.05, (a[2] + b[2]) / 2 }, { 150, 146, 140 }, "Pavement")
+		road.rot = { 0, math.floor(math.deg(math.atan2(dx, dz)) * 1000 + 0.5) / 1000, 0 }
+	end
+	-- фонари вдоль дороги
+	for i, xz in { { -6, -135 }, { 6, -120 }, { -18, -95 }, { 4, -80 }, { 17, -50 }, { -6, -30 } } do
+		block("Столб фонаря", { 0.4, 8, 0.4 }, { xz[1], 5, xz[2] }, { 40, 40, 44 }, "Metal")
+		local lamp = prefab("lamp", { xz[1], 0.3, xz[2] })
+		lamp.name = "Фонарь " .. i
+		lamp.latin = "StreetLamp" .. i
+		lamp.role.range = 30
+	end
+
+	-- точки маршрута входа: Path1 -&gt; Path2 -&gt; Path3 у двери, затем Path4 -&gt; Path5 в зал
+	local function point(name, latin, x, z)
+		local w = prefab("waypoint", { x, 0, z })
+		w.name = name
+		w.latin = latin
+		return w
+	end
+	local p1 = point("Дорога 1", "Path1", -14, -110)
+	local p2 = point("Дорога 2", "Path2", 12, -60)
+	local p3 = point("У входа", "Path3", 0, -16)
+	local p4 = point("У статуи", "Path4", -9, 6)
+	local p5 = point("Зал", "Path5", 0, 32)
+	p1.role.next = { ref = p2.id }
+	p2.role.next = { ref = p3.id }
+	p4.role.next = { ref = p5.id }
+
+	-- вестибюль 36 × 30, высота 12
+	block("Пол вестибюля", { 36, 0.2, 30 }, { 0, 1.1, 5 }, { 120, 84, 60 }, "WoodPlanks")
+	block("Потолок вестибюля", { 37, 1, 31 }, { 0, 13.5, 5 }, WALL)
+	block("Стена у входа", { 15, 12, 1 }, { -10.5, 7, -10 })
+	block("Стена у входа", { 15, 12, 1 }, { 10.5, 7, -10 })
+	block("Над входом", { 6, 4, 1 }, { 0, 11, -10 })
+	block("Стена вестибюля", { 1, 12, 30 }, { -18.5, 7, 5 })
+	block("Стена вестибюля", { 1, 12, 30 }, { 18.5, 7, 5 })
+	local door = prefab("door", { 0, 0, -10 })
+	door.name = "Главная дверь"
+	door.latin = "MainDoor"
+	door.size = { 6, 8, 0.4 }
+	door.pos = { 0, 5, -10 }
+	door.role.hinge = { -3, 0, 0 }
+	local sign = prefab("sign", { 0, 6, -10.65 })
+	sign.name = "Вывеска"
+	sign.latin = "CorpSign"
+	sign.size = { 8, 2, 0.2 }
+	sign.label.text = "Корпорация"
+	sign.label.size = 30
+	sign.label.color = { 235, 225, 200 }
+	sign.color = { 40, 44, 56 }
+	-- статуя создателя по центру, лицом к входу
+	local statueObjs = Prefabs.build(p, "statue", { 0, 1, 6 })
+	add(statueObjs)
+	statueObjs[2].role.username = ownerName or "Nataliaavira13"
+	statueObjs[2].name = "Статуя создателя"
+	statueObjs[2].latin = "CreatorStatue"
+	local vLamp = prefab("lamp", { 0, 3, -3 })
+	vLamp.name = "Лампа вестибюля"
+	vLamp.latin = "LobbyLamp"
+
+	-- зал 80 × 60, высота 24, проём из вестибюля шириной 10
+	block("Пол зала", { 80, 0.2, 60 }, { 0, 1.1, 50 }, { 70, 78, 96 }, "Carpet")
+	block("Потолок зала", { 82, 1, 62 }, { 0, 25.5, 50 }, WALL)
+	block("Стена между вестибюлем и залом", { 13, 12, 1 }, { -11.5, 7, 20 })
+	block("Стена между вестибюлем и залом", { 13, 12, 1 }, { 11.5, 7, 20 })
+	block("Над проёмом в зал", { 10, 3, 1 }, { 0, 11.5, 20 })
+	block("Фасад зала", { 36, 12, 1 }, { 0, 19, 20 })
+	block("Фасад зала", { 22, 24, 1 }, { -29, 13, 20 })
+	block("Фасад зала", { 22, 24, 1 }, { 29, 13, 20 })
+	block("Стена зала", { 1, 24, 60 }, { -40.5, 13, 50 })
+	block("Стена зала", { 1, 24, 60 }, { 40.5, 13, 50 })
+	block("Задняя стена зала", { 82, 24, 1 }, { 0, 13, 80.5 })
+	-- столы для каждого
+	local n = 0
+	for _, z in { 34, 46 } do
+		for _, x in { -27, -9, 9, 27 } do
+			n += 1
+			local d = prefab("desk", { x, 1.1, z })
+			d.name = "Стол " .. n
+			d.latin = "Desk" .. n
+			d.frozen = true
+		end
+	end
+	for i, xz in { { -18, 38 }, { 18, 38 }, { -18, 54 }, { 18, 54 } } do
+		local l = prefab("lamp", { xz[1], 14, xz[2] })
+		l.name = "Люстра " .. i
+		l.latin = "HallLamp" .. i
+		l.role.range = 40
+	end
+
+	-- второй этаж: галерея с перилами и лестница
+	block("Пол второго этажа", { 80, 1, 17 }, { 0, 12.5, 71.5 }, { 120, 84, 60 }, "WoodPlanks")
+	for _, x in { -30, -10, 10, 28 } do
+		block("Колонна", { 1.2, 11, 1.2 }, { x, 6.5, 63.6 }, { 205, 200, 192 }, "Marble")
+	end
+	local stairs = prefab("stairs", { 34, 1, 49 })
+	stairs.frozen = true
+	local rail1 = add(Prefabs.railing(p, 72))
+	rail1.pos = { -4, 13, 63.3 }
+	rail1.frozen = true
+	local rail2 = add(Prefabs.railing(p, 4))
+	rail2.pos = { 38, 13, 63.3 }
+	rail2.frozen = true
+
+	-- личные комнаты: 6 комнат по 12 × 10, каждому игроку своя
+	block("Стена галереи", { 4, 12, 0.5 }, { -38, 19, 70 })
+	block("Стена галереи", { 4, 12, 0.5 }, { 38, 19, 70 })
+	for i = 0, 6 do
+		block("Перегородка", { 0.5, 12, 10 }, { -36 + i * 12, 19, 75 })
+	end
+	for i = 0, 5 do
+		local cx = -30 + 12 * i
+		block("Стена комнаты", { 4, 12, 0.5 }, { cx - 4, 19, 70 })
+		block("Стена комнаты", { 4, 12, 0.5 }, { cx + 4, 19, 70 })
+		block("Над дверью", { 4, 5, 0.5 }, { cx, 22.5, 70 })
+		local rd = prefab("door", { 0, 0, 0 })
+		rd.name = "Дверь комнаты " .. (i + 1)
+		rd.latin = "RoomDoor" .. (i + 1)
+		rd.size = { 3.8, 7, 0.3 }
+		rd.pos = { cx, 16.5, 70 }
+		rd.role.hinge = { -1.9, 0, 0 }
+		rd.role.openAngle = -95
+		rd.role.owned = true
+		local bed = prefab("bed", { cx - 3, 13, 75.5 })
+		bed.name = "Кровать " .. (i + 1)
+		bed.latin = "Bed" .. (i + 1)
+		local rl = prefab("lamp", { cx + 3, 14, 76 })
+		rl.name = "Лампа комнаты " .. (i + 1)
+		rl.latin = "RoomLamp" .. (i + 1)
+		rl.role.brightness = 1.5
+		rl.role.range = 14
+	end
+
+	p.settings.lighting.clockTime = 20
+	p.settings.camera.bob = 0.6
+
+	local tree, errors = Logic.Parser.parse(Corp.SOURCE, Logic.nameResolver(p))
+	assert(tree and not errors, "corp logic must parse")
+	p.logic.mode = "blocks"
+	p.logic.blocks = tree
+	p.logic.text.source = Corp.SOURCE
+	p.logic.text.refs = Logic.collectRefs(tree)
+	return p
+end
+
+return Corp
+</ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="RBX0000000D">
+          <Properties>
             <string name="Name">Demo</string>
             <ProtectedString name="Source">--!nonstrict
 -- Демонстрационная сцена: игрок открывает дверь, лисик выбирается из книжного шкафа
@@ -768,7 +999,7 @@ return Demo
 </ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX0000000D">
+        <Item class="ModuleScript" referent="RBX0000000E">
           <Properties>
             <string name="Name">Format</string>
             <ProtectedString name="Source">--!nonstrict
@@ -819,7 +1050,7 @@ Format.MATERIAL_SET = MATERIAL_SET
 
 Format.ROLES = {
 	closet = true, door = true, light = true, npc = true, creature = true,
-	zone = true, waypoint = true, spawn = true,
+	zone = true, waypoint = true, spawn = true, statue = true,
 }
 
 local function vec(x: number, y: number, z: number)
@@ -1132,6 +1363,25 @@ local function validateRole(role): string?
 		local e = checkVec(role.hinge, -200, 200, "door.hinge")
 		if e then
 			return e
+		end
+		-- личная комната: дверь достаётся одному игроку, запереть её может только он
+		if role.owned ~= nil and type(role.owned) ~= "boolean" then
+			return "door.owned"
+		end
+	elseif t == "statue" then
+		-- каменная статуя аватара Roblox по имени пользователя
+		local e = checkStr(role.username, 20, "statue.username")
+		if e then
+			return e
+		end
+		if not string.match(role.username, "^[%w_]+$") then
+			return "statue.username"
+		end
+		if role.pose ~= "admire" and role.pose ~= "stand" then
+			return "statue.pose"
+		end
+		if role.orb ~= nil and type(role.orb) ~= "boolean" then
+			return "statue.orb"
 		end
 	elseif t == "light" then
 		if type(role.on) ~= "boolean" then
@@ -1484,7 +1734,7 @@ return Format
 </ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX0000000E">
+        <Item class="ModuleScript" referent="RBX0000000F">
           <Properties>
             <string name="Name">Ids</string>
             <ProtectedString name="Source">--!nonstrict
@@ -1569,7 +1819,7 @@ return Ids
 </ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX0000000F">
+        <Item class="ModuleScript" referent="RBX00000010">
           <Properties>
             <string name="Name">Logic</string>
             <ProtectedString name="Source">--!nonstrict
@@ -1712,7 +1962,7 @@ end
 return Logic
 </ProtectedString>
           </Properties>
-          <Item class="ModuleScript" referent="RBX00000010">
+          <Item class="ModuleScript" referent="RBX00000011">
             <Properties>
               <string name="Name">Commands</string>
               <ProtectedString name="Source">--!nonstrict
@@ -1758,6 +2008,7 @@ Commands.events = {
 	},
 	PlayerJoined = { title = "Когда игрок зашёл на карту", args = {} },
 	PlayerDied = { title = "Когда игрок погиб", args = {} },
+	PlayerArrived = { title = "Когда игрок дошёл до точки", args = { arg("point", "waypoint", "Точка") } },
 	Arrived = { title = "Когда модель дошла до точки", args = { arg("model", "model", "Модель"), arg("point", "waypoint", "Точка") } },
 }
 
@@ -1767,6 +2018,7 @@ Commands.conditions = {
 	ZoneHasPlayer = { title = "В зоне есть игрок", args = { arg("zone", "zone", "Зона") } },
 	ClosetOccupied = { title = "Шкаф занят", args = { arg("closet", "closet", "Шкаф") } },
 	IsNight = { title = "Сейчас ночь", args = {} },
+	HasCoins = { title = "У игрока монет не меньше", args = { arg("coins", "number", "Монеты", { min = 0, max = 100000000 }) } },
 	IsWeather = { title = "Сейчас погода", args = { arg("weather", "weather", "Погода") } },
 	ScoreAtLeast = { title = "У игрока очков не меньше", args = { arg("score", "number", "Очки", { min = -1000000, max = 1000000 }) } },
 	HealthBelow = { title = "Здоровье игрока ниже", args = { arg("health", "number", "Здоровье", { min = 0, max = 1000 }) } },
@@ -1837,6 +2089,12 @@ Commands.actions = {
 		title = "Сообщение на экран",
 		args = { arg("text", "text", "Текст"), arg("seconds", "number", "Секунд", { optional = true, min = 0.5, max = 60 }) },
 	},
+	WalkPlayer = {
+		title = "Провести игрока по маршруту",
+		args = { arg("point", "waypoint", "Первая точка маршрута") },
+	},
+	GiveCoins = { title = "Дать монеты", args = { arg("coins", "number", "Монеты", { min = 1, max = 100000 }) } },
+	TakeCoins = { title = "Забрать монеты", args = { arg("coins", "number", "Монеты", { min = 1, max = 100000 }) } },
 	AddScore = { title = "Добавить очки", args = { arg("amount", "number", "Очки", { min = -100000, max = 100000 }) } },
 	SetTime = {
 		title = "Установить время суток",
@@ -1898,7 +2156,7 @@ return Commands
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000011">
+          <Item class="ModuleScript" referent="RBX00000012">
             <Properties>
               <string name="Name">Interpreter</string>
               <ProtectedString name="Source">--!nonstrict
@@ -2216,7 +2474,7 @@ return Interpreter
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000012">
+          <Item class="ModuleScript" referent="RBX00000013">
             <Properties>
               <string name="Name">Parser</string>
               <ProtectedString name="Source">--!nonstrict
@@ -2583,7 +2841,7 @@ return Parser
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000013">
+          <Item class="ModuleScript" referent="RBX00000014">
             <Properties>
               <string name="Name">Printer</string>
               <ProtectedString name="Source">--!nonstrict
@@ -2704,7 +2962,7 @@ return Printer
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000014">
+          <Item class="ModuleScript" referent="RBX00000015">
             <Properties>
               <string name="Name">Validator</string>
               <ProtectedString name="Source">--!nonstrict
@@ -2914,7 +3172,7 @@ return Validator
             </Properties>
           </Item>
         </Item>
-        <Item class="ModuleScript" referent="RBX00000015">
+        <Item class="ModuleScript" referent="RBX00000016">
           <Properties>
             <string name="Name">MathX</string>
             <ProtectedString name="Source">--!nonstrict
@@ -3157,7 +3415,7 @@ return MathX
 </ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX00000016">
+        <Item class="ModuleScript" referent="RBX00000017">
           <Properties>
             <string name="Name">Model</string>
             <ProtectedString name="Source">--!nonstrict
@@ -3397,7 +3655,7 @@ return Model
 </ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX00000017">
+        <Item class="ModuleScript" referent="RBX00000018">
           <Properties>
             <string name="Name">OfficeModels</string>
             <ProtectedString name="Source">-- Сгенерировано tools/import_office.py из исходников Office, не править вручную
@@ -3641,7 +3899,7 @@ return M
 </ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX00000018">
+        <Item class="ModuleScript" referent="RBX00000019">
           <Properties>
             <string name="Name">Ops</string>
             <ProtectedString name="Source">--!nonstrict
@@ -3881,7 +4139,7 @@ return Ops
 </ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX00000019">
+        <Item class="ModuleScript" referent="RBX0000001A">
           <Properties>
             <string name="Name">Prefabs</string>
             <ProtectedString name="Source">--!nonstrict
@@ -3989,6 +4247,54 @@ function Prefabs.baseplate(project)
 	p.latin = "Baseplate"
 	p.frozen = true
 	return { p }
+end
+
+-- Статуя на ступенчатом постаменте. В редакторе фигура — каменная заготовка,
+-- в игре на её месте появляется каменная копия аватара Roblox в выбранной позе
+function Prefabs.statue(project, username: string?)
+	local stone = { 196, 194, 190 }
+	local base = newModel(project, "Постамент", "Pedestal")
+	addPart(base, "Нижняя ступень", "Block", { 9, 1, 9 }, { 0, 0.5, 0 }, stone, "Marble")
+	addPart(base, "Средняя ступень", "Block", { 7, 1, 7 }, { 0, 1.5, 0 }, stone, "Marble")
+	addPart(base, "Тумба", "Block", { 4.6, 2, 4.6 }, { 0, 3, 0 }, stone, "Marble")
+	addPart(base, "Карниз", "Block", { 5.2, 0.4, 5.2 }, { 0, 4.2, 0 }, stone, "Marble")
+	base.frozen = true
+	local fig = looseP(project, "Статуя", "Block", { 2, 5.4, 1.2 }, { 0, 4.4 + 2.7, 0 }, stone, "Marble")
+	fig.latin = Ids.suggestLatin(project, "Statue")
+	fig.role = { type = "statue", username = username or "Nataliaavira13", pose = "admire", orb = true }
+	return { base, fig }
+end
+
+-- Деревянные перила длиной length вдоль оси X: стойки, поручень и средняя перекладина
+function Prefabs.railing(project, length: number?)
+	local len = length or 16
+	local wood = { 124, 92, 70 }
+	local m = newModel(project, "Перила", "Railing")
+	local posts = math.max(2, math.floor(len / 3) + 1)
+	for i = 0, posts - 1 do
+		local x = -len / 2 + i * (len / (posts - 1))
+		addPart(m, "Стойка", "Block", { 0.35, 3.2, 0.35 }, { x, 1.6, 0 }, { 86, 66, 54 }, "Wood")
+	end
+	addPart(m, "Поручень", "Block", { len + 0.4, 0.3, 0.5 }, { 0, 3.3, 0 }, wood, "Wood")
+	addPart(m, "Перекладина", "Block", { len, 0.2, 0.2 }, { 0, 1.7, 0 }, wood, "Wood")
+	return { m }
+end
+
+-- Рабочее место: стол, стул и настольная лампа
+function Prefabs.desk(project)
+	local m = newModel(project, "Рабочее место", "Desk")
+	addPart(m, "Столешница", "Block", { 6, 0.3, 3.2 }, { 0, 3.1, 0 }, { 230, 225, 215 }, "Wood")
+	for _, xz in { { -2.7, -1.3 }, { 2.7, -1.3 }, { -2.7, 1.3 }, { 2.7, 1.3 } } do
+		addPart(m, "Ножка", "Block", { 0.25, 3, 0.25 }, { xz[1], 1.5, xz[2] }, { 60, 60, 66 }, "Metal")
+	end
+	addPart(m, "Монитор", "Block", { 2.4, 1.5, 0.15 }, { 0, 4.1, 0.9 }, { 27, 31, 39 }, "SmoothPlastic")
+	addPart(m, "Экран", "Block", { 2.2, 1.3, 0.05 }, { 0, 4.1, 0.81 }, { 110, 170, 220 }, "Neon")
+	addPart(m, "Подставка", "Block", { 0.3, 0.6, 0.3 }, { 0, 3.5, 0.95 }, { 27, 31, 39 }, "Metal")
+	addPart(m, "Клавиатура", "Block", { 1.8, 0.1, 0.6 }, { 0, 3.3, -0.3 }, { 50, 50, 56 }, "SmoothPlastic")
+	addPart(m, "Сиденье", "Block", { 1.8, 0.3, 1.8 }, { 0, 2, -2.4 }, { 40, 44, 56 }, "Fabric")
+	addPart(m, "Спинка", "Block", { 1.8, 2, 0.25 }, { 0, 3.2, -3.25 }, { 40, 44, 56 }, "Fabric")
+	addPart(m, "Ножка стула", "Cylinder", { 1.8, 0.3, 0.3 }, { 0, 1, -2.4 }, { 60, 60, 66 }, "Metal", nil, nil, { 0, 0, 90 })
+	return { m }
 end
 
 function Prefabs.corridor(project)
@@ -4378,6 +4684,9 @@ end
 local BUILDERS = {
 	room = Prefabs.room,
 	baseplate = Prefabs.baseplate,
+	statue = Prefabs.statue,
+	railing = Prefabs.railing,
+	desk = Prefabs.desk,
 	corridor = Prefabs.corridor,
 	floorAbove = Prefabs.floorAbove,
 	wall = Prefabs.wall,
@@ -4422,7 +4731,7 @@ return Prefabs
 </ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX0000001A">
+        <Item class="ModuleScript" referent="RBX0000001B">
           <Properties>
             <string name="Name">Rig</string>
             <ProtectedString name="Source">--!nonstrict
@@ -4559,11 +4868,11 @@ return Rig
 </ProtectedString>
           </Properties>
         </Item>
-        <Item class="Folder" referent="RBX0000001B">
+        <Item class="Folder" referent="RBX0000001C">
           <Properties>
             <string name="Name">Roblox</string>
           </Properties>
-          <Item class="ModuleScript" referent="RBX0000001C">
+          <Item class="ModuleScript" referent="RBX0000001D">
             <Properties>
               <string name="Name">Animator</string>
               <ProtectedString name="Source">--!nonstrict
@@ -4666,7 +4975,7 @@ return Animator
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX0000001D">
+          <Item class="ModuleScript" referent="RBX0000001E">
             <Properties>
               <string name="Name">Convert</string>
               <ProtectedString name="Source">--!nonstrict
@@ -4725,7 +5034,7 @@ return Convert
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX0000001E">
+          <Item class="ModuleScript" referent="RBX0000001F">
             <Properties>
               <string name="Name">Remotes</string>
               <ProtectedString name="Source">--!nonstrict
@@ -4783,7 +5092,7 @@ return Remotes
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX0000001F">
+          <Item class="ModuleScript" referent="RBX00000020">
             <Properties>
               <string name="Name">WorldBuilder</string>
               <ProtectedString name="Source">--!nonstrict
@@ -5112,7 +5421,7 @@ return WorldBuilder
             </Properties>
           </Item>
         </Item>
-        <Item class="ModuleScript" referent="RBX00000020">
+        <Item class="ModuleScript" referent="RBX00000021">
           <Properties>
             <string name="Name">UiText</string>
             <ProtectedString name="Source">--!nonstrict
@@ -5245,6 +5554,20 @@ UiText.L = {
 	ObjectsCount = "Объектов: %d",
 	TimeOfDay = "Время суток, ч",
 	Score = "Очки",
+	Coins = "Монеты",
+	AssignStatue = "Назначить как статую",
+	RoleStatue = "Статуя",
+	StatueUser = "Чей аватар (ник)",
+	StatuePose = "Поза",
+	PoseAdmire = "Восхищение",
+	PoseStand = "Стоит прямо",
+	StatueOrb = "Сфера в руке",
+	OwnedRoom = "Личная комната",
+	LockRoom = "Запереть",
+	UnlockRoom = "Отпереть",
+	RoomOf = "Комната\n%s",
+	TemplateCorp = "Корпорация",
+	SavesCount = "Сохранений: %d из %d",
 	CustomColor = "Свой цвет",
 	AnyColor = "🎨",
 	Weather = "Погода",
@@ -5422,6 +5745,9 @@ UiText.H = {
 	StartStep3 = "Во вкладке «Логика» задайте, что происходит в игре, и нажмите «Тестировать».",
 	ShowcaseHint = "Все игроки сразу попадают в эту карту и не видят меню создателя. Выключить витрину могут только создатели.",
 	ShowcaseOnlyCreators = "Включать витрину могут только создатели игры.",
+	RoomLockedHint = "Комната заперта хозяином.",
+	NameTakenHint = "Карта с таким названием у вас уже есть, придумайте другое.",
+	TooManyHint = "У вас уже 10 сохранений. Удалите или переименуйте одно из них.",
 	FlyHint = "Держите стрелки, чтобы лететь, а кнопки ⇧ и ⇩ поднимают и опускают камеру.",
 	TextureIdHint = "Вставьте ID изображения Roblox, например 6372755229.",
 	HideUiHint = "Интерфейс скрыт, кнопка в углу возвращает его.",
@@ -5481,7 +5807,7 @@ return UiText
 </ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX00000021">
+        <Item class="ModuleScript" referent="RBX00000022">
           <Properties>
             <string name="Name">Util</string>
             <ProtectedString name="Source">--!nonstrict
@@ -5551,6 +5877,25 @@ function Util.clamp(v: number, lo: number, hi: number): number
 	return v
 end
 
+-- Нижний регистр с учётом кириллицы (string.lower меняет только латиницу)
+function Util.lower(s: string): string
+	if utf8.len(s) == nil then
+		return string.lower(s)
+	end
+	local out = {}
+	for _, cp in utf8.codes(s) do
+		if cp &gt;= 0x41 and cp &lt;= 0x5A then
+			cp += 0x20
+		elseif cp &gt;= 0x410 and cp &lt;= 0x42F then
+			cp += 0x20
+		elseif cp == 0x401 then
+			cp = 0x451
+		end
+		table.insert(out, utf8.char(cp))
+	end
+	return table.concat(out)
+end
+
 function Util.trim(s: string): string
 	return (string.gsub(s, "^%s*(.-)%s*$", "%1"))
 end
@@ -5581,15 +5926,15 @@ return Util
       </Item>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="RBX00000022">
+  <Item class="ServerScriptService" referent="RBX00000023">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Folder" referent="RBX00000023">
+    <Item class="Folder" referent="RBX00000024">
       <Properties>
         <string name="Name">Workshop</string>
       </Properties>
-      <Item class="ModuleScript" referent="RBX00000024">
+      <Item class="ModuleScript" referent="RBX00000025">
         <Properties>
           <string name="Name">Access</string>
           <ProtectedString name="Source">--!nonstrict
@@ -5649,6 +5994,21 @@ function Access.isCreator(player: Player): boolean
 	return result
 end
 
+-- Создатель по ID (для карт: валюту выдают только карты создателей)
+function Access.isCreatorUserId(userId: number): boolean
+	if RunService:IsStudio() then
+		return true
+	end
+	if game.CreatorType == Enum.CreatorType.User and game.CreatorId == userId then
+		return true
+	end
+	if resolvedIds[userId] or table.find(Config.CREATOR_USER_IDS, userId) then
+		return true
+	end
+	local p = Players:GetPlayerByUserId(userId)
+	return p ~= nil and Access.isCreator(p)
+end
+
 function Access.forget(player: Player)
 	cache[player.UserId] = nil
 end
@@ -5657,7 +6017,7 @@ return Access
 </ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX00000025">
+      <Item class="ModuleScript" referent="RBX00000026">
         <Properties>
           <string name="Name">AdminService</string>
           <ProtectedString name="Source">--!nonstrict
@@ -5709,7 +6069,7 @@ return AdminService
 </ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX00000026">
+      <Item class="ModuleScript" referent="RBX00000027">
         <Properties>
           <string name="Name">Config</string>
           <ProtectedString name="Source">--!nonstrict
@@ -5749,11 +6109,11 @@ return Config
 </ProtectedString>
         </Properties>
       </Item>
-      <Item class="Folder" referent="RBX00000027">
+      <Item class="Folder" referent="RBX00000028">
         <Properties>
           <string name="Name">Core</string>
         </Properties>
-        <Item class="ModuleScript" referent="RBX00000028">
+        <Item class="ModuleScript" referent="RBX00000029">
           <Properties>
             <string name="Name">ProjectStore</string>
             <ProtectedString name="Source">--!nonstrict
@@ -5773,13 +6133,16 @@ local Util = require(Shared.Util)
 local Format = require(Shared.Format)
 local Demo = require(Shared.Demo)
 local Prefabs = require(Shared.Prefabs)
+local Corp = require(Shared.Corp)
 
 local ProjectStore = {}
 ProjectStore.__index = ProjectStore
 
 local CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 local CATALOG_SIZE = 100
-local MAX_PROJECTS = 30
+-- сохранений (карт) у каждого игрока не больше десяти, названия у одного игрока не повторяются
+local MAX_PROJECTS = 10
+ProjectStore.MAX_PROJECTS = MAX_PROJECTS
 
 local function draftKey(userId: number, projectId: string)
 	return string.format("u%d:draft:%s", userId, projectId)
@@ -5841,6 +6204,60 @@ function ProjectStore:_newProjectId(): string
 	return string.format("p%x%04x", self.now(), self.random:NextInteger(0, 0xffff))
 end
 
+local function normName(s: string): string
+	return Util.lower(Util.trim(s))
+end
+
+-- Название уже есть у этого игрока (у других игроков такое же название разрешено)
+function ProjectStore.nameTaken(index, name: string, exceptId: string?): boolean
+	if not index or not index.projects then
+		return false
+	end
+	local n = normName(name)
+	for pid, e in index.projects do
+		if pid ~= exceptId and type(e.name) == "string" and normName(e.name) == n then
+			return true
+		end
+	end
+	return false
+end
+
+-- Удаление сохранения: карта убирается из списка, черновик помечается удалённым
+-- (опубликованные версии по коду остаются доступны)
+function ProjectStore:deleteProject(userId: number, projectId: string)
+	local ok, err = self:_update(indexKey(userId), function(index)
+		if not index or not index.projects[projectId] then
+			return nil, "not_found"
+		end
+		index.projects[projectId] = nil
+		return index
+	end)
+	if not ok then
+		return false, err
+	end
+	self:_update(draftKey(userId, projectId), function(old)
+		if old == nil then
+			return nil
+		end
+		old.deleted = true
+		old.lock = nil
+		return old
+	end)
+	return true
+end
+
+-- Проверка перед переименованием карты
+function ProjectStore:canRename(userId: number, projectId: string, name: string)
+	local ok, index = self:_get(indexKey(userId))
+	if not ok then
+		return false, "load_failed"
+	end
+	if ProjectStore.nameTaken(index, name, projectId) then
+		return false, "name_taken"
+	end
+	return true
+end
+
 -- Список карт автора. При ошибке чтения возвращает false, а не пустой список
 function ProjectStore:listProjects(userId: number)
 	local ok, index = self:_get(indexKey(userId))
@@ -5865,6 +6282,9 @@ function ProjectStore:createProject(userId: number, name: string, template: stri
 	if template == "demo" then
 		project = Demo.build(pid, userId)
 		project.meta.name = name
+	elseif template == "corp" then
+		project = Corp.build(pid, userId)
+		project.meta.name = name
 	else
 		project = Format.newProject(pid, name, userId)
 		-- новая карта сразу с платформой: на неё удобно ставить блоки, в игре это пол
@@ -5881,6 +6301,9 @@ function ProjectStore:createProject(userId: number, name: string, template: stri
 		index = index or { projects = {} }
 		if Util.count(index.projects) &gt;= MAX_PROJECTS then
 			return nil, "too_many_projects"
+		end
+		if ProjectStore.nameTaken(index, name, nil) then
+			return nil, "name_taken"
 		end
 		index.projects[pid] = { name = name, updatedAt = self.now(), publishCode = nil }
 		return index
@@ -5907,7 +6330,7 @@ function ProjectStore:openDraft(userId: number, projectId: string)
 	local now = self.now()
 	local result, rev, readOnly = nil, 0, false
 	local ok, err = self:_update(draftKey(userId, projectId), function(old)
-		if old == nil then
+		if old == nil or old.deleted then
 			return nil, "not_found"
 		end
 		local okM, data = Format.migrate(Util.deepCopy(old.data))
@@ -6221,7 +6644,149 @@ return ProjectStore
           </Properties>
         </Item>
       </Item>
-      <Item class="ModuleScript" referent="RBX00000029">
+      <Item class="ModuleScript" referent="RBX0000002A">
+        <Properties>
+          <string name="Name">CurrencyService</string>
+          <ProtectedString name="Source">--!nonstrict
+-- Монеты игрока: общая валюта Creator, сохраняется между заходами
+-- В DataStore записывается только приращение (+5, −3), а не итог, поэтому
+-- ошибка загрузки или второй сервер не могут затереть баланс
+
+local Players = game:GetService("Players")
+
+local Shared = game:GetService("ReplicatedStorage").Workshop.Shared
+local UiText = require(Shared.UiText)
+
+local CurrencyService = {}
+
+local store: any
+local wallets: { [Player]: { base: number, delta: number, loaded: boolean, value: IntValue } } = {}
+
+local function key(userId: number): string
+	return string.format("u%d:coins", userId)
+end
+
+local function valueOf(player: Player): IntValue
+	local stats = player:FindFirstChild("leaderstats")
+	if not stats then
+		stats = Instance.new("Folder")
+		stats.Name = "leaderstats"
+		stats.Parent = player
+	end
+	local v = stats:FindFirstChild(UiText.L.Coins) :: IntValue?
+	if not v then
+		local nv = Instance.new("IntValue")
+		nv.Name = UiText.L.Coins
+		nv.Parent = stats
+		v = nv
+	end
+	return v :: IntValue
+end
+
+local function show(player: Player)
+	local w = wallets[player]
+	if w then
+		w.value.Value = w.base + w.delta
+	end
+end
+
+local function flush(player: Player): boolean
+	local w = wallets[player]
+	if not w or w.delta == 0 then
+		return true
+	end
+	local delta = w.delta
+	local ok, res = store:_update(key(player.UserId), function(old)
+		local cur = (type(old) == "table" and old.coins) or 0
+		return { coins = math.max(0, cur + delta) }
+	end)
+	if ok then
+		w.delta -= delta
+		w.base = res.coins - w.delta
+		w.loaded = true
+		show(player)
+		return true
+	end
+	return false
+end
+
+function CurrencyService.get(player: Player): number?
+	local w = wallets[player]
+	if not w or not w.loaded then
+		return nil
+	end
+	return w.base + w.delta
+end
+
+function CurrencyService.add(player: Player, amount: number): boolean
+	local w = wallets[player]
+	if not w then
+		return false
+	end
+	if amount &lt; 0 then
+		-- списывать можно только при известном балансе
+		local cur = CurrencyService.get(player)
+		if not cur or cur + amount &lt; 0 then
+			return false
+		end
+	end
+	w.delta += math.floor(amount)
+	show(player)
+	return true
+end
+
+function CurrencyService.init(projectStore)
+	store = projectStore
+	local function join(player: Player)
+		local w = { base = 0, delta = 0, loaded = false, value = valueOf(player) }
+		wallets[player] = w
+		local ok, rec = store:_get(key(player.UserId))
+		if ok then
+			w.base = (type(rec) == "table" and rec.coins) or 0
+			w.loaded = true
+		else
+			warn("[Creator] монеты не загрузились, баланс не меняется до следующей попытки")
+		end
+		show(player)
+	end
+	Players.PlayerAdded:Connect(join)
+	for _, p in Players:GetPlayers() do
+		task.spawn(join, p)
+	end
+	Players.PlayerRemoving:Connect(function(player)
+		flush(player)
+		wallets[player] = nil
+	end)
+	task.spawn(function()
+		while true do
+			task.wait(30)
+			for p, w in wallets do
+				if w.delta ~= 0 then
+					task.spawn(flush, p)
+				elseif not w.loaded then
+					local ok, rec = store:_get(key(p.UserId))
+					if ok then
+						w.base = (type(rec) == "table" and rec.coins) or 0
+						w.loaded = true
+						show(p)
+					end
+				end
+			end
+		end
+	end)
+	game:BindToClose(function()
+		for p in wallets do
+			task.spawn(flush, p)
+		end
+		task.wait(3)
+	end)
+end
+
+return CurrencyService
+</ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="RBX0000002B">
         <Properties>
           <string name="Name">DataStoreAdapter</string>
           <ProtectedString name="Source">--!nonstrict
@@ -6307,7 +6872,7 @@ return Adapter
 </ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX0000002A">
+      <Item class="ModuleScript" referent="RBX0000002C">
         <Properties>
           <string name="Name">EditorService</string>
           <ProtectedString name="Source">--!nonstrict
@@ -6471,6 +7036,14 @@ function EditorService.init(projectStore)
 			editAck:FireClient(player, seq, false, "too_large", s.project)
 			return
 		end
+		-- название карты должно отличаться от других сохранений этого игрока
+		if type(op) == "table" and op.op == "setProject" and type(op.path) == "table" and op.path[1] == "meta" and op.path[2] == "name" and type(op.value) == "string" then
+			local okName = store:canRename(s.userId, s.project.id, op.value)
+			if not okName then
+				editAck:FireClient(player, seq, false, "name_taken", s.project)
+				return
+			end
+		end
 		local ok, res = Ops.apply(s.project, op, { validate = true })
 		if ok and Format.validateProject(s.project) ~= nil then
 			Ops.apply(s.project, res, { validate = false })
@@ -6558,7 +7131,7 @@ function EditorService.createProject(player: Player, name: any, template: any)
 	if name == "" or utf8.len(name) == nil or (utf8.len(name) :: number) &gt; 60 then
 		return { ok = false, error = "bad_name" }
 	end
-	local tpl = if template == "demo" then "demo" else nil
+	local tpl = if template == "demo" or template == "corp" then template else nil
 	local ok, project, rev = store:createProject(player.UserId, name, tpl)
 	return open(player, ok, project, rev, false)
 end
@@ -6573,6 +7146,18 @@ function EditorService.openProject(player: Player, projectId: any)
 	end
 	local ok, project, rev, readOnly = store:openDraft(player.UserId, projectId)
 	return open(player, ok, project, rev, readOnly)
+end
+
+function EditorService.deleteProject(player: Player, projectId: any)
+	if type(projectId) ~= "string" then
+		return { ok = false }
+	end
+	local s = sessions[player]
+	if s and s.project.id == projectId then
+		close(player)
+	end
+	local ok, err = store:deleteProject(player.UserId, projectId)
+	return { ok = ok, error = err }
 end
 
 function EditorService.closeProject(player: Player)
@@ -6604,7 +7189,7 @@ return EditorService
 </ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX0000002B">
+      <Item class="ModuleScript" referent="RBX0000002D">
         <Properties>
           <string name="Name">FilterService</string>
           <ProtectedString name="Source">--!nonstrict
@@ -6709,7 +7294,7 @@ return FilterService
 </ProtectedString>
         </Properties>
       </Item>
-      <Item class="Script" referent="RBX0000002C">
+      <Item class="Script" referent="RBX0000002E">
         <Properties>
           <string name="Name">Main</string>
           <ProtectedString name="Source">--!nonstrict
@@ -6732,6 +7317,7 @@ local PlayService = require(script.Parent.PlayService)
 local FilterService = require(script.Parent.FilterService)
 local AdminService = require(script.Parent.AdminService)
 local Access = require(script.Parent.Access)
+local CurrencyService = require(script.Parent.CurrencyService)
 
 local adapter = Adapter.create()
 local store = ProjectStore.new(adapter, { jobId = if game.JobId ~= "" then game.JobId else HttpService:GenerateGUID(false) })
@@ -6765,6 +7351,7 @@ end
 buildLobby()
 
 EditorService.init(store)
+CurrencyService.init(store)
 PlayService.init(store)
 
 -- ---------------------------------------------------------------------------
@@ -6794,6 +7381,10 @@ end
 
 handlers.OpenProject = function(player, projectId)
 	return EditorService.openProject(player, projectId)
+end
+
+handlers.DeleteProject = function(player, projectId)
+	return EditorService.deleteProject(player, projectId)
 end
 
 handlers.CloseProject = function(player)
@@ -6990,7 +7581,7 @@ end)
 
 -- В режиме «Витрина» эти запросы доступны только создателям
 local CREATOR_ONLY = {
-	ListProjects = true, CreateProject = true, OpenProject = true, CloseProject = true, SaveNow = true,
+	ListProjects = true, CreateProject = true, DeleteProject = true, OpenProject = true, CloseProject = true, SaveNow = true,
 	CheckLogic = true, StartTest = true, Publish = true, JoinByCode = true, ListCatalog = true,
 	SaveLibraryModel = true, ListLibrary = true, GetLibraryModel = true, FilterPreview = true, StopPlay = true,
 }
@@ -7065,7 +7656,7 @@ end
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX0000002D">
+      <Item class="ModuleScript" referent="RBX0000002F">
         <Properties>
           <string name="Name">PlayService</string>
           <ProtectedString name="Source">--!nonstrict
@@ -7257,7 +7848,7 @@ return PlayService
 </ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX0000002E">
+      <Item class="ModuleScript" referent="RBX00000030">
         <Properties>
           <string name="Name">PlaySession</string>
           <ProtectedString name="Source">--!nonstrict
@@ -7279,6 +7870,9 @@ local WorldBuilder = require(Shared.Roblox.WorldBuilder)
 local Animator = require(Shared.Roblox.Animator)
 local Remotes = require(Shared.Roblox.Remotes)
 local Config = require(script.Parent.Config)
+local Statue = require(script.Parent.Statue)
+local CurrencyService = require(script.Parent.CurrencyService)
+local Access = require(script.Parent.Access)
 
 local PlaySession = {}
 PlaySession.__index = PlaySession
@@ -7413,6 +8007,21 @@ function PlaySession:start()
 			elseif role.type == "npc" then
 				self:setupNpc(id)
 			end
+		end
+	end
+	-- статуи: заготовка прячется, на её месте встаёт каменная копия аватара
+	for id, obj in objects do
+		if obj.role and obj.role.type == "statue" then
+			local h = self.handles[id]
+			WorldBuilder.setVisible(h, false)
+			local feet = WorldBuilder.objectCFrame(obj, self.origin) * CFrame.new(0, -(obj.size and obj.size[2] or 5) / 2, 0)
+			task.spawn(function()
+				local model = Statue.spawn(obj.role.username, obj.role.pose, obj.role.orb ~= false, feet, folder)
+				if not model then
+					-- аватар не загрузился: оставляем каменную заготовку
+					WorldBuilder.setVisible(h, true)
+				end
+			end)
 		end
 	end
 	self:setupLogic()
@@ -7652,6 +8261,20 @@ function PlaySession:action(name: string, args, _node, eventArgs)
 		for _, p in self:targetPlayers(eventArgs) do
 			self.playEvent:FireClient(p, msg)
 		end
+	elseif name == "WalkPlayer" then
+		local pointId = self:target(args[1], "WalkPlayer")
+		for _, pl in self:targetPlayers(eventArgs) do
+			self:walk(pl, pointId)
+		end
+	elseif name == "GiveCoins" or name == "TakeCoins" then
+		-- валюта общая для всей игры, поэтому выдавать её могут только карты создателей
+		if name == "GiveCoins" and not Access.isCreatorUserId(self.ownerId) then
+			error("выдавать монеты могут только карты создателей игры", 0)
+		end
+		local n = math.floor(tonumber(args[1]) or 0)
+		for _, pl in self:targetPlayers(eventArgs) do
+			CurrencyService.add(pl, if name == "GiveCoins" then n else -n)
+		end
 	elseif name == "AddScore" then
 		for _, p in self:targetPlayers(eventArgs) do
 			local v = self:score(p)
@@ -7705,6 +8328,13 @@ function PlaySession:condition(name: string, args, eventArgs)
 		end
 		local hum = humanoidOf(p)
 		return hum ~= nil and hum.Health &lt; (tonumber(args[1]) or 0)
+	elseif name == "HasCoins" then
+		local pl = eventArgs and eventArgs.player
+		if not pl then
+			error("условие про игрока работает только в событиях с игроком", 0)
+		end
+		local have = CurrencyService.get(pl)
+		return have ~= nil and have &gt;= (tonumber(args[1]) or 0)
 	elseif name == "IsNight" then
 		return Format.isNight(self:clock())
 	elseif name == "Chance" then
@@ -7763,12 +8393,52 @@ function PlaySession:setupDoor(id: string)
 	local h = self.handles[id]
 	local role = h.obj.role
 	local closed = WorldBuilder.objectCFrame(h.obj, self.origin)
-	local door = { open = false, closed = closed, role = role, tween = nil, value = nil }
+	local door = { open = false, closed = closed, role = role, tween = nil, value = nil, owner = nil, locked = false, plate = nil, lockPrompt = nil }
 	self.doors[id] = door
 	local prompt = self:prompt(id, L.DoorOpen)
 	door.prompt = prompt
+	if role.owned then
+		-- личная комната: табличка с именем хозяина и замок, который может закрыть только он
+		local gui = Instance.new("BillboardGui")
+		gui.Name = "RoomPlate"
+		gui.Size = UDim2.fromOffset(180, 50)
+		gui.StudsOffsetWorldSpace = Vector3.new(0, (h.obj.size and h.obj.size[2] or 7) / 2 + 1.2, 0)
+		gui.MaxDistance = 40
+		gui.LightInfluence = 0
+		local t = Instance.new("TextLabel")
+		t.Size = UDim2.fromScale(1, 1)
+		t.BackgroundTransparency = 1
+		t.TextColor3 = Color3.fromRGB(235, 228, 210)
+		t.TextStrokeTransparency = 0.5
+		t.Font = Enum.Font.GothamMedium
+		t.TextScaled = true
+		t.Text = ""
+		t.Parent = gui
+		gui.Parent = h.primary
+		door.plate = t
+		local lock = self:prompt(id, L.LockRoom)
+		if lock then
+			lock.KeyboardKeyCode = Enum.KeyCode.F
+			lock.UIOffset = Vector2.new(0, 70)
+			lock.Enabled = false
+			door.lockPrompt = lock
+			table.insert(self.connections, lock.Triggered:Connect(function(player)
+				if player == door.owner then
+					door.locked = not door.locked
+					lock.ActionText = if door.locked then L.UnlockRoom else L.LockRoom
+					if door.locked and door.open then
+						self:setDoor(id, false, nil, player)
+					end
+				end
+			end))
+		end
+	end
 	if prompt then
 		table.insert(self.connections, prompt.Triggered:Connect(function(player)
+			if door.locked and player ~= door.owner then
+				self.playEvent:FireClient(player, { type = "message", text = UiText.H.RoomLockedHint, seconds = 2 })
+				return
+			end
 			if self.players[player] and not role.locked then
 				self:setDoor(id, not door.open, nil, player)
 				self:emit("Interacted", { { ref = id } }, player)
@@ -8245,6 +8915,7 @@ function PlaySession:addPlayer(player: Player)
 			watchDeath()
 		end
 	end)
+	self:assignRoom(player)
 	task.defer(function()
 		if self.players[player] then
 			self:emit("PlayerJoined", {}, player)
@@ -8254,9 +8925,123 @@ function PlaySession:addPlayer(player: Player)
 	self.charConns[player] = conn
 end
 
+-- Каждому игроку — свободная личная комната (в порядке входа)
+function PlaySession:assignRoom(player: Player)
+	local ids = {}
+	for id, d in self.doors do
+		if d.role.owned then
+			table.insert(ids, id)
+		end
+	end
+	table.sort(ids, function(a, b)
+		local la = self.handles[a].obj.latin or a
+		local lb = self.handles[b].obj.latin or b
+		return la &lt; lb
+	end)
+	for _, id in ids do
+		local d = self.doors[id]
+		if not d.owner then
+			d.owner = player
+			d.locked = false
+			if d.plate then
+				d.plate.Text = string.format(L.RoomOf, player.DisplayName)
+			end
+			if d.lockPrompt then
+				d.lockPrompt.Enabled = true
+				d.lockPrompt.ActionText = L.LockRoom
+			end
+			return
+		end
+	end
+end
+
+function PlaySession:freeRoom(player: Player)
+	for _, d in self.doors do
+		if d.owner == player then
+			d.owner = nil
+			d.locked = false
+			if d.plate then
+				d.plate.Text = ""
+			end
+			if d.lockPrompt then
+				d.lockPrompt.Enabled = false
+			end
+		end
+	end
+end
+
+-- Провести игрока по цепочке точек. Несколько игроков идут строем, а не в одну точку
+function PlaySession:walk(player: Player, firstPoint: string)
+	self.walking = self.walking or {}
+	if self.walking[player] then
+		self.walking[player].cancel = true
+	end
+	local slot = 0
+	local used = {}
+	for _, w in self.walking do
+		used[w.slot] = true
+	end
+	while used[slot] do
+		slot += 1
+	end
+	local job = { slot = slot, cancel = false }
+	self.walking[player] = job
+	local side = ((slot % 3) - 1) * 3.5
+	local back = (slot // 3) * 3.5
+	task.spawn(function()
+		self.playEvent:FireClient(player, { type = "walk", on = true })
+		local pointId: string? = firstPoint
+		local hops = 0
+		while pointId and not job.cancel and not self.destroyed and self.players[player] and hops &lt; 32 do
+			hops += 1
+			local h = self.handles[pointId]
+			local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+			local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if not h or not hum or not hrp or hum.Health &lt;= 0 then
+				break
+			end
+			local target = WorldBuilder.objectCFrame(h.obj, self.origin).Position
+			local dir = Vector3.new(target.X - hrp.Position.X, 0, target.Z - hrp.Position.Z)
+			if dir.Magnitude &gt; 0.1 then
+				dir = dir.Unit
+				local right = Vector3.new(-dir.Z, 0, dir.X)
+				target += right * side - dir * back
+			end
+			hum:MoveTo(target)
+			local reached = false
+			local conn = hum.MoveToFinished:Connect(function(r)
+				reached = true
+				local _ = r
+			end)
+			local t0 = os.clock()
+			while not reached and os.clock() - t0 &lt; 12 and not job.cancel do
+				task.wait(0.1)
+			end
+			conn:Disconnect()
+			if job.cancel then
+				break
+			end
+			self:emit("PlayerArrived", { { ref = pointId } }, player)
+			local nextRef = h.obj.role and h.obj.role.next and h.obj.role.next.ref
+			pointId = if nextRef and self.handles[nextRef] then nextRef else nil
+		end
+		if self.walking[player] == job then
+			self.walking[player] = nil
+			if player.Parent then
+				self.playEvent:FireClient(player, { type = "walk", on = false })
+			end
+		end
+	end)
+end
+
 function PlaySession:removePlayer(player: Player)
 	if not self.players[player] then
 		return
+	end
+	self:freeRoom(player)
+	if self.walking and self.walking[player] then
+		self.walking[player].cancel = true
+		self.walking[player] = nil
 	end
 	local closetId = self.closetOf[player]
 	if closetId then
@@ -8323,27 +9108,192 @@ return PlaySession
 </ProtectedString>
         </Properties>
       </Item>
+      <Item class="ModuleScript" referent="RBX00000031">
+        <Properties>
+          <string name="Name">Statue</string>
+          <ProtectedString name="Source">--!nonstrict
+-- Каменная статуя из аватара Roblox: настоящая внешность игрока, всё в камне,
+-- поза «восхищения»: правая рука поднята вверх, левая ниже и отведена назад,
+-- голова запрокинута, ноги в шаге. Углы позы можно подправить в POSE
+
+local Players = game:GetService("Players")
+
+local Statue = {}
+
+local STONE = Color3.fromRGB(196, 194, 190)
+
+-- углы в градусах для суставов R15 (X — вперёд/назад, Z — в сторону)
+Statue.POSE = {
+	admire = {
+		RightShoulder = { 165, 0, -12 },
+		LeftShoulder = { -35, 0, 25 },
+		RightElbow = { 15, 0, 0 },
+		LeftElbow = { 25, 0, 0 },
+		Neck = { 28, 0, 0 },
+		Waist = { 8, 0, 0 },
+		RightHip = { 18, 0, 0 },
+		LeftHip = { -16, 0, 0 },
+		RightKnee = { -10, 0, 0 },
+		LeftKnee = { -22, 0, 0 },
+	},
+	stand = {},
+}
+-- для старых аватаров R6
+Statue.POSE_R6 = {
+	admire = {
+		["Right Shoulder"] = { 0, 0, 165 },
+		["Left Shoulder"] = { 0, 0, -35 },
+		["Neck"] = { -25, 0, 0 },
+		["Right Hip"] = { 0, 0, 15 },
+		["Left Hip"] = { 0, 0, 15 },
+	},
+	stand = {},
+}
+
+local nameCache: { [string]: number } = {}
+
+local function userIdOf(username: string): number?
+	if nameCache[username] then
+		return nameCache[username]
+	end
+	local ok, id = pcall(function()
+		return Players:GetUserIdFromNameAsync(username)
+	end)
+	if ok and type(id) == "number" then
+		nameCache[username] = id
+		return id
+	end
+	return nil
+end
+
+local function petrify(model: Model)
+	for _, d in model:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Material = Enum.Material.Marble
+			d.Color = STONE
+			d.CastShadow = true
+			if d:IsA("MeshPart") then
+				pcall(function()
+					(d :: any).TextureID = ""
+				end)
+			end
+		elseif d:IsA("SpecialMesh") then
+			d.TextureId = ""
+			d.VertexColor = Vector3.new(0.77, 0.76, 0.75)
+		elseif d:IsA("Shirt") or d:IsA("Pants") or d:IsA("ShirtGraphic") or d:IsA("Decal") or d:IsA("Texture") then
+			d:Destroy()
+		elseif d:IsA("SurfaceAppearance") or d:IsA("Script") or d:IsA("LocalScript") or d:IsA("Sound") then
+			d:Destroy()
+		elseif d:IsA("BodyColors") then
+			for _, prop in { "HeadColor3", "TorsoColor3", "LeftArmColor3", "RightArmColor3", "LeftLegColor3", "RightLegColor3" } do
+				(d :: any)[prop] = STONE
+			end
+		end
+	end
+end
+
+-- Строит статую и ставит её так, чтобы ступни стояли в точке feetCF
+function Statue.spawn(username: string, pose: string, orb: boolean, feetCF: CFrame, parent: Instance): Model?
+	local userId = userIdOf(username)
+	if not userId then
+		return nil
+	end
+	local ok, model = pcall(function()
+		return Players:CreateHumanoidModelFromUserId(userId)
+	end)
+	if not ok or not model then
+		return nil
+	end
+	model.Name = "Statue_" .. username
+	local hum = model:FindFirstChildOfClass("Humanoid")
+	local root = model:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not hum or not root then
+		model:Destroy()
+		return nil
+	end
+	hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+	hum.BreakJointsOnDeath = false
+	local animator = hum:FindFirstChildOfClass("Animator")
+	if animator then
+		animator:Destroy()
+	end
+	petrify(model)
+	-- поза: поворачиваем C0 суставов, пока детали ещё держатся только на суставах
+	local r15 = hum.RigType == Enum.HumanoidRigType.R15
+	local angles = (if r15 then Statue.POSE else Statue.POSE_R6)[pose] or {}
+	for _, j in model:GetDescendants() do
+		if j:IsA("Motor6D") and angles[j.Name] then
+			local a = angles[j.Name]
+			j.C0 = j.C0 * CFrame.Angles(math.rad(a[1]), math.rad(a[2]), math.rad(a[3]))
+		end
+	end
+	for _, d in model:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Anchored = d == root
+			d.CanCollide = d == root
+		end
+	end
+	local lift = if r15 then hum.HipHeight + root.Size.Y / 2 else 3
+	model.Parent = parent
+	model:PivotTo(feetCF * CFrame.new(0, lift, 0))
+	-- то, на что смотрит статуя: каменная сфера в поднятой руке
+	if orb then
+		local hand = model:FindFirstChild(if r15 then "RightHand" else "Right Arm") :: BasePart?
+		if hand then
+			local ball = Instance.new("Part")
+			ball.Name = "Orb"
+			ball.Shape = Enum.PartType.Ball
+			ball.Size = Vector3.new(1.3, 1.3, 1.3)
+			ball.Material = Enum.Material.Marble
+			ball.Color = STONE
+			ball.CanCollide = false
+			ball.Massless = true
+			ball.CFrame = hand.CFrame * CFrame.new(0, -hand.Size.Y / 2 - 0.5, 0)
+			local weld = Instance.new("WeldConstraint")
+			weld.Part0 = hand
+			weld.Part1 = ball
+			weld.Parent = ball
+			ball.Parent = model
+		end
+	end
+	-- суставы успели расставить детали: закрепляем всё, чтобы статуя не падала
+	task.delay(0.3, function()
+		for _, d in model:GetDescendants() do
+			if d:IsA("BasePart") then
+				d.Anchored = true
+				d.CanCollide = true
+			end
+		end
+	end)
+	return model
+end
+
+return Statue
+</ProtectedString>
+        </Properties>
+      </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="RBX0000002F">
+  <Item class="StarterPlayer" referent="RBX00000032">
     <Properties>
       <string name="Name">StarterPlayer</string>
       <float name="CharacterWalkSpeed">14</float>
       <float name="CameraMaxZoomDistance">40</float>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="RBX00000030">
+    <Item class="StarterPlayerScripts" referent="RBX00000033">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="Folder" referent="RBX00000031">
+      <Item class="Folder" referent="RBX00000034">
         <Properties>
           <string name="Name">Workshop</string>
         </Properties>
-        <Item class="Folder" referent="RBX00000032">
+        <Item class="Folder" referent="RBX00000035">
           <Properties>
             <string name="Name">Editor</string>
           </Properties>
-          <Item class="ModuleScript" referent="RBX00000033">
+          <Item class="ModuleScript" referent="RBX00000036">
             <Properties>
               <string name="Name">Editor</string>
               <ProtectedString name="Source">--!nonstrict
@@ -8429,6 +9379,8 @@ function Editor.new(app, project, readOnly: boolean)
 	self.state.rejected.connect(function(reason)
 		if reason == "frozen" then
 			Kit.toast(self.gui, H.FrozenHint)
+		elseif reason == "name_taken" then
+			Kit.toast(self.gui, H.NameTakenHint, Kit.C.bad, 4)
 		end
 	end)
 	self.preview.onRebuilt = function(id)
@@ -9486,6 +10438,8 @@ function Editor:assignRole(roleType: string?)
 		role = { type = "light", on = true, brightness = 3, range = 24, color = { 255, 214, 170 } }
 	elseif roleType == "npc" then
 		role = Prefabs.npcRole()
+	elseif roleType == "statue" then
+		role = { type = "statue", username = self.app.playerGui.Parent.Name, pose = "admire", orb = true }
 	elseif roleType == "creature" then
 		role = { type = "creature", speed = 14 }
 	elseif roleType then
@@ -9581,7 +10535,7 @@ return Editor
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000034">
+          <Item class="ModuleScript" referent="RBX00000037">
             <Properties>
               <string name="Name">FreeCamera</string>
               <ProtectedString name="Source">--!nonstrict
@@ -9786,7 +10740,7 @@ return FreeCamera
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000035">
+          <Item class="ModuleScript" referent="RBX00000038">
             <Properties>
               <string name="Name">Gizmo</string>
               <ProtectedString name="Source">--!nonstrict
@@ -9954,11 +10908,11 @@ return Gizmo
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="Folder" referent="RBX00000036">
+          <Item class="Folder" referent="RBX00000039">
             <Properties>
               <string name="Name">Panels</string>
             </Properties>
-            <Item class="ModuleScript" referent="RBX00000037">
+            <Item class="ModuleScript" referent="RBX0000003A">
               <Properties>
                 <string name="Name">AnimPanel</string>
                 <ProtectedString name="Source">--!nonstrict
@@ -10676,7 +11630,7 @@ return AnimPanel
 </ProtectedString>
               </Properties>
             </Item>
-            <Item class="ModuleScript" referent="RBX00000038">
+            <Item class="ModuleScript" referent="RBX0000003B">
               <Properties>
                 <string name="Name">CreaturePanel</string>
                 <ProtectedString name="Source">--!nonstrict
@@ -10736,7 +11690,7 @@ return CreaturePanel
 </ProtectedString>
               </Properties>
             </Item>
-            <Item class="ModuleScript" referent="RBX00000039">
+            <Item class="ModuleScript" referent="RBX0000003C">
               <Properties>
                 <string name="Name">ExplorerPanel</string>
                 <ProtectedString name="Source">--!nonstrict
@@ -10813,7 +11767,7 @@ return ExplorerPanel
 </ProtectedString>
               </Properties>
             </Item>
-            <Item class="ModuleScript" referent="RBX0000003A">
+            <Item class="ModuleScript" referent="RBX0000003D">
               <Properties>
                 <string name="Name">LogicPanel</string>
                 <ProtectedString name="Source">--!nonstrict
@@ -11345,7 +12299,7 @@ return LogicPanel
 </ProtectedString>
               </Properties>
             </Item>
-            <Item class="ModuleScript" referent="RBX0000003B">
+            <Item class="ModuleScript" referent="RBX0000003E">
               <Properties>
                 <string name="Name">MapPanel</string>
                 <ProtectedString name="Source">--!nonstrict
@@ -11370,7 +12324,7 @@ local MapPanel = {}
 
 local ROLE_TITLES = {
 	closet = L.RoleCloset, door = L.RoleDoor, light = L.RoleLight, npc = L.RoleNpc,
-	creature = L.RoleCreature, zone = L.RoleZone, waypoint = L.RoleWaypoint, spawn = L.RoleSpawn,
+	creature = L.RoleCreature, zone = L.RoleZone, waypoint = L.RoleWaypoint, spawn = L.RoleSpawn, statue = L.RoleStatue,
 }
 
 local ASSIGN = {
@@ -11382,6 +12336,7 @@ local ASSIGN = {
 	{ id = "zone", title = L.AssignZone },
 	{ id = "waypoint", title = L.AssignWaypoint },
 	{ id = "spawn", title = L.AssignSpawn },
+	{ id = "statue", title = L.AssignStatue },
 }
 
 local function section(list: Instance, title: string, order: number)
@@ -11613,6 +12568,30 @@ local function roleProps(editor, list: Instance, obj, order: number)
 		Kit.toggle(list, L.Locked, role.locked == true, function(v)
 			set({ "locked" }, v)
 		end, order + 5)
+		Kit.toggle(list, L.OwnedRoom, role.owned == true, function(v)
+			set({ "owned" }, v)
+		end, order + 6)
+	elseif t == "statue" then
+		Kit.textbox(list, role.username, L.StatueUser, function(text)
+			local name = string.match(text, "^%s*@?([%w_]+)%s*$")
+			if name and #name &lt;= 20 then
+				set({ "username" }, name)
+			end
+			editor:renderPanel()
+		end, { LayoutOrder = order + 1 })
+		local _, poseSlot = Kit.row(list, L.StatuePose, order + 2)
+		Kit.button(poseSlot, if role.pose == "stand" then L.PoseStand else L.PoseAdmire, function()
+			Kit.choose(editor.gui, L.StatuePose, {
+				{ id = "admire", title = L.PoseAdmire },
+				{ id = "stand", title = L.PoseStand },
+			}, function(v)
+				set({ "pose" }, v)
+				editor:renderPanel()
+			end)
+		end)
+		Kit.toggle(list, L.StatueOrb, role.orb ~= false, function(v)
+			set({ "orb" }, v)
+		end, order + 3)
 	elseif t == "light" then
 		Kit.toggle(list, L.LightOn, role.on, function(v)
 			set({ "on" }, v)
@@ -11889,7 +12868,7 @@ return MapPanel
 </ProtectedString>
               </Properties>
             </Item>
-            <Item class="ModuleScript" referent="RBX0000003C">
+            <Item class="ModuleScript" referent="RBX0000003F">
               <Properties>
                 <string name="Name">SettingsPanel</string>
                 <ProtectedString name="Source">--!nonstrict
@@ -12003,7 +12982,7 @@ return SettingsPanel
 </ProtectedString>
               </Properties>
             </Item>
-            <Item class="ModuleScript" referent="RBX0000003D">
+            <Item class="ModuleScript" referent="RBX00000040">
               <Properties>
                 <string name="Name">TextsPanel</string>
                 <ProtectedString name="Source">--!nonstrict
@@ -12177,7 +13156,7 @@ return TextsPanel
               </Properties>
             </Item>
           </Item>
-          <Item class="ModuleScript" referent="RBX0000003E">
+          <Item class="ModuleScript" referent="RBX00000041">
             <Properties>
               <string name="Name">Picker</string>
               <ProtectedString name="Source">--!nonstrict
@@ -12268,7 +13247,7 @@ return Picker
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX0000003F">
+          <Item class="ModuleScript" referent="RBX00000042">
             <Properties>
               <string name="Name">Preview</string>
               <ProtectedString name="Source">--!nonstrict
@@ -12424,7 +13403,7 @@ return Preview
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000040">
+          <Item class="ModuleScript" referent="RBX00000043">
             <Properties>
               <string name="Name">State</string>
               <ProtectedString name="Source">--!nonstrict
@@ -12562,7 +13541,7 @@ return State
             </Properties>
           </Item>
         </Item>
-        <Item class="LocalScript" referent="RBX00000041">
+        <Item class="LocalScript" referent="RBX00000044">
           <Properties>
             <string name="Name">Main</string>
             <ProtectedString name="Source">--!nonstrict
@@ -12751,11 +13730,11 @@ end)
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="Folder" referent="RBX00000042">
+        <Item class="Folder" referent="RBX00000045">
           <Properties>
             <string name="Name">Play</string>
           </Properties>
-          <Item class="ModuleScript" referent="RBX00000043">
+          <Item class="ModuleScript" referent="RBX00000046">
             <Properties>
               <string name="Name">Bubble</string>
               <ProtectedString name="Source">--!nonstrict
@@ -12816,7 +13795,7 @@ return Bubble
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000044">
+          <Item class="ModuleScript" referent="RBX00000047">
             <Properties>
               <string name="Name">CameraController</string>
               <ProtectedString name="Source">--!nonstrict
@@ -12966,23 +13945,56 @@ function CameraController:update(dt: number)
 	end
 	cam.CameraType = Enum.CameraType.Scriptable
 	cam.FieldOfView = self.settings.fov
+	-- заставка: игрока ведут к дому, камера плавно идёт сзади и чуть сбоку
+	if self.walkMode then
+		hum.AutoRotate = true
+		local look = hrp.CFrame.LookVector
+		local flatLook = Vector3.new(look.X, 0, look.Z)
+		flatLook = if flatLook.Magnitude &gt; 0.01 then flatLook.Unit else Vector3.new(0, 0, -1)
+		local right = Vector3.new(-flatLook.Z, 0, flatLook.X)
+		local want = CFrame.lookAt(hrp.Position - flatLook * 10 + Vector3.new(0, 4.5, 0) + right * 2.5, hrp.Position + flatLook * 8 + Vector3.new(0, 2.5, 0))
+		self.walkCF = if self.walkCF then self.walkCF:Lerp(want, 1 - math.exp(-dt * 3)) else want
+		cam.CFrame = self.walkCF
+		setCharacterVisible(true)
+		return
+	end
+	self.walkCF = nil
 	if UserInputService.MouseEnabled and not UserInputService.TouchEnabled then
 		UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
 		UserInputService.MouseIconEnabled = false
 	end
-	-- покачивание при ходьбе; интенсивность 0 полностью его отключает
-	local speed = Vector3.new(hrp.AssemblyLinearVelocity.X, 0, hrp.AssemblyLinearVelocity.Z).Magnitude
+	-- мягкая камера от первого лица: взгляд догоняет поворот, шаги дают плавное
+	-- покачивание вверх-вниз и из стороны в сторону, при шаге вбок камера слегка
+	-- наклоняется, на месте едва заметно «дышит». Интенсивность 0 всё отключает
+	local vel = hrp.AssemblyLinearVelocity
+	local speed = Vector3.new(vel.X, 0, vel.Z).Magnitude
 	local bob = self.settings.bob
-	local offset = Vector3.zero
-	if bob &gt; 0 and speed &gt; 0.5 and hum.FloorMaterial ~= Enum.Material.Air then
-		self.bobT += dt * math.clamp(speed / 16, 0.4, 1.6) * 9
-		offset = Vector3.new(math.cos(self.bobT * 0.5) * 0.06, math.abs(math.sin(self.bobT)) * 0.12, 0) * bob
-	else
-		self.bobT = 0
-	end
+	local onGround = hum.FloorMaterial ~= Enum.Material.Air
+	local moving = speed &gt; 0.5 and onGround
+	self.bobAmp = (self.bobAmp or 0) + ((if moving then 1 else 0) - (self.bobAmp or 0)) * math.min(1, dt * 6)
+	self.bobT += dt * math.clamp(speed / 14, 0.5, 1.7) * 8.5
+	self.idleT = (self.idleT or 0) + dt
+	local amp = self.bobAmp * bob
+	local offset = Vector3.new(
+		math.sin(self.bobT * 0.5) * 0.08 * amp,
+		(math.abs(math.sin(self.bobT * 0.5)) * 0.16 - 0.08) * amp + math.sin(self.idleT * 1.6) * 0.015 * bob,
+		0
+	)
+	-- наклон при шаге и при движении вбок
+	local localVel = CFrame.fromOrientation(0, self.yaw, 0):VectorToObjectSpace(vel)
+	local strafe = math.clamp(localVel.X / 16, -1, 1)
+	local rollTarget = (-strafe * math.rad(2.2) + math.sin(self.bobT * 0.5) * math.rad(0.6) * self.bobAmp) * bob
+	self.roll = (self.roll or 0) + (rollTarget - (self.roll or 0)) * math.min(1, dt * 8)
+	-- сглаживание взгляда
+	self.viewYaw = self.viewYaw or self.yaw
+	self.viewPitch = self.viewPitch or self.pitch
+	local k = 1 - math.exp(-dt * 22)
+	local dy = (self.yaw - self.viewYaw + math.pi) % (2 * math.pi) - math.pi
+	self.viewYaw += dy * k
+	self.viewPitch += (self.pitch - self.viewPitch) * k
 	local headY = if hum.RigType == Enum.HumanoidRigType.R6 then 1.5 else hum.HipHeight * 0.75
 	local eye = hrp.Position + Vector3.new(0, headY, 0)
-	local rot = CFrame.fromOrientation(self.pitch, self.yaw, 0)
+	local rot = CFrame.fromOrientation(self.viewPitch, self.viewYaw, 0) * CFrame.Angles(0, 0, self.roll)
 	cam.CFrame = CFrame.new(eye) * rot * CFrame.new(offset)
 	-- персонаж поворачивается вслед за взглядом
 	if not hrp.Anchored then
@@ -12991,6 +14003,22 @@ function CameraController:update(dt: number)
 		hrp.CFrame = CFrame.new(hrp.Position) * flat
 	end
 	setCharacterVisible(false)
+end
+
+-- Режим заставки при проводке по маршруту
+function CameraController:setWalk(on: boolean)
+	self.walkMode = on
+	if not on then
+		local char = player.Character
+		local hrp = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if hrp then
+			local _, y = hrp.CFrame:ToOrientation()
+			self.yaw = y
+			self.viewYaw = y
+			self.pitch = 0
+			self.viewPitch = 0
+		end
+	end
 end
 
 -- Временная траектория камеры (дорожка Camera клипа в системе координат base)
@@ -13053,7 +14081,7 @@ return CameraController
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000045">
+          <Item class="ModuleScript" referent="RBX00000048">
             <Properties>
               <string name="Name">PlayClient</string>
               <ProtectedString name="Source">--!nonstrict
@@ -13263,6 +14291,20 @@ function PlayClient:onMessage(msg)
 		self:onCloset(msg)
 	elseif t == "cutscene" then
 		self.camera:playTrack(msg.base, msg.clip, if self.closetId then "inside" else "player", nil)
+	elseif t == "walk" then
+		-- во время проводки управление выключено, камера показывает путь
+		self.camera:setWalk(msg.on == true)
+		local ok, controls = pcall(function()
+			local pm = require(player:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule") :: ModuleScript) :: any
+			return pm:GetControls()
+		end)
+		if ok and controls then
+			if msg.on then
+				controls:Disable()
+			else
+				controls:Enable()
+			end
+		end
 	elseif t == "weather" then
 		self.weather:set({ weather = msg.weather, at = msg.at, auto = msg.auto, minutes = msg.minutes })
 	elseif t == "music" then
@@ -13363,7 +14405,7 @@ return PlayClient
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000046">
+          <Item class="ModuleScript" referent="RBX00000049">
             <Properties>
               <string name="Name">WeatherFx</string>
               <ProtectedString name="Source">--!nonstrict
@@ -13493,11 +14535,11 @@ return WeatherFx
             </Properties>
           </Item>
         </Item>
-        <Item class="Folder" referent="RBX00000047">
+        <Item class="Folder" referent="RBX0000004A">
           <Properties>
             <string name="Name">UI</string>
           </Properties>
-          <Item class="ModuleScript" referent="RBX00000048">
+          <Item class="ModuleScript" referent="RBX0000004B">
             <Properties>
               <string name="Name">AdminButton</string>
               <ProtectedString name="Source">--!nonstrict
@@ -13593,7 +14635,7 @@ return AdminButton
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000049">
+          <Item class="ModuleScript" referent="RBX0000004C">
             <Properties>
               <string name="Name">Kit</string>
               <ProtectedString name="Source">--!nonstrict
@@ -14136,7 +15178,7 @@ return Kit
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX0000004A">
+          <Item class="ModuleScript" referent="RBX0000004D">
             <Properties>
               <string name="Name">Menu</string>
               <ProtectedString name="Source">--!nonstrict
@@ -14182,6 +15224,9 @@ function Menu.new(app)
 	Kit.button(actions, L.NewMap, function()
 		self:createMap(nil)
 	end, { BackgroundColor3 = Kit.C.accent })
+	Kit.button(actions, L.TemplateCorp, function()
+		self:createMap("corp")
+	end)
 	Kit.button(actions, L.NewDemo, function()
 		self:createMap("demo")
 	end)
@@ -14213,7 +15258,7 @@ function Menu.new(app)
 
 	self.nameBox = Kit.textbox(box, "", L.MapNamePlaceholder, nil, { Position = UDim2.fromOffset(0, if Kit.compact() then 200 else 140), Size = UDim2.new(1, 0, 0, Kit.TAP) })
 	local listTop = if Kit.compact() then 252 else 192
-	Kit.label(box, L.MyMaps, { Font = Kit.FONT_BOLD, TextSize = 18, Position = UDim2.fromOffset(0, listTop), Size = UDim2.new(1, 0, 0, 26) })
+	self.mapsTitle = Kit.label(box, L.MyMaps, { Font = Kit.FONT_BOLD, TextSize = 18, Position = UDim2.fromOffset(0, listTop), Size = UDim2.new(1, 0, 0, 26) })
 	self.listTop = listTop + 32
 	self.list = Kit.scroll(box, { Position = UDim2.fromOffset(0, listTop + 32), Size = UDim2.new(1, 0, 1, -(listTop + 32)) })
 	Kit.list(self.list, 6)
@@ -14244,15 +15289,28 @@ function Menu:refresh()
 			Kit.label(self.list, H.EmptyMaps, { TextColor3 = Kit.C.dim, Size = UDim2.new(1, 0, 0, 44) })
 			return
 		end
+		self.mapsTitle.Text = L.MyMaps .. "   " .. string.format(L.SavesCount, #res.projects, 10)
 		for i, p in res.projects do
 			local sub = if p.publishCode then string.format(L.PublishedAs, p.publishCode) else nil
 			local text = p.name
 			if sub then
 				text = p.name .. "\n" .. string.gsub(sub, "\n", " ")
 			end
-			Kit.button(self.list, text, function()
+			local row = Kit.frame(self.list, { BackgroundTransparency = 1, LayoutOrder = i, Size = UDim2.new(1, -8, 0, 56) })
+			Kit.button(row, text, function()
 				self.app:openProject(p.id)
-			end, { LayoutOrder = i, Size = UDim2.new(1, -8, 0, 56), TextXAlignment = Enum.TextXAlignment.Left })
+			end, { Size = UDim2.new(1, -62, 1, 0), TextXAlignment = Enum.TextXAlignment.Left })
+			Kit.button(row, "✕", function()
+				Kit.choose(self.gui, L.Delete .. "\n" .. p.name, {
+					{ id = "yes", title = L.Delete },
+					{ id = "no", title = L.Cancel },
+				}, function(choice)
+					if choice == "yes" then
+						Remotes.fn("Request"):InvokeServer("DeleteProject", p.id)
+						self:refresh()
+					end
+				end)
+			end, { Size = UDim2.new(0, 56, 1, 0), Position = UDim2.new(1, -56, 0, 0), BackgroundColor3 = Kit.C.bad })
 		end
 	end)
 end
@@ -14260,11 +15318,15 @@ end
 function Menu:createMap(template: string?)
 	local name = self.nameBox.Text
 	if name == "" then
-		name = if template == "demo" then L.DemoMapName else L.NewMap
+		name = if template == "demo" then L.DemoMapName elseif template == "corp" then L.TemplateCorp else L.NewMap
 	end
 	local res = Remotes.fn("Request"):InvokeServer("CreateProject", name, template)
 	if res and res.ok then
 		self.app:openEditor(res.project, res.readOnly)
+	elseif res and res.error == "name_taken" then
+		Kit.toast(self.gui, H.NameTakenHint, Kit.C.bad, 4)
+	elseif res and res.error == "too_many_projects" then
+		Kit.toast(self.gui, H.TooManyHint, Kit.C.bad, 4)
 	else
 		Kit.toast(self.gui, H.LoadFailedHint, Kit.C.bad)
 	end

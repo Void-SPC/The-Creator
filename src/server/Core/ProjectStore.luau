@@ -15,13 +15,16 @@ local Util = require(Shared.Util)
 local Format = require(Shared.Format)
 local Demo = require(Shared.Demo)
 local Prefabs = require(Shared.Prefabs)
+local Corp = require(Shared.Corp)
 
 local ProjectStore = {}
 ProjectStore.__index = ProjectStore
 
 local CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 local CATALOG_SIZE = 100
-local MAX_PROJECTS = 30
+-- сохранений (карт) у каждого игрока не больше десяти, названия у одного игрока не повторяются
+local MAX_PROJECTS = 10
+ProjectStore.MAX_PROJECTS = MAX_PROJECTS
 
 local function draftKey(userId: number, projectId: string)
 	return string.format("u%d:draft:%s", userId, projectId)
@@ -83,6 +86,60 @@ function ProjectStore:_newProjectId(): string
 	return string.format("p%x%04x", self.now(), self.random:NextInteger(0, 0xffff))
 end
 
+local function normName(s: string): string
+	return Util.lower(Util.trim(s))
+end
+
+-- Название уже есть у этого игрока (у других игроков такое же название разрешено)
+function ProjectStore.nameTaken(index, name: string, exceptId: string?): boolean
+	if not index or not index.projects then
+		return false
+	end
+	local n = normName(name)
+	for pid, e in index.projects do
+		if pid ~= exceptId and type(e.name) == "string" and normName(e.name) == n then
+			return true
+		end
+	end
+	return false
+end
+
+-- Удаление сохранения: карта убирается из списка, черновик помечается удалённым
+-- (опубликованные версии по коду остаются доступны)
+function ProjectStore:deleteProject(userId: number, projectId: string)
+	local ok, err = self:_update(indexKey(userId), function(index)
+		if not index or not index.projects[projectId] then
+			return nil, "not_found"
+		end
+		index.projects[projectId] = nil
+		return index
+	end)
+	if not ok then
+		return false, err
+	end
+	self:_update(draftKey(userId, projectId), function(old)
+		if old == nil then
+			return nil
+		end
+		old.deleted = true
+		old.lock = nil
+		return old
+	end)
+	return true
+end
+
+-- Проверка перед переименованием карты
+function ProjectStore:canRename(userId: number, projectId: string, name: string)
+	local ok, index = self:_get(indexKey(userId))
+	if not ok then
+		return false, "load_failed"
+	end
+	if ProjectStore.nameTaken(index, name, projectId) then
+		return false, "name_taken"
+	end
+	return true
+end
+
 -- Список карт автора. При ошибке чтения возвращает false, а не пустой список
 function ProjectStore:listProjects(userId: number)
 	local ok, index = self:_get(indexKey(userId))
@@ -107,6 +164,9 @@ function ProjectStore:createProject(userId: number, name: string, template: stri
 	if template == "demo" then
 		project = Demo.build(pid, userId)
 		project.meta.name = name
+	elseif template == "corp" then
+		project = Corp.build(pid, userId)
+		project.meta.name = name
 	else
 		project = Format.newProject(pid, name, userId)
 		-- новая карта сразу с платформой: на неё удобно ставить блоки, в игре это пол
@@ -123,6 +183,9 @@ function ProjectStore:createProject(userId: number, name: string, template: stri
 		index = index or { projects = {} }
 		if Util.count(index.projects) >= MAX_PROJECTS then
 			return nil, "too_many_projects"
+		end
+		if ProjectStore.nameTaken(index, name, nil) then
+			return nil, "name_taken"
 		end
 		index.projects[pid] = { name = name, updatedAt = self.now(), publishCode = nil }
 		return index
@@ -149,7 +212,7 @@ function ProjectStore:openDraft(userId: number, projectId: string)
 	local now = self.now()
 	local result, rev, readOnly = nil, 0, false
 	local ok, err = self:_update(draftKey(userId, projectId), function(old)
-		if old == nil then
+		if old == nil or old.deleted then
 			return nil, "not_found"
 		end
 		local okM, data = Format.migrate(Util.deepCopy(old.data))

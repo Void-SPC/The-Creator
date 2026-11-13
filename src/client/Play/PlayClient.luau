@@ -205,6 +205,20 @@ function PlayClient:onMessage(msg)
 		self:onCloset(msg)
 	elseif t == "cutscene" then
 		self.camera:playTrack(msg.base, msg.clip, if self.closetId then "inside" else "player", nil)
+	elseif t == "walk" then
+		-- во время проводки управление выключено, камера показывает путь
+		self.camera:setWalk(msg.on == true)
+		local ok, controls = pcall(function()
+			local pm = require(player:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule") :: ModuleScript) :: any
+			return pm:GetControls()
+		end)
+		if ok and controls then
+			if msg.on then
+				controls:Disable()
+			else
+				controls:Enable()
+			end
+		end
 	elseif t == "weather" then
 		self.weather:set({ weather = msg.weather, at = msg.at, auto = msg.auto, minutes = msg.minutes })
 	elseif t == "music" then

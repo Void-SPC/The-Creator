@@ -105,6 +105,54 @@ function Prefabs.baseplate(project)
 	return { p }
 end
 
+-- Статуя на ступенчатом постаменте. В редакторе фигура — каменная заготовка,
+-- в игре на её месте появляется каменная копия аватара Roblox в выбранной позе
+function Prefabs.statue(project, username: string?)
+	local stone = { 196, 194, 190 }
+	local base = newModel(project, "Постамент", "Pedestal")
+	addPart(base, "Нижняя ступень", "Block", { 9, 1, 9 }, { 0, 0.5, 0 }, stone, "Marble")
+	addPart(base, "Средняя ступень", "Block", { 7, 1, 7 }, { 0, 1.5, 0 }, stone, "Marble")
+	addPart(base, "Тумба", "Block", { 4.6, 2, 4.6 }, { 0, 3, 0 }, stone, "Marble")
+	addPart(base, "Карниз", "Block", { 5.2, 0.4, 5.2 }, { 0, 4.2, 0 }, stone, "Marble")
+	base.frozen = true
+	local fig = looseP(project, "Статуя", "Block", { 2, 5.4, 1.2 }, { 0, 4.4 + 2.7, 0 }, stone, "Marble")
+	fig.latin = Ids.suggestLatin(project, "Statue")
+	fig.role = { type = "statue", username = username or "Nataliaavira13", pose = "admire", orb = true }
+	return { base, fig }
+end
+
+-- Деревянные перила длиной length вдоль оси X: стойки, поручень и средняя перекладина
+function Prefabs.railing(project, length: number?)
+	local len = length or 16
+	local wood = { 124, 92, 70 }
+	local m = newModel(project, "Перила", "Railing")
+	local posts = math.max(2, math.floor(len / 3) + 1)
+	for i = 0, posts - 1 do
+		local x = -len / 2 + i * (len / (posts - 1))
+		addPart(m, "Стойка", "Block", { 0.35, 3.2, 0.35 }, { x, 1.6, 0 }, { 86, 66, 54 }, "Wood")
+	end
+	addPart(m, "Поручень", "Block", { len + 0.4, 0.3, 0.5 }, { 0, 3.3, 0 }, wood, "Wood")
+	addPart(m, "Перекладина", "Block", { len, 0.2, 0.2 }, { 0, 1.7, 0 }, wood, "Wood")
+	return { m }
+end
+
+-- Рабочее место: стол, стул и настольная лампа
+function Prefabs.desk(project)
+	local m = newModel(project, "Рабочее место", "Desk")
+	addPart(m, "Столешница", "Block", { 6, 0.3, 3.2 }, { 0, 3.1, 0 }, { 230, 225, 215 }, "Wood")
+	for _, xz in { { -2.7, -1.3 }, { 2.7, -1.3 }, { -2.7, 1.3 }, { 2.7, 1.3 } } do
+		addPart(m, "Ножка", "Block", { 0.25, 3, 0.25 }, { xz[1], 1.5, xz[2] }, { 60, 60, 66 }, "Metal")
+	end
+	addPart(m, "Монитор", "Block", { 2.4, 1.5, 0.15 }, { 0, 4.1, 0.9 }, { 27, 31, 39 }, "SmoothPlastic")
+	addPart(m, "Экран", "Block", { 2.2, 1.3, 0.05 }, { 0, 4.1, 0.81 }, { 110, 170, 220 }, "Neon")
+	addPart(m, "Подставка", "Block", { 0.3, 0.6, 0.3 }, { 0, 3.5, 0.95 }, { 27, 31, 39 }, "Metal")
+	addPart(m, "Клавиатура", "Block", { 1.8, 0.1, 0.6 }, { 0, 3.3, -0.3 }, { 50, 50, 56 }, "SmoothPlastic")
+	addPart(m, "Сиденье", "Block", { 1.8, 0.3, 1.8 }, { 0, 2, -2.4 }, { 40, 44, 56 }, "Fabric")
+	addPart(m, "Спинка", "Block", { 1.8, 2, 0.25 }, { 0, 3.2, -3.25 }, { 40, 44, 56 }, "Fabric")
+	addPart(m, "Ножка стула", "Cylinder", { 1.8, 0.3, 0.3 }, { 0, 1, -2.4 }, { 60, 60, 66 }, "Metal", nil, nil, { 0, 0, 90 })
+	return { m }
+end
+
 function Prefabs.corridor(project)
 	local objs = {
 		looseP(project, "Пол коридора", "Block", { 8, 1, 24 }, { 0, 0.5, 0 }, FLOOR, "WoodPlanks"),
@@ -492,6 +540,9 @@ end
 local BUILDERS = {
 	room = Prefabs.room,
 	baseplate = Prefabs.baseplate,
+	statue = Prefabs.statue,
+	railing = Prefabs.railing,
+	desk = Prefabs.desk,
 	corridor = Prefabs.corridor,
 	floorAbove = Prefabs.floorAbove,
 	wall = Prefabs.wall,

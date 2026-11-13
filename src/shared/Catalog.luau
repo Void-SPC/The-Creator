@@ -82,6 +82,9 @@ Catalog.PALETTE = {
 Catalog.PREFABS = {
 	{ id = "baseplate", title = "Платформа", group = "Строения" },
 	{ id = "room", title = "Комната", group = "Строения" },
+	{ id = "railing", title = "Перила", group = "Строения" },
+	{ id = "statue", title = "Статуя на постаменте", group = "Мебель" },
+	{ id = "desk", title = "Рабочее место", group = "Мебель" },
 	{ id = "corridor", title = "Коридор", group = "Строения" },
 	{ id = "floorAbove", title = "Этаж выше", group = "Строения" },
 	{ id = "stairs", title = "Лестница", group = "Строения" },

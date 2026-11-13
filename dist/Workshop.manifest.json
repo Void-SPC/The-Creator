@@ -1,8 +1,8 @@
 {
   "file": "Workshop.rbxlx",
-  "version": "0.7.1",
-  "sha256": "a18508e8a1656de6b75cf63cc9542c79d5e42f9127f6e2eeb117d06255594abb",
-  "bytes": 569098,
+  "version": "0.8.0",
+  "sha256": "2a9ba244aae111828ab90863c4f69e5d4722613776dbec065f0b60a6ebc9ad87",
+  "bytes": 608699,
   "scripts": [
     {
       "path": "src/shared/Anim.luau",
@@ -18,6 +18,11 @@
       "path": "src/shared/Closet.luau",
       "class": "ModuleScript",
       "name": "Closet"
+    },
+    {
+      "path": "src/shared/Corp.luau",
+      "class": "ModuleScript",
+      "name": "Corp"
     },
     {
       "path": "src/shared/Demo.luau",
@@ -145,6 +150,11 @@
       "name": "ProjectStore"
     },
     {
+      "path": "src/server/CurrencyService.luau",
+      "class": "ModuleScript",
+      "name": "CurrencyService"
+    },
+    {
       "path": "src/server/DataStoreAdapter.luau",
       "class": "ModuleScript",
       "name": "DataStoreAdapter"
@@ -173,6 +183,11 @@
       "path": "src/server/PlaySession.luau",
       "class": "ModuleScript",
       "name": "PlaySession"
+    },
+    {
+      "path": "src/server/Statue.luau",
+      "class": "ModuleScript",
+      "name": "Statue"
     },
     {
       "path": "src/client/Editor/Editor.luau",

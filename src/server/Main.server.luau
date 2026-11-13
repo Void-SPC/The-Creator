@@ -18,6 +18,7 @@ local PlayService = require(script.Parent.PlayService)
 local FilterService = require(script.Parent.FilterService)
 local AdminService = require(script.Parent.AdminService)
 local Access = require(script.Parent.Access)
+local CurrencyService = require(script.Parent.CurrencyService)
 
 local adapter = Adapter.create()
 local store = ProjectStore.new(adapter, { jobId = if game.JobId ~= "" then game.JobId else HttpService:GenerateGUID(false) })
@@ -51,6 +52,7 @@ end
 buildLobby()
 
 EditorService.init(store)
+CurrencyService.init(store)
 PlayService.init(store)
 
 -- ---------------------------------------------------------------------------
@@ -80,6 +82,10 @@ end
 
 handlers.OpenProject = function(player, projectId)
 	return EditorService.openProject(player, projectId)
+end
+
+handlers.DeleteProject = function(player, projectId)
+	return EditorService.deleteProject(player, projectId)
 end
 
 handlers.CloseProject = function(player)
@@ -276,7 +282,7 @@ end)
 
 -- В режиме «Витрина» эти запросы доступны только создателям
 local CREATOR_ONLY = {
-	ListProjects = true, CreateProject = true, OpenProject = true, CloseProject = true, SaveNow = true,
+	ListProjects = true, CreateProject = true, DeleteProject = true, OpenProject = true, CloseProject = true, SaveNow = true,
 	CheckLogic = true, StartTest = true, Publish = true, JoinByCode = true, ListCatalog = true,
 	SaveLibraryModel = true, ListLibrary = true, GetLibraryModel = true, FilterPreview = true, StopPlay = true,
 }
