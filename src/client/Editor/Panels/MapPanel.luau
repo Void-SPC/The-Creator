@@ -39,7 +39,7 @@ local function section(list: Instance, title: string, order: number)
 end
 
 -- Палитра цветов сеткой: крупные квадраты под палец
-local function palette(list: Instance, current, onPick, order: number)
+local function palette(list: Instance, current, onPick, order: number, root: Instance?)
 	local grid = Kit.frame(list, { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = order })
 	local g = Instance.new("UIGridLayout")
 	g.CellSize = UDim2.fromOffset(40, 40)
@@ -56,6 +56,10 @@ local function palette(list: Instance, current, onPick, order: number)
 			s.Parent = b
 		end
 	end
+	-- любой цвет через полную палитру
+	Kit.button(grid, L.AnyColor, function()
+		Kit.colorPicker(root or list:FindFirstAncestorOfClass("ScreenGui"), current, onPick)
+	end, { TextSize = 20, BackgroundColor3 = Kit.C.panel2 })
 end
 
 -- Свойства детали (отдельной или детали модели). base — путь к детали

@@ -5245,6 +5245,8 @@ UiText.L = {
 	ObjectsCount = "Объектов: %d",
 	TimeOfDay = "Время суток, ч",
 	Score = "Очки",
+	CustomColor = "Свой цвет",
+	AnyColor = "🎨",
 	Weather = "Погода",
 	WeatherAuto = "Смена погоды",
 	WeatherMinutes = "Менять каждые, мин",
@@ -11387,7 +11389,7 @@ local function section(list: Instance, title: string, order: number)
 end
 
 -- Палитра цветов сеткой: крупные квадраты под палец
-local function palette(list: Instance, current, onPick, order: number)
+local function palette(list: Instance, current, onPick, order: number, root: Instance?)
 	local grid = Kit.frame(list, { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = order })
 	local g = Instance.new("UIGridLayout")
 	g.CellSize = UDim2.fromOffset(40, 40)
@@ -11404,6 +11406,10 @@ local function palette(list: Instance, current, onPick, order: number)
 			s.Parent = b
 		end
 	end
+	-- любой цвет через полную палитру
+	Kit.button(grid, L.AnyColor, function()
+		Kit.colorPicker(root or list:FindFirstAncestorOfClass("ScreenGui"), current, onPick)
+	end, { TextSize = 20, BackgroundColor3 = Kit.C.panel2 })
 end
 
 -- Свойства детали (отдельной или детали модели). base — путь к детали
@@ -12118,6 +12124,12 @@ function TextsPanel.render(editor, panel: Frame)
 					set({ "color" }, c)
 				end, { BackgroundColor3 = Color3.fromRGB(c[1], c[2], c[3]) })
 			end
+			Kit.button(grid, L.AnyColor, function()
+				Kit.colorPicker(editor.gui, label.color, function(c)
+					set({ "color" }, c)
+					editor:renderPanel()
+				end)
+			end, { TextSize = 20 })
 			Kit.button(list, L.RemoveLabel, function()
 				editor.state:apply({ op = "set", id = obj.id, path = { "label" }, value = nil })
 				editor:renderPanel()
@@ -13614,6 +13626,7 @@ local UiText = require(game:GetService("ReplicatedStorage"):WaitForChild("Worksh
 Kit.YES = UiText.L.Yes
 local L_CANCEL = UiText.L.Cancel
 local L_APPLY = UiText.L.Apply
+local L_CUSTOM_COLOR = UiText.L.CustomColor
 Kit.NO = UiText.L.No
 Kit.FONT = Enum.Font.GothamMedium
 Kit.FONT_BOLD = Enum.Font.GothamBold
@@ -13925,6 +13938,153 @@ function Kit.choose(root: Instance, title: string, options: { { id: any, title: 
 	shade.Activated:Connect(function()
 		shade:Destroy()
 	end)
+	return shade
+end
+
+-- Полная палитра: любой цвет. Квадрат насыщенности и яркости, полоса оттенка,
+-- код цвета #RRGGBB и недавние цвета. Всё рассчитано на палец
+Kit.recentColors = {} :: { { number } }
+
+local function toRGB(c: Color3)
+	return { math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5) }
+end
+
+function Kit.colorPicker(root: Instance, initial, onDone: ({ number }) -&gt; ())
+	local shade = Kit.frame(root, { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, ZIndex = 60 })
+	local v = Kit.viewport()
+	local w = math.min(380, v.X - 24)
+	local box = Kit.frame(shade, { Size = UDim2.fromOffset(w, 0), AutomaticSize = Enum.AutomaticSize.Y, Position = UDim2.new(0.5, -w / 2, 0, math.max(8, v.Y * 0.06)), ZIndex = 61 })
+	corner(box, 14)
+	Kit.pad(box, 12)
+	Kit.list(box, 10)
+	local start = initial or { 200, 200, 200 }
+	local h, s, val = Color3.fromRGB(start[1], start[2], start[3]):ToHSV()
+
+	local head = Kit.frame(box, { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 44), LayoutOrder = 1, ZIndex = 62 })
+	Kit.label(head, L_CUSTOM_COLOR, { Font = Kit.FONT_BOLD, TextSize = 17, ZIndex = 62, Size = UDim2.new(1, -110, 1, 0) })
+	local preview = Kit.frame(head, { Size = UDim2.fromOffset(100, 40), Position = UDim2.new(1, -100, 0, 2), ZIndex = 62 })
+	corner(preview, 8)
+
+	-- квадрат: слева направо насыщенность, снизу вверх яркость
+	local sq = math.min(w - 24, math.floor(v.Y * 0.38))
+	local square = Kit.frame(box, { Size = UDim2.fromOffset(w - 24, sq), LayoutOrder = 2, ZIndex = 62 })
+	corner(square, 8)
+	local white = Kit.frame(square, { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(1, 1, 1), ZIndex = 63 })
+	corner(white, 8)
+	local g1 = Instance.new("UIGradient")
+	g1.Transparency = NumberSequence.new(0, 1)
+	g1.Parent = white
+	local black = Kit.frame(square, { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), ZIndex = 64 })
+	corner(black, 8)
+	local g2 = Instance.new("UIGradient")
+	g2.Transparency = NumberSequence.new(1, 0)
+	g2.Rotation = 90
+	g2.Parent = black
+	local dot = Kit.frame(square, { Size = UDim2.fromOffset(22, 22), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundTransparency = 1, ZIndex = 66 })
+	local ring = Instance.new("UIStroke")
+	ring.Thickness = 3
+	ring.Color = Color3.new(1, 1, 1)
+	ring.Parent = dot
+	corner(dot, 11)
+
+	-- полоса оттенка
+	local hueBar = Kit.frame(box, { Size = UDim2.new(1, 0, 0, 34), LayoutOrder = 3, BackgroundColor3 = Color3.new(1, 1, 1), ZIndex = 62 })
+	corner(hueBar, 8)
+	local hg = Instance.new("UIGradient")
+	local keys = {}
+	for i = 0, 6 do
+		table.insert(keys, ColorSequenceKeypoint.new(i / 6, Color3.fromHSV(i / 6 % 1, 1, 1)))
+	end
+	hg.Color = ColorSequence.new(keys)
+	hg.Parent = hueBar
+	local hueMark = Kit.frame(hueBar, { Size = UDim2.new(0, 6, 1, 6), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = Color3.new(1, 1, 1), ZIndex = 63 })
+	corner(hueMark, 3)
+
+	local hex = Kit.textbox(box, "", "#RRGGBB", nil, { LayoutOrder = 4, ZIndex = 62, TextXAlignment = Enum.TextXAlignment.Center, Font = Enum.Font.Code })
+
+	local recentRow = Kit.frame(box, { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 40), LayoutOrder = 5, ZIndex = 62 })
+	Kit.list(recentRow, 6, true)
+
+	local function current(): { number }
+		return toRGB(Color3.fromHSV(h, s, val))
+	end
+	local function refresh(fromHex: boolean?)
+		local c = Color3.fromHSV(h, s, val)
+		preview.BackgroundColor3 = c
+		square.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
+		dot.Position = UDim2.fromScale(s, 1 - val)
+		hueMark.Position = UDim2.fromScale(h, 0.5)
+		if not fromHex then
+			local rgb = toRGB(c)
+			hex.Text = string.format("#%02X%02X%02X", rgb[1], rgb[2], rgb[3])
+		end
+	end
+	for i, c in Kit.recentColors do
+		if i &gt; 7 then
+			break
+		end
+		Kit.button(recentRow, "", function()
+			h, s, val = Color3.fromRGB(c[1], c[2], c[3]):ToHSV()
+			refresh()
+		end, { Size = UDim2.fromOffset(40, 40), BackgroundColor3 = Color3.fromRGB(c[1], c[2], c[3]), LayoutOrder = i, ZIndex = 63 })
+	end
+	hex:GetPropertyChangedSignal("Text"):Connect(function()
+		local r, g, b = string.match(hex.Text, "^#?(%x%x)(%x%x)(%x%x)$")
+		if r then
+			h, s, val = Color3.fromRGB(tonumber(r, 16), tonumber(g, 16), tonumber(b, 16)):ToHSV()
+			refresh(true)
+		end
+	end)
+
+	-- перетаскивание пальцем или мышью
+	local drag: string? = nil
+	local function at(pos: Vector3)
+		if drag == "square" then
+			s = math.clamp((pos.X - square.AbsolutePosition.X) / square.AbsoluteSize.X, 0, 1)
+			val = 1 - math.clamp((pos.Y - square.AbsolutePosition.Y) / square.AbsoluteSize.Y, 0, 1)
+		elseif drag == "hue" then
+			h = math.clamp((pos.X - hueBar.AbsolutePosition.X) / hueBar.AbsoluteSize.X, 0, 0.999)
+		end
+		refresh()
+	end
+	local function begin(kind: string)
+		return function(input: InputObject)
+			if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+				drag = kind
+				at(input.Position)
+			end
+		end
+	end
+	black.InputBegan:Connect(begin("square"))
+	hueBar.InputBegan:Connect(begin("hue"))
+	local c1 = UIS.InputChanged:Connect(function(input)
+		if drag and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+			at(input.Position)
+		end
+	end)
+	local c2 = UIS.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+			drag = nil
+		end
+	end)
+	local function close()
+		c1:Disconnect()
+		c2:Disconnect()
+		shade:Destroy()
+	end
+
+	local row = Kit.frame(box, { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, Kit.TAP), LayoutOrder = 6, ZIndex = 62 })
+	Kit.button(row, L_CANCEL, close, { Size = UDim2.new(0.5, -4, 1, 0), ZIndex = 63 })
+	Kit.button(row, L_APPLY, function()
+		local c = current()
+		close()
+		table.insert(Kit.recentColors, 1, c)
+		while #Kit.recentColors &gt; 7 do
+			table.remove(Kit.recentColors)
+		end
+		onDone(c)
+	end, { Size = UDim2.new(0.5, -4, 1, 0), Position = UDim2.new(0.5, 4, 0, 0), ZIndex = 63, BackgroundColor3 = Kit.C.accent })
+	refresh()
 	return shade
 end
 

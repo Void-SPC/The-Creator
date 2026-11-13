@@ -1,8 +1,8 @@
 {
   "file": "Workshop.rbxlx",
-  "version": "0.7.0",
-  "sha256": "d98974b6b482965073d240a8723bd9c68586eabf04db7bde76926740df888548",
-  "bytes": 562260,
+  "version": "0.7.1",
+  "sha256": "a18508e8a1656de6b75cf63cc9542c79d5e42f9127f6e2eeb117d06255594abb",
+  "bytes": 569098,
   "scripts": [
     {
       "path": "src/shared/Anim.luau",
