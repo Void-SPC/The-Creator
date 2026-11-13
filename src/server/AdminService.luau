@@ -3,6 +3,7 @@
 
 local RunService = game:GetService("RunService")
 local Config = require(script.Parent.Config)
+local Access = require(script.Parent.Access)
 
 local AdminService = {}
 
@@ -14,7 +15,7 @@ function AdminService.isAdmin(player: Player): boolean
 		return cached
 	end
 	local result = false
-	if RunService:IsStudio() then
+	if RunService:IsStudio() or Access.isCreator(player) then
 		result = true
 	elseif game.CreatorType == Enum.CreatorType.User and game.CreatorId == player.UserId then
 		result = true
@@ -32,7 +33,9 @@ function AdminService.isAdmin(player: Player): boolean
 		end)
 		result = ok and rank >= 254
 	end
-	cache[player.UserId] = result
+	if result then
+		cache[player.UserId] = result
+	end
 	return result
 end
 

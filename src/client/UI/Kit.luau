@@ -21,7 +21,9 @@ Kit.C = {
 	bad = Color3.fromRGB(235, 80, 80),
 }
 
-Kit.TAP = 44
+local UIS = game:GetService("UserInputService")
+-- на сенсорных экранах кнопки крупнее, чтобы попадать пальцем
+Kit.TAP = if UIS.TouchEnabled then 52 else 44
 local UiText = require(game:GetService("ReplicatedStorage"):WaitForChild("Workshop"):WaitForChild("Shared"):WaitForChild("UiText"))
 Kit.YES = UiText.L.Yes
 Kit.NO = UiText.L.No

@@ -49,8 +49,18 @@ function PlayClient.new(app, msg)
 		end
 	end
 
+	-- в витрине игроки видят только карту; создатель — маленькую кнопку своего меню
+	local mode = app.mode or {}
+	local inShowcase = mode.showcase ~= nil and msg.code ~= nil and msg.code == mode.showcase.code
+	self.inShowcase = inShowcase
+	if inShowcase then
+		if mode.creator then
+			Kit.button(gui, L.CreatorMenu, function()
+				app:openCreatorMenu()
+			end, { Size = UDim2.fromOffset(170, 40), Position = UDim2.new(1, -180, 0, 60), BackgroundTransparency = 0.35, TextSize = 14 })
+		end
 	-- выход из теста — только у автора и только в тесте (это часть редактора)
-	if self.kind == "test" and self.isOwner then
+	elseif self.kind == "test" and self.isOwner then
 		Kit.button(gui, L.StopTest, function()
 			app:stopPlay()
 		end, { Size = UDim2.fromOffset(190, 40), Position = UDim2.new(1, -200, 0, 60), BackgroundTransparency = 0.25, TextSize = 14 })

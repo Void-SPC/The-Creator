@@ -5,6 +5,10 @@ local Config = {}
 
 -- Администраторы: ID пользователей Roblox. Владелец плейса — администратор всегда
 Config.ADMIN_USER_IDS = {} :: { number }
+-- Создатели: могут открывать меню создателя, когда включена «Витрина», включать и
+-- выключать её. Владелец игры — создатель всегда. Имена проверяются по ID аккаунта
+Config.CREATOR_USERNAMES = { "Nataliaavira13" } :: { string }
+Config.CREATOR_USER_IDS = {} :: { number }
 -- Группа: { id = 123, minRank = 200 } или nil
 Config.ADMIN_GROUP = nil :: { id: number, minRank: number }?
 

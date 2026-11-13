@@ -17,6 +17,7 @@ local EditorService = require(script.Parent.EditorService)
 local PlayService = require(script.Parent.PlayService)
 local FilterService = require(script.Parent.FilterService)
 local AdminService = require(script.Parent.AdminService)
+local Access = require(script.Parent.Access)
 
 local adapter = Adapter.create()
 local store = ProjectStore.new(adapter, { jobId = if game.JobId ~= "" then game.JobId else HttpService:GenerateGUID(false) })
@@ -59,6 +60,7 @@ local rate: { [Player]: { t: number, n: number } } = {}
 Players.PlayerRemoving:Connect(function(p)
 	rate[p] = nil
 	AdminService.forget(p)
+	Access.forget(p)
 end)
 
 local function compileErrors(project)
@@ -206,9 +208,127 @@ handlers.AdminAction = function(player, action, arg)
 	return { ok = false, error = "unknown" }
 end
 
+-- ---------------------------------------------------------------------------
+-- «Витрина»: все игроки попадают сразу в выбранную карту, меню создателя видят
+-- только создатели (владелец игры и пользователи из Config.CREATOR_USERNAMES)
+
+local showcase: { code: string, name: string }? = nil
+local playEvent = Remotes.event("Play")
+
+local function sendMode(player: Player)
+	playEvent:FireClient(player, {
+		type = "mode",
+		creator = Access.isCreator(player),
+		showcase = if showcase then { code = showcase.code, name = showcase.name } else nil,
+	})
+end
+
+local function enterShowcase(player: Player)
+	if not showcase or not player.Parent then
+		return
+	end
+	if not player.Character then
+		player.CharacterAdded:Wait()
+	end
+	task.wait(0.5)
+	local current = PlayService.sessionOf(player)
+	if current and current.code == showcase.code then
+		return
+	end
+	EditorService.closeProject(player)
+	local res = PlayService.join(player, showcase.code)
+	if not res.ok then
+		warn("[Creator] showcase join failed: " .. tostring(res.error))
+	end
+end
+
+local function applyShowcase(rec)
+	local changed = (rec and rec.code) ~= (showcase and showcase.code)
+	showcase = if rec then { code = rec.code, name = rec.name } else nil
+	if not changed then
+		return
+	end
+	for _, player in Players:GetPlayers() do
+		sendMode(player)
+		if showcase and not Access.isCreator(player) then
+			task.spawn(enterShowcase, player)
+		end
+	end
+end
+
+task.spawn(function()
+	while true do
+		local ok, rec = store:getShowcase()
+		if ok then
+			applyShowcase(rec)
+		end
+		task.wait(30)
+	end
+end)
+
+Players.PlayerAdded:Connect(function(player)
+	task.wait(1)
+	sendMode(player)
+	if showcase then
+		enterShowcase(player)
+	end
+end)
+
+-- В режиме «Витрина» эти запросы доступны только создателям
+local CREATOR_ONLY = {
+	ListProjects = true, CreateProject = true, OpenProject = true, CloseProject = true, SaveNow = true,
+	CheckLogic = true, StartTest = true, Publish = true, JoinByCode = true, ListCatalog = true,
+	SaveLibraryModel = true, ListLibrary = true, GetLibraryModel = true, FilterPreview = true, StopPlay = true,
+}
+
+handlers.Status = function(player)
+	return {
+		ok = true,
+		creator = Access.isCreator(player),
+		showcase = if showcase then { code = showcase.code, name = showcase.name } else nil,
+	}
+end
+
+handlers.SetShowcase = function(player, code)
+	if not Access.isCreator(player) then
+		return { ok = false, error = "forbidden" }
+	end
+	if code ~= nil and type(code) ~= "string" then
+		return { ok = false, error = "bad_code" }
+	end
+	local ok, err = store:setShowcase(code, player.UserId)
+	if not ok then
+		return { ok = false, error = err }
+	end
+	local okR, rec = store:getShowcase()
+	if okR then
+		applyShowcase(rec)
+	end
+	return { ok = true, showcase = showcase }
+end
+
+-- создатель из витрины открывает меню создателя
+handlers.OpenCreatorMenu = function(player)
+	if not Access.isCreator(player) then
+		return { ok = false, error = "forbidden" }
+	end
+	return PlayService.leave(player)
+end
+
+-- игрок в витрине вернулся в лобби (например, сессию завершили): снова в карту
+handlers.RejoinShowcase = function(player)
+	if showcase then
+		task.spawn(enterShowcase, player)
+	end
+	return { ok = showcase ~= nil }
+end
+
 Remotes.fn("Request").OnServerInvoke = function(player: Player, action: any, ...: any)
 	if type(action) ~= "string" or not handlers[action] then
 		return { ok = false, error = "unknown" }
+	end
+	if showcase and CREATOR_ONLY[action] and not Access.isCreator(player) then
+		return { ok = false, error = "showcase" }
 	end
 	local now = os.clock()
 	local r = rate[player]

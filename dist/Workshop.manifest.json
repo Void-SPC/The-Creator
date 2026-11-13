@@ -1,8 +1,8 @@
 {
   "file": "Workshop.rbxlx",
-  "version": "0.3.0",
-  "sha256": "7a0ca04c4eab8713343bf9ecf5d7e4763cdb5a0915d44490314b0f1c93372473",
-  "bytes": 499245,
+  "version": "0.4.0",
+  "sha256": "1e4bd1c8da8943b3cd731fe0b7456b4068d0ec62cde5758e8ecb5eb5cdd54fe3",
+  "bytes": 517448,
   "scripts": [
     {
       "path": "src/shared/Anim.luau",
@@ -123,6 +123,11 @@
       "path": "src/shared/Util.luau",
       "class": "ModuleScript",
       "name": "Util"
+    },
+    {
+      "path": "src/server/Access.luau",
+      "class": "ModuleScript",
+      "name": "Access"
     },
     {
       "path": "src/server/AdminService.luau",

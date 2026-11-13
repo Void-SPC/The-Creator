@@ -111,6 +111,14 @@ function Editor.new(app, project, readOnly: boolean)
 	end)
 	self:setStatus(if readOnly then "readonly" else "saved")
 	self:selectTab("map")
+	local count = 0
+	for _ in project.map.objects do
+		count += 1
+	end
+	if count < 3 and not app.startGuideShown then
+		app.startGuideShown = true
+		self:showStartGuide()
+	end
 	return self
 end
 
@@ -172,9 +180,9 @@ function Editor:buildUi()
 	self.rail = rail
 	self.toolButtons = {}
 	local function railButton(text: string, fn: () -> (), order: number)
-		return Kit.button(rail, text, fn, { Size = UDim2.new(1, 0, 0, 48), TextSize = 13, LayoutOrder = order })
+		return Kit.button(rail, text, fn, { Size = UDim2.new(1, 0, 0, Kit.TAP + 4), TextSize = 13, LayoutOrder = order })
 	end
-	local tools = { { "select", L.ToolSelect }, { "move", L.ToolMove }, { "rotate", L.ToolRotate }, { "scale", L.ToolScale } }
+	local tools = { { "select", L.IconSelect }, { "move", L.IconMove }, { "rotate", L.IconRotate }, { "scale", L.IconScale } }
 	for i, t in tools do
 		self.toolButtons[t[1]] = railButton(t[2], function()
 			self:setTool(t[1])
@@ -238,6 +246,116 @@ function Editor:buildUi()
 		Position = UDim2.new(0, 96, 0, 106), Size = UDim2.new(0.5, 0, 0, 40), TextColor3 = Kit.C.text,
 		TextStrokeTransparency = 0.5, TextSize = 14, Visible = false,
 	})
+
+	-- крупная кнопка «+ Добавить» над картой: главный первый шаг автора
+	local bottomY = if compact then UDim2.new(0, 96, 0.54, -Kit.TAP - 12) else UDim2.new(0, 96, 1, -Kit.TAP - 16)
+	self.addButton = Kit.button(gui, L.AddBig, function()
+		self:openAddMenu()
+	end, {
+		Size = UDim2.fromOffset(160, Kit.TAP + 4), Position = bottomY, BackgroundColor3 = Kit.C.accent,
+		Font = Kit.FONT_BOLD, TextSize = 18, ZIndex = 4,
+	})
+	-- кнопки камеры для пальца: приблизить, отдалить, показать выбранный объект
+	local camBar = Kit.frame(gui, {
+		BackgroundTransparency = 1, ZIndex = 4,
+		Size = UDim2.fromOffset(3 * (Kit.TAP + 6), Kit.TAP),
+		Position = if compact then UDim2.new(1, -3 * (Kit.TAP + 6) - 60, 0.54, -Kit.TAP - 12) else UDim2.new(1, -3 * (Kit.TAP + 6) - 352, 1, -Kit.TAP - 16),
+	})
+	Kit.list(camBar, 6, true)
+	Kit.button(camBar, L.ZoomIn, function()
+		self.camera.dist = math.max(4, self.camera.dist * 0.75)
+	end, { Size = UDim2.fromOffset(Kit.TAP, Kit.TAP), TextSize = 24, LayoutOrder = 1, BackgroundTransparency = 0.15 })
+	Kit.button(camBar, L.ZoomOut, function()
+		self.camera.dist = math.min(400, self.camera.dist * 1.33)
+	end, { Size = UDim2.fromOffset(Kit.TAP, Kit.TAP), TextSize = 24, LayoutOrder = 2, BackgroundTransparency = 0.15 })
+	Kit.button(camBar, "◎", function()
+		self:focusSelection()
+	end, { Size = UDim2.fromOffset(Kit.TAP, Kit.TAP), TextSize = 22, LayoutOrder = 3, BackgroundTransparency = 0.15 })
+	self.camBar = camBar
+end
+
+function Editor:openAddMenu()
+	local Catalog = require(Shared.Catalog)
+	Kit.choose(self.gui, L.AddBig, {
+		{ id = "shape", title = L.AddShape, hint = L.Shapes },
+		{ id = "prefab", title = L.AddFromCatalog, hint = L.AddPrefab },
+		{ id = "mine", title = L.MyModels },
+	}, function(kind)
+		if kind == "shape" then
+			local opts = {}
+			for _, s in Catalog.SHAPES do
+				table.insert(opts, { id = s.id, title = s.title })
+			end
+			Kit.choose(self.gui, L.Shapes, opts, function(shape)
+				self:addShape(shape)
+			end)
+		elseif kind == "prefab" then
+			local opts = {}
+			for _, p in Catalog.PREFABS do
+				table.insert(opts, { id = p.id, title = p.title, hint = p.group })
+			end
+			Kit.choose(self.gui, L.AddFromCatalog, opts, function(pid)
+				self:addPrefab(pid)
+			end)
+		else
+			self:addFromLibrary()
+		end
+	end)
+end
+
+function Editor:addFromLibrary()
+	local res = Remotes.fn("Request"):InvokeServer("ListLibrary")
+	if not res or not res.ok then
+		Kit.toast(self.gui, L.LoadFailed, Kit.C.bad)
+		return
+	end
+	local opts = {}
+	for _, m in res.models do
+		table.insert(opts, { id = m.id, title = m.name })
+	end
+	if #opts == 0 then
+		Kit.toast(self.gui, L.NothingHere)
+		return
+	end
+	Kit.choose(self.gui, L.MyModels, opts, function(assetId)
+		local r = Remotes.fn("Request"):InvokeServer("GetLibraryModel", assetId)
+		if r and r.ok then
+			self:addObjects({ Model.fromAsset(self.state.project, r.asset, self.preview:placementPoint(self.grid)) })
+		else
+			Kit.toast(self.gui, L.LoadFailed, Kit.C.bad)
+		end
+	end)
+end
+
+function Editor:focusSelection()
+	local id = self.modelEdit or self.selection[1]
+	local h = id and self.preview.handles[id]
+	if not h then
+		return
+	end
+	local pos = if h.root:IsA("Model") then (h.root :: Model):GetPivot().Position else (h.root :: BasePart).Position
+	self.camera:focusOn(pos + Vector3.new(0, 2, 0))
+	self.camera.dist = math.clamp(self.camera.dist, 10, 40)
+end
+
+-- Короткая подсказка «Как начать»: три шага, закрывается кнопкой «Понятно»
+function Editor:showStartGuide()
+	local shade = Kit.frame(self.gui, { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, ZIndex = 60 })
+	local v = Kit.viewport()
+	local w = math.min(460, v.X - 32)
+	local box = Kit.frame(shade, { Size = UDim2.fromOffset(w, 0), AutomaticSize = Enum.AutomaticSize.Y, Position = UDim2.new(0.5, -w / 2, 0.15, 0), ZIndex = 61 })
+	Kit.corner(box, 14)
+	Kit.pad(box, 14)
+	Kit.list(box, 10)
+	Kit.label(box, L.HowToStart, { Font = Kit.FONT_BOLD, TextSize = 22, ZIndex = 62, LayoutOrder = 1, Size = UDim2.new(1, 0, 0, 30) })
+	for i, key in { "StartStep1", "StartStep2", "StartStep3" } do
+		Kit.label(box, tostring(i) .. "   " .. H[key], {
+			TextSize = 16, ZIndex = 62, LayoutOrder = 1 + i, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
+		})
+	end
+	Kit.button(box, L.GotIt, function()
+		shade:Destroy()
+	end, { ZIndex = 62, LayoutOrder = 10, BackgroundColor3 = Kit.C.accent, Font = Kit.FONT_BOLD })
 end
 
 function Editor:updateGridButton()
@@ -785,9 +903,22 @@ function Editor:publish()
 	end
 	self.state.project.meta.publishCode = res.code
 	self.state.project.meta.publishedVersion = res.version
-	Kit.choose(self.gui, string.format(L.PublishedAs, res.code), {
-		{ id = 1, title = string.format(L.PublishedVersion, res.version), hint = H.PublishHint },
-	}, function() end)
+	local options = {
+		{ id = "ok", title = string.format(L.PublishedVersion, res.version), hint = H.PublishHint },
+	}
+	if self.app.mode and self.app.mode.creator then
+		table.insert(options, { id = "showcase", title = L.ShowcaseSet, hint = H.ShowcaseHint })
+	end
+	Kit.choose(self.gui, string.format(L.PublishedAs, res.code), options, function(choice)
+		if choice == "showcase" then
+			local r = Remotes.fn("Request"):InvokeServer("SetShowcase", res.code)
+			if r and r.ok then
+				Kit.toast(self.gui, L.ShowcaseSetDone, Kit.C.good)
+			else
+				Kit.toast(self.gui, H.ShowcaseOnlyCreators, Kit.C.bad)
+			end
+		end
+	end)
 end
 
 function Editor:setEnabled(on: boolean)

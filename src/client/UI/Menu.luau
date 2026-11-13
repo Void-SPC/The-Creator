@@ -51,9 +51,29 @@ function Menu.new(app)
 		self:enterCode()
 	end)
 
+	-- витрина включена: создатель видит её название и может выключить или открыть
+	self.showcaseBanner = Kit.frame(box, {
+		Position = UDim2.new(0, 0, 1, -(Kit.TAP * 2 + 34)), Size = UDim2.new(1, 0, 0, Kit.TAP * 2 + 30),
+		BackgroundColor3 = Kit.C.accentDim, Visible = false, ZIndex = 5,
+	})
+	Kit.corner(self.showcaseBanner, 10)
+	Kit.pad(self.showcaseBanner, 8)
+	self.showcaseTitle = Kit.label(self.showcaseBanner, "", { Font = Kit.FONT_BOLD, Size = UDim2.new(1, 0, 0, 40), ZIndex = 6 })
+	Kit.button(self.showcaseBanner, L.ShowcaseOpen, function()
+		self.app:openShowcase()
+	end, { Size = UDim2.new(0.5, -4, 0, Kit.TAP), Position = UDim2.new(0, 0, 1, -Kit.TAP), ZIndex = 6 })
+	Kit.button(self.showcaseBanner, L.ShowcaseTurnOff, function()
+		local r = Remotes.fn("Request"):InvokeServer("SetShowcase", nil)
+		if r and r.ok then
+			self.app.mode.showcase = nil
+			self:updateShowcase()
+		end
+	end, { Size = UDim2.new(0.5, -4, 0, Kit.TAP), Position = UDim2.new(0.5, 4, 1, -Kit.TAP), ZIndex = 6, BackgroundColor3 = Kit.C.bad })
+
 	self.nameBox = Kit.textbox(box, "", L.MapNamePlaceholder, nil, { Position = UDim2.fromOffset(0, if Kit.compact() then 200 else 140), Size = UDim2.new(1, 0, 0, Kit.TAP) })
 	local listTop = if Kit.compact() then 252 else 192
 	Kit.label(box, L.MyMaps, { Font = Kit.FONT_BOLD, TextSize = 18, Position = UDim2.fromOffset(0, listTop), Size = UDim2.new(1, 0, 0, 26) })
+	self.listTop = listTop + 32
 	self.list = Kit.scroll(box, { Position = UDim2.fromOffset(0, listTop + 32), Size = UDim2.new(1, 0, 1, -(listTop + 32)) })
 	Kit.list(self.list, 6)
 	self:refresh()
@@ -147,6 +167,17 @@ function Menu:enterCode()
 	end, { Size = UDim2.new(0.5, -4, 0, Kit.TAP), Position = UDim2.new(0.5, 4, 1, -Kit.TAP), ZIndex = 42, BackgroundColor3 = Kit.C.accent })
 end
 
+function Menu:updateShowcase()
+	local mode = self.app.mode or {}
+	local sc = mode.showcase
+	self.showcaseBanner.Visible = sc ~= nil and mode.creator == true
+	local extra = if self.showcaseBanner.Visible then Kit.TAP * 2 + 42 else 0
+	self.list.Size = UDim2.new(1, 0, 1, -(self.listTop + extra))
+	if sc then
+		self.showcaseTitle.Text = string.format(L.ShowcaseOnTitle, sc.name or sc.code)
+	end
+end
+
 function Menu:showError(code: string?)
 	Kit.toast(self.gui, ERRORS[code or ""] or H.LoadFailedHint, Kit.C.bad)
 end
@@ -155,6 +186,7 @@ function Menu:setVisible(v: boolean)
 	self.gui.Enabled = v
 	if v then
 		self:refresh()
+		self:updateShowcase()
 	end
 end
 

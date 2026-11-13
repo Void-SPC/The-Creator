@@ -377,6 +377,35 @@ function ProjectStore:unlist(code: string)
 	return true
 end
 
+-- «Витрина»: опубликованная карта, которую видят все вместо меню создателя
+function ProjectStore:getShowcase()
+	local ok, rec = self:_get("showcase")
+	if not ok then
+		return false, rec
+	end
+	if rec and rec.enabled and type(rec.code) == "string" then
+		return true, rec
+	end
+	return true, nil
+end
+
+function ProjectStore:setShowcase(code: string?, userId: number)
+	if code then
+		local okP, data = self:loadPublished(code)
+		if not okP then
+			return false, data
+		end
+		code = data.meta.publishCode
+		local name = data.meta.name
+		return self:_update("showcase", function()
+			return { enabled = true, code = code, name = name, setBy = userId, at = self.now() }
+		end)
+	end
+	return self:_update("showcase", function()
+		return { enabled = false, setBy = userId, at = self.now() }
+	end)
+end
+
 -- «Мои модели»
 function ProjectStore:saveLibraryModel(userId: number, asset)
 	if Util.approxSize(asset) > 200000 then

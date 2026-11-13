@@ -27,7 +27,52 @@ pcall(function()
 	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, false)
 end)
 
+app.mode = { creator = false, showcase = nil }
 app.menu = Menu.new(app)
+
+-- Заставка на время входа в витрину: игрок не видит меню создателя
+local splash = Instance.new("ScreenGui")
+splash.Name = "WsSplash"
+splash.ResetOnSpawn = false
+splash.IgnoreGuiInset = true
+splash.DisplayOrder = 30
+splash.Enabled = true -- до ответа сервера меню не показываем
+splash.Parent = app.playerGui
+app.menu:setVisible(false)
+do
+	local bg = Kit.frame(splash, { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Kit.C.bg })
+	Kit.label(bg, UiText.L.Loading, { Size = UDim2.new(1, 0, 0, 40), Position = UDim2.new(0, 0, 0.5, -20), TextXAlignment = Enum.TextXAlignment.Center, TextSize = 20 })
+end
+
+local function applyMode(mode)
+	app.mode = mode
+	local hideMenu = mode.showcase ~= nil and not mode.creator
+	if hideMenu then
+		if app.editor then
+			app.editor:destroy()
+			app.editor = nil
+		end
+		app.menu:setVisible(false)
+		splash.Enabled = app.play == nil
+	else
+		splash.Enabled = false
+		if not app.editor and not app.play then
+			app.menu:setVisible(true)
+		end
+		app.menu:updateShowcase()
+	end
+end
+
+-- создатель из витрины переходит в своё меню
+function app:openCreatorMenu()
+	Remotes.fn("Request"):InvokeServer("OpenCreatorMenu")
+end
+
+function app:openShowcase()
+	if self.mode.showcase then
+		self:joinByCode(self.mode.showcase.code)
+	end
+end
 
 function app:openEditor(project, readOnly)
 	if self.editor then
@@ -78,6 +123,13 @@ local function leavePlay()
 		app.play:destroy()
 		app.play = nil
 	end
+	if app.mode.showcase and not app.mode.creator then
+		-- игрок витрины не попадает в меню создателя: возвращаем его в карту
+		splash.Enabled = true
+		workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+		Remotes.fn("Request"):InvokeServer("RejoinShowcase")
+		return
+	end
 	if app.editor then
 		-- вернулись из теста: ошибки сценария показываем в редакторе
 		app.editor:setEnabled(true)
@@ -97,7 +149,12 @@ Remotes.event("Play").OnClientEvent:Connect(function(msg)
 	if type(msg) ~= "table" then
 		return
 	end
+	if msg.type == "mode" then
+		applyMode({ creator = msg.creator == true, showcase = msg.showcase })
+		return
+	end
 	if msg.type == "enter" then
+		splash.Enabled = false
 		if app.play then
 			app.play:destroy()
 		end
@@ -115,3 +172,11 @@ Remotes.event("Play").OnClientEvent:Connect(function(msg)
 end)
 
 task.spawn(AdminButton.mount, app.playerGui)
+task.spawn(function()
+	local res = Remotes.fn("Request"):InvokeServer("Status")
+	if res and res.ok then
+		applyMode({ creator = res.creator == true, showcase = res.showcase })
+	else
+		applyMode({ creator = false, showcase = nil })
+	end
+end)

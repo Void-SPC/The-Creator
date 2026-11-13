@@ -4974,6 +4974,23 @@ UiText.L = {
 	BodyPart = "Тело",
 	DemoMapName = "Шум за дверью",
 	SessionTest = "Тест черновика",
+	CreatorMenu = "Меню создателя",
+	ShowcaseOnTitle = "Витрина включена\n%s",
+	ShowcaseTurnOff = "Выключить витрину",
+	ShowcaseSet = "Показывать всем\nвместо меню",
+	ShowcaseOpen = "Открыть витрину",
+	ShowcaseSetDone = "Витрина включена",
+	AddBig = "+ Добавить",
+	AddFromCatalog = "Готовая модель",
+	ZoomIn = "+",
+	ZoomOut = "−",
+	FocusSelected = "К объекту",
+	GotIt = "Понятно",
+	HowToStart = "Как начать",
+	IconSelect = "👆\nВыбор",
+	IconMove = "✥\nДвигать",
+	IconRotate = "🔄\nВращать",
+	IconScale = "📐\nРазмер",
 	PlayersCount = "Игроков: %d",
 
 	AssignCloset = "Назначить как шкаф",
@@ -5132,6 +5149,11 @@ UiText.H = {
 	WrongTargetHint = "Этот объект не подходит для выбранного поля.",
 	SavedToLibraryHint = "Модель сохранена в «Мои модели».",
 	ClipsNeedModelHint = "Выберите модель на карте, чтобы работать с её клипами.",
+	StartStep1 = "Нажмите «+ Добавить» и выберите фигуру или готовую модель.",
+	StartStep2 = "Коснитесь объекта, затем тяните цветные ручки, чтобы двигать его, вращать или менять размер.",
+	StartStep3 = "Во вкладке «Логика» задайте, что происходит в игре, и нажмите «Тестировать».",
+	ShowcaseHint = "Все игроки сразу попадают в эту карту и не видят меню создателя. Выключить витрину могут только создатели.",
+	ShowcaseOnlyCreators = "Включать витрину могут только создатели игры.",
 }
 
 -- Проверка правила точек. Возвращает список нарушений
@@ -5297,12 +5319,81 @@ return Util
       </Properties>
       <Item class="ModuleScript" referent="RBX00000024">
         <Properties>
+          <string name="Name">Access</string>
+          <ProtectedString name="Source">--!nonstrict
+-- Кто считается создателем: владелец игры, пользователи из Config и (в Studio) все
+-- Права проверяются только на сервере; клиент лишь прячет кнопки
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Config = require(script.Parent.Config)
+
+local Access = {}
+
+local resolvedIds: { [number]: boolean } = {}
+local cache: { [number]: boolean } = {}
+
+-- Имена из Config переводятся в постоянные ID аккаунтов, чтобы смена ника не давала
+-- доступ чужому человеку с таким же именем
+task.spawn(function()
+	for _, name in Config.CREATOR_USERNAMES do
+		for _ = 1, 3 do
+			local ok, id = pcall(function()
+				return Players:GetUserIdFromNameAsync(name)
+			end)
+			if ok and type(id) == "number" then
+				resolvedIds[id] = true
+				table.clear(cache)
+				break
+			end
+			task.wait(2)
+		end
+	end
+end)
+
+local function ownerOf(player: Player): boolean
+	if game.CreatorType == Enum.CreatorType.User then
+		return game.CreatorId == player.UserId
+	end
+	local ok, rank = pcall(function()
+		return player:GetRankInGroup(game.CreatorId)
+	end)
+	return ok and rank &gt;= 254
+end
+
+function Access.isCreator(player: Player): boolean
+	local c = cache[player.UserId]
+	if c ~= nil then
+		return c
+	end
+	local result = RunService:IsStudio()
+		or ownerOf(player)
+		or resolvedIds[player.UserId] == true
+		or table.find(Config.CREATOR_USER_IDS, player.UserId) ~= nil
+	-- кэшируем только положительный ответ: ID имени может прийти чуть позже
+	if result then
+		cache[player.UserId] = true
+	end
+	return result
+end
+
+function Access.forget(player: Player)
+	cache[player.UserId] = nil
+end
+
+return Access
+</ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="RBX00000025">
+        <Properties>
           <string name="Name">AdminService</string>
           <ProtectedString name="Source">--!nonstrict
 -- Права администратора проверяются только на сервере
 
 local RunService = game:GetService("RunService")
 local Config = require(script.Parent.Config)
+local Access = require(script.Parent.Access)
 
 local AdminService = {}
 
@@ -5314,7 +5405,7 @@ function AdminService.isAdmin(player: Player): boolean
 		return cached
 	end
 	local result = false
-	if RunService:IsStudio() then
+	if RunService:IsStudio() or Access.isCreator(player) then
 		result = true
 	elseif game.CreatorType == Enum.CreatorType.User and game.CreatorId == player.UserId then
 		result = true
@@ -5332,7 +5423,9 @@ function AdminService.isAdmin(player: Player): boolean
 		end)
 		result = ok and rank &gt;= 254
 	end
-	cache[player.UserId] = result
+	if result then
+		cache[player.UserId] = result
+	end
 	return result
 end
 
@@ -5344,7 +5437,7 @@ return AdminService
 </ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX00000025">
+      <Item class="ModuleScript" referent="RBX00000026">
         <Properties>
           <string name="Name">Config</string>
           <ProtectedString name="Source">--!nonstrict
@@ -5354,6 +5447,10 @@ local Config = {}
 
 -- Администраторы: ID пользователей Roblox. Владелец плейса — администратор всегда
 Config.ADMIN_USER_IDS = {} :: { number }
+-- Создатели: могут открывать меню создателя, когда включена «Витрина», включать и
+-- выключать её. Владелец игры — создатель всегда. Имена проверяются по ID аккаунта
+Config.CREATOR_USERNAMES = { "Nataliaavira13" } :: { string }
+Config.CREATOR_USER_IDS = {} :: { number }
 -- Группа: { id = 123, minRank = 200 } или nil
 Config.ADMIN_GROUP = nil :: { id: number, minRank: number }?
 
@@ -5380,11 +5477,11 @@ return Config
 </ProtectedString>
         </Properties>
       </Item>
-      <Item class="Folder" referent="RBX00000026">
+      <Item class="Folder" referent="RBX00000027">
         <Properties>
           <string name="Name">Core</string>
         </Properties>
-        <Item class="ModuleScript" referent="RBX00000027">
+        <Item class="ModuleScript" referent="RBX00000028">
           <Properties>
             <string name="Name">ProjectStore</string>
             <ProtectedString name="Source">--!nonstrict
@@ -5766,6 +5863,35 @@ function ProjectStore:unlist(code: string)
 	return true
 end
 
+-- «Витрина»: опубликованная карта, которую видят все вместо меню создателя
+function ProjectStore:getShowcase()
+	local ok, rec = self:_get("showcase")
+	if not ok then
+		return false, rec
+	end
+	if rec and rec.enabled and type(rec.code) == "string" then
+		return true, rec
+	end
+	return true, nil
+end
+
+function ProjectStore:setShowcase(code: string?, userId: number)
+	if code then
+		local okP, data = self:loadPublished(code)
+		if not okP then
+			return false, data
+		end
+		code = data.meta.publishCode
+		local name = data.meta.name
+		return self:_update("showcase", function()
+			return { enabled = true, code = code, name = name, setBy = userId, at = self.now() }
+		end)
+	end
+	return self:_update("showcase", function()
+		return { enabled = false, setBy = userId, at = self.now() }
+	end)
+end
+
 -- «Мои модели»
 function ProjectStore:saveLibraryModel(userId: number, asset)
 	if Util.approxSize(asset) &gt; 200000 then
@@ -5818,7 +5944,7 @@ return ProjectStore
           </Properties>
         </Item>
       </Item>
-      <Item class="ModuleScript" referent="RBX00000028">
+      <Item class="ModuleScript" referent="RBX00000029">
         <Properties>
           <string name="Name">DataStoreAdapter</string>
           <ProtectedString name="Source">--!nonstrict
@@ -5904,7 +6030,7 @@ return Adapter
 </ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX00000029">
+      <Item class="ModuleScript" referent="RBX0000002A">
         <Properties>
           <string name="Name">EditorService</string>
           <ProtectedString name="Source">--!nonstrict
@@ -6201,7 +6327,7 @@ return EditorService
 </ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX0000002A">
+      <Item class="ModuleScript" referent="RBX0000002B">
         <Properties>
           <string name="Name">FilterService</string>
           <ProtectedString name="Source">--!nonstrict
@@ -6306,7 +6432,7 @@ return FilterService
 </ProtectedString>
         </Properties>
       </Item>
-      <Item class="Script" referent="RBX0000002B">
+      <Item class="Script" referent="RBX0000002C">
         <Properties>
           <string name="Name">Main</string>
           <ProtectedString name="Source">--!nonstrict
@@ -6328,6 +6454,7 @@ local EditorService = require(script.Parent.EditorService)
 local PlayService = require(script.Parent.PlayService)
 local FilterService = require(script.Parent.FilterService)
 local AdminService = require(script.Parent.AdminService)
+local Access = require(script.Parent.Access)
 
 local adapter = Adapter.create()
 local store = ProjectStore.new(adapter, { jobId = if game.JobId ~= "" then game.JobId else HttpService:GenerateGUID(false) })
@@ -6370,6 +6497,7 @@ local rate: { [Player]: { t: number, n: number } } = {}
 Players.PlayerRemoving:Connect(function(p)
 	rate[p] = nil
 	AdminService.forget(p)
+	Access.forget(p)
 end)
 
 local function compileErrors(project)
@@ -6517,9 +6645,127 @@ handlers.AdminAction = function(player, action, arg)
 	return { ok = false, error = "unknown" }
 end
 
+-- ---------------------------------------------------------------------------
+-- «Витрина»: все игроки попадают сразу в выбранную карту, меню создателя видят
+-- только создатели (владелец игры и пользователи из Config.CREATOR_USERNAMES)
+
+local showcase: { code: string, name: string }? = nil
+local playEvent = Remotes.event("Play")
+
+local function sendMode(player: Player)
+	playEvent:FireClient(player, {
+		type = "mode",
+		creator = Access.isCreator(player),
+		showcase = if showcase then { code = showcase.code, name = showcase.name } else nil,
+	})
+end
+
+local function enterShowcase(player: Player)
+	if not showcase or not player.Parent then
+		return
+	end
+	if not player.Character then
+		player.CharacterAdded:Wait()
+	end
+	task.wait(0.5)
+	local current = PlayService.sessionOf(player)
+	if current and current.code == showcase.code then
+		return
+	end
+	EditorService.closeProject(player)
+	local res = PlayService.join(player, showcase.code)
+	if not res.ok then
+		warn("[Creator] showcase join failed: " .. tostring(res.error))
+	end
+end
+
+local function applyShowcase(rec)
+	local changed = (rec and rec.code) ~= (showcase and showcase.code)
+	showcase = if rec then { code = rec.code, name = rec.name } else nil
+	if not changed then
+		return
+	end
+	for _, player in Players:GetPlayers() do
+		sendMode(player)
+		if showcase and not Access.isCreator(player) then
+			task.spawn(enterShowcase, player)
+		end
+	end
+end
+
+task.spawn(function()
+	while true do
+		local ok, rec = store:getShowcase()
+		if ok then
+			applyShowcase(rec)
+		end
+		task.wait(30)
+	end
+end)
+
+Players.PlayerAdded:Connect(function(player)
+	task.wait(1)
+	sendMode(player)
+	if showcase then
+		enterShowcase(player)
+	end
+end)
+
+-- В режиме «Витрина» эти запросы доступны только создателям
+local CREATOR_ONLY = {
+	ListProjects = true, CreateProject = true, OpenProject = true, CloseProject = true, SaveNow = true,
+	CheckLogic = true, StartTest = true, Publish = true, JoinByCode = true, ListCatalog = true,
+	SaveLibraryModel = true, ListLibrary = true, GetLibraryModel = true, FilterPreview = true, StopPlay = true,
+}
+
+handlers.Status = function(player)
+	return {
+		ok = true,
+		creator = Access.isCreator(player),
+		showcase = if showcase then { code = showcase.code, name = showcase.name } else nil,
+	}
+end
+
+handlers.SetShowcase = function(player, code)
+	if not Access.isCreator(player) then
+		return { ok = false, error = "forbidden" }
+	end
+	if code ~= nil and type(code) ~= "string" then
+		return { ok = false, error = "bad_code" }
+	end
+	local ok, err = store:setShowcase(code, player.UserId)
+	if not ok then
+		return { ok = false, error = err }
+	end
+	local okR, rec = store:getShowcase()
+	if okR then
+		applyShowcase(rec)
+	end
+	return { ok = true, showcase = showcase }
+end
+
+-- создатель из витрины открывает меню создателя
+handlers.OpenCreatorMenu = function(player)
+	if not Access.isCreator(player) then
+		return { ok = false, error = "forbidden" }
+	end
+	return PlayService.leave(player)
+end
+
+-- игрок в витрине вернулся в лобби (например, сессию завершили): снова в карту
+handlers.RejoinShowcase = function(player)
+	if showcase then
+		task.spawn(enterShowcase, player)
+	end
+	return { ok = showcase ~= nil }
+end
+
 Remotes.fn("Request").OnServerInvoke = function(player: Player, action: any, ...: any)
 	if type(action) ~= "string" or not handlers[action] then
 		return { ok = false, error = "unknown" }
+	end
+	if showcase and CREATOR_ONLY[action] and not Access.isCreator(player) then
+		return { ok = false, error = "showcase" }
 	end
 	local now = os.clock()
 	local r = rate[player]
@@ -6542,7 +6788,7 @@ end
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX0000002C">
+      <Item class="ModuleScript" referent="RBX0000002D">
         <Properties>
           <string name="Name">PlayService</string>
           <ProtectedString name="Source">--!nonstrict
@@ -6734,7 +6980,7 @@ return PlayService
 </ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX0000002D">
+      <Item class="ModuleScript" referent="RBX0000002E">
         <Properties>
           <string name="Name">PlaySession</string>
           <ProtectedString name="Source">--!nonstrict
@@ -7626,25 +7872,25 @@ return PlaySession
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="RBX0000002E">
+  <Item class="StarterPlayer" referent="RBX0000002F">
     <Properties>
       <string name="Name">StarterPlayer</string>
       <float name="CharacterWalkSpeed">14</float>
       <float name="CameraMaxZoomDistance">40</float>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="RBX0000002F">
+    <Item class="StarterPlayerScripts" referent="RBX00000030">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="Folder" referent="RBX00000030">
+      <Item class="Folder" referent="RBX00000031">
         <Properties>
           <string name="Name">Workshop</string>
         </Properties>
-        <Item class="Folder" referent="RBX00000031">
+        <Item class="Folder" referent="RBX00000032">
           <Properties>
             <string name="Name">Editor</string>
           </Properties>
-          <Item class="ModuleScript" referent="RBX00000032">
+          <Item class="ModuleScript" referent="RBX00000033">
             <Properties>
               <string name="Name">Editor</string>
               <ProtectedString name="Source">--!nonstrict
@@ -7760,6 +8006,14 @@ function Editor.new(app, project, readOnly: boolean)
 	end)
 	self:setStatus(if readOnly then "readonly" else "saved")
 	self:selectTab("map")
+	local count = 0
+	for _ in project.map.objects do
+		count += 1
+	end
+	if count &lt; 3 and not app.startGuideShown then
+		app.startGuideShown = true
+		self:showStartGuide()
+	end
 	return self
 end
 
@@ -7821,9 +8075,9 @@ function Editor:buildUi()
 	self.rail = rail
 	self.toolButtons = {}
 	local function railButton(text: string, fn: () -&gt; (), order: number)
-		return Kit.button(rail, text, fn, { Size = UDim2.new(1, 0, 0, 48), TextSize = 13, LayoutOrder = order })
+		return Kit.button(rail, text, fn, { Size = UDim2.new(1, 0, 0, Kit.TAP + 4), TextSize = 13, LayoutOrder = order })
 	end
-	local tools = { { "select", L.ToolSelect }, { "move", L.ToolMove }, { "rotate", L.ToolRotate }, { "scale", L.ToolScale } }
+	local tools = { { "select", L.IconSelect }, { "move", L.IconMove }, { "rotate", L.IconRotate }, { "scale", L.IconScale } }
 	for i, t in tools do
 		self.toolButtons[t[1]] = railButton(t[2], function()
 			self:setTool(t[1])
@@ -7887,6 +8141,116 @@ function Editor:buildUi()
 		Position = UDim2.new(0, 96, 0, 106), Size = UDim2.new(0.5, 0, 0, 40), TextColor3 = Kit.C.text,
 		TextStrokeTransparency = 0.5, TextSize = 14, Visible = false,
 	})
+
+	-- крупная кнопка «+ Добавить» над картой: главный первый шаг автора
+	local bottomY = if compact then UDim2.new(0, 96, 0.54, -Kit.TAP - 12) else UDim2.new(0, 96, 1, -Kit.TAP - 16)
+	self.addButton = Kit.button(gui, L.AddBig, function()
+		self:openAddMenu()
+	end, {
+		Size = UDim2.fromOffset(160, Kit.TAP + 4), Position = bottomY, BackgroundColor3 = Kit.C.accent,
+		Font = Kit.FONT_BOLD, TextSize = 18, ZIndex = 4,
+	})
+	-- кнопки камеры для пальца: приблизить, отдалить, показать выбранный объект
+	local camBar = Kit.frame(gui, {
+		BackgroundTransparency = 1, ZIndex = 4,
+		Size = UDim2.fromOffset(3 * (Kit.TAP + 6), Kit.TAP),
+		Position = if compact then UDim2.new(1, -3 * (Kit.TAP + 6) - 60, 0.54, -Kit.TAP - 12) else UDim2.new(1, -3 * (Kit.TAP + 6) - 352, 1, -Kit.TAP - 16),
+	})
+	Kit.list(camBar, 6, true)
+	Kit.button(camBar, L.ZoomIn, function()
+		self.camera.dist = math.max(4, self.camera.dist * 0.75)
+	end, { Size = UDim2.fromOffset(Kit.TAP, Kit.TAP), TextSize = 24, LayoutOrder = 1, BackgroundTransparency = 0.15 })
+	Kit.button(camBar, L.ZoomOut, function()
+		self.camera.dist = math.min(400, self.camera.dist * 1.33)
+	end, { Size = UDim2.fromOffset(Kit.TAP, Kit.TAP), TextSize = 24, LayoutOrder = 2, BackgroundTransparency = 0.15 })
+	Kit.button(camBar, "◎", function()
+		self:focusSelection()
+	end, { Size = UDim2.fromOffset(Kit.TAP, Kit.TAP), TextSize = 22, LayoutOrder = 3, BackgroundTransparency = 0.15 })
+	self.camBar = camBar
+end
+
+function Editor:openAddMenu()
+	local Catalog = require(Shared.Catalog)
+	Kit.choose(self.gui, L.AddBig, {
+		{ id = "shape", title = L.AddShape, hint = L.Shapes },
+		{ id = "prefab", title = L.AddFromCatalog, hint = L.AddPrefab },
+		{ id = "mine", title = L.MyModels },
+	}, function(kind)
+		if kind == "shape" then
+			local opts = {}
+			for _, s in Catalog.SHAPES do
+				table.insert(opts, { id = s.id, title = s.title })
+			end
+			Kit.choose(self.gui, L.Shapes, opts, function(shape)
+				self:addShape(shape)
+			end)
+		elseif kind == "prefab" then
+			local opts = {}
+			for _, p in Catalog.PREFABS do
+				table.insert(opts, { id = p.id, title = p.title, hint = p.group })
+			end
+			Kit.choose(self.gui, L.AddFromCatalog, opts, function(pid)
+				self:addPrefab(pid)
+			end)
+		else
+			self:addFromLibrary()
+		end
+	end)
+end
+
+function Editor:addFromLibrary()
+	local res = Remotes.fn("Request"):InvokeServer("ListLibrary")
+	if not res or not res.ok then
+		Kit.toast(self.gui, L.LoadFailed, Kit.C.bad)
+		return
+	end
+	local opts = {}
+	for _, m in res.models do
+		table.insert(opts, { id = m.id, title = m.name })
+	end
+	if #opts == 0 then
+		Kit.toast(self.gui, L.NothingHere)
+		return
+	end
+	Kit.choose(self.gui, L.MyModels, opts, function(assetId)
+		local r = Remotes.fn("Request"):InvokeServer("GetLibraryModel", assetId)
+		if r and r.ok then
+			self:addObjects({ Model.fromAsset(self.state.project, r.asset, self.preview:placementPoint(self.grid)) })
+		else
+			Kit.toast(self.gui, L.LoadFailed, Kit.C.bad)
+		end
+	end)
+end
+
+function Editor:focusSelection()
+	local id = self.modelEdit or self.selection[1]
+	local h = id and self.preview.handles[id]
+	if not h then
+		return
+	end
+	local pos = if h.root:IsA("Model") then (h.root :: Model):GetPivot().Position else (h.root :: BasePart).Position
+	self.camera:focusOn(pos + Vector3.new(0, 2, 0))
+	self.camera.dist = math.clamp(self.camera.dist, 10, 40)
+end
+
+-- Короткая подсказка «Как начать»: три шага, закрывается кнопкой «Понятно»
+function Editor:showStartGuide()
+	local shade = Kit.frame(self.gui, { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, ZIndex = 60 })
+	local v = Kit.viewport()
+	local w = math.min(460, v.X - 32)
+	local box = Kit.frame(shade, { Size = UDim2.fromOffset(w, 0), AutomaticSize = Enum.AutomaticSize.Y, Position = UDim2.new(0.5, -w / 2, 0.15, 0), ZIndex = 61 })
+	Kit.corner(box, 14)
+	Kit.pad(box, 14)
+	Kit.list(box, 10)
+	Kit.label(box, L.HowToStart, { Font = Kit.FONT_BOLD, TextSize = 22, ZIndex = 62, LayoutOrder = 1, Size = UDim2.new(1, 0, 0, 30) })
+	for i, key in { "StartStep1", "StartStep2", "StartStep3" } do
+		Kit.label(box, tostring(i) .. "   " .. H[key], {
+			TextSize = 16, ZIndex = 62, LayoutOrder = 1 + i, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
+		})
+	end
+	Kit.button(box, L.GotIt, function()
+		shade:Destroy()
+	end, { ZIndex = 62, LayoutOrder = 10, BackgroundColor3 = Kit.C.accent, Font = Kit.FONT_BOLD })
 end
 
 function Editor:updateGridButton()
@@ -8434,9 +8798,22 @@ function Editor:publish()
 	end
 	self.state.project.meta.publishCode = res.code
 	self.state.project.meta.publishedVersion = res.version
-	Kit.choose(self.gui, string.format(L.PublishedAs, res.code), {
-		{ id = 1, title = string.format(L.PublishedVersion, res.version), hint = H.PublishHint },
-	}, function() end)
+	local options = {
+		{ id = "ok", title = string.format(L.PublishedVersion, res.version), hint = H.PublishHint },
+	}
+	if self.app.mode and self.app.mode.creator then
+		table.insert(options, { id = "showcase", title = L.ShowcaseSet, hint = H.ShowcaseHint })
+	end
+	Kit.choose(self.gui, string.format(L.PublishedAs, res.code), options, function(choice)
+		if choice == "showcase" then
+			local r = Remotes.fn("Request"):InvokeServer("SetShowcase", res.code)
+			if r and r.ok then
+				Kit.toast(self.gui, L.ShowcaseSetDone, Kit.C.good)
+			else
+				Kit.toast(self.gui, H.ShowcaseOnlyCreators, Kit.C.bad)
+			end
+		end
+	end)
 end
 
 function Editor:setEnabled(on: boolean)
@@ -8465,7 +8842,7 @@ return Editor
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000033">
+          <Item class="ModuleScript" referent="RBX00000034">
             <Properties>
               <string name="Name">FreeCamera</string>
               <ProtectedString name="Source">--!nonstrict
@@ -8668,7 +9045,7 @@ return FreeCamera
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000034">
+          <Item class="ModuleScript" referent="RBX00000035">
             <Properties>
               <string name="Name">Gizmo</string>
               <ProtectedString name="Source">--!nonstrict
@@ -8836,11 +9213,11 @@ return Gizmo
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="Folder" referent="RBX00000035">
+          <Item class="Folder" referent="RBX00000036">
             <Properties>
               <string name="Name">Panels</string>
             </Properties>
-            <Item class="ModuleScript" referent="RBX00000036">
+            <Item class="ModuleScript" referent="RBX00000037">
               <Properties>
                 <string name="Name">AnimPanel</string>
                 <ProtectedString name="Source">--!nonstrict
@@ -9558,7 +9935,7 @@ return AnimPanel
 </ProtectedString>
               </Properties>
             </Item>
-            <Item class="ModuleScript" referent="RBX00000037">
+            <Item class="ModuleScript" referent="RBX00000038">
               <Properties>
                 <string name="Name">CreaturePanel</string>
                 <ProtectedString name="Source">--!nonstrict
@@ -9618,7 +9995,7 @@ return CreaturePanel
 </ProtectedString>
               </Properties>
             </Item>
-            <Item class="ModuleScript" referent="RBX00000038">
+            <Item class="ModuleScript" referent="RBX00000039">
               <Properties>
                 <string name="Name">LogicPanel</string>
                 <ProtectedString name="Source">--!nonstrict
@@ -10135,7 +10512,7 @@ return LogicPanel
 </ProtectedString>
               </Properties>
             </Item>
-            <Item class="ModuleScript" referent="RBX00000039">
+            <Item class="ModuleScript" referent="RBX0000003A">
               <Properties>
                 <string name="Name">MapPanel</string>
                 <ProtectedString name="Source">--!nonstrict
@@ -10657,7 +11034,7 @@ return MapPanel
 </ProtectedString>
               </Properties>
             </Item>
-            <Item class="ModuleScript" referent="RBX0000003A">
+            <Item class="ModuleScript" referent="RBX0000003B">
               <Properties>
                 <string name="Name">SettingsPanel</string>
                 <ProtectedString name="Source">--!nonstrict
@@ -10720,7 +11097,7 @@ return SettingsPanel
 </ProtectedString>
               </Properties>
             </Item>
-            <Item class="ModuleScript" referent="RBX0000003B">
+            <Item class="ModuleScript" referent="RBX0000003C">
               <Properties>
                 <string name="Name">TextsPanel</string>
                 <ProtectedString name="Source">--!nonstrict
@@ -10888,7 +11265,7 @@ return TextsPanel
               </Properties>
             </Item>
           </Item>
-          <Item class="ModuleScript" referent="RBX0000003C">
+          <Item class="ModuleScript" referent="RBX0000003D">
             <Properties>
               <string name="Name">Picker</string>
               <ProtectedString name="Source">--!nonstrict
@@ -10979,7 +11356,7 @@ return Picker
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX0000003D">
+          <Item class="ModuleScript" referent="RBX0000003E">
             <Properties>
               <string name="Name">Preview</string>
               <ProtectedString name="Source">--!nonstrict
@@ -11135,7 +11512,7 @@ return Preview
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX0000003E">
+          <Item class="ModuleScript" referent="RBX0000003F">
             <Properties>
               <string name="Name">State</string>
               <ProtectedString name="Source">--!nonstrict
@@ -11273,7 +11650,7 @@ return State
             </Properties>
           </Item>
         </Item>
-        <Item class="LocalScript" referent="RBX0000003F">
+        <Item class="LocalScript" referent="RBX00000040">
           <Properties>
             <string name="Name">Main</string>
             <ProtectedString name="Source">--!nonstrict
@@ -11305,7 +11682,52 @@ pcall(function()
 	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, false)
 end)
 
+app.mode = { creator = false, showcase = nil }
 app.menu = Menu.new(app)
+
+-- Заставка на время входа в витрину: игрок не видит меню создателя
+local splash = Instance.new("ScreenGui")
+splash.Name = "WsSplash"
+splash.ResetOnSpawn = false
+splash.IgnoreGuiInset = true
+splash.DisplayOrder = 30
+splash.Enabled = true -- до ответа сервера меню не показываем
+splash.Parent = app.playerGui
+app.menu:setVisible(false)
+do
+	local bg = Kit.frame(splash, { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Kit.C.bg })
+	Kit.label(bg, UiText.L.Loading, { Size = UDim2.new(1, 0, 0, 40), Position = UDim2.new(0, 0, 0.5, -20), TextXAlignment = Enum.TextXAlignment.Center, TextSize = 20 })
+end
+
+local function applyMode(mode)
+	app.mode = mode
+	local hideMenu = mode.showcase ~= nil and not mode.creator
+	if hideMenu then
+		if app.editor then
+			app.editor:destroy()
+			app.editor = nil
+		end
+		app.menu:setVisible(false)
+		splash.Enabled = app.play == nil
+	else
+		splash.Enabled = false
+		if not app.editor and not app.play then
+			app.menu:setVisible(true)
+		end
+		app.menu:updateShowcase()
+	end
+end
+
+-- создатель из витрины переходит в своё меню
+function app:openCreatorMenu()
+	Remotes.fn("Request"):InvokeServer("OpenCreatorMenu")
+end
+
+function app:openShowcase()
+	if self.mode.showcase then
+		self:joinByCode(self.mode.showcase.code)
+	end
+end
 
 function app:openEditor(project, readOnly)
 	if self.editor then
@@ -11356,6 +11778,13 @@ local function leavePlay()
 		app.play:destroy()
 		app.play = nil
 	end
+	if app.mode.showcase and not app.mode.creator then
+		-- игрок витрины не попадает в меню создателя: возвращаем его в карту
+		splash.Enabled = true
+		workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+		Remotes.fn("Request"):InvokeServer("RejoinShowcase")
+		return
+	end
 	if app.editor then
 		-- вернулись из теста: ошибки сценария показываем в редакторе
 		app.editor:setEnabled(true)
@@ -11375,7 +11804,12 @@ Remotes.event("Play").OnClientEvent:Connect(function(msg)
 	if type(msg) ~= "table" then
 		return
 	end
+	if msg.type == "mode" then
+		applyMode({ creator = msg.creator == true, showcase = msg.showcase })
+		return
+	end
 	if msg.type == "enter" then
+		splash.Enabled = false
 		if app.play then
 			app.play:destroy()
 		end
@@ -11393,15 +11827,23 @@ Remotes.event("Play").OnClientEvent:Connect(function(msg)
 end)
 
 task.spawn(AdminButton.mount, app.playerGui)
+task.spawn(function()
+	local res = Remotes.fn("Request"):InvokeServer("Status")
+	if res and res.ok then
+		applyMode({ creator = res.creator == true, showcase = res.showcase })
+	else
+		applyMode({ creator = false, showcase = nil })
+	end
+end)
 </ProtectedString>
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="Folder" referent="RBX00000040">
+        <Item class="Folder" referent="RBX00000041">
           <Properties>
             <string name="Name">Play</string>
           </Properties>
-          <Item class="ModuleScript" referent="RBX00000041">
+          <Item class="ModuleScript" referent="RBX00000042">
             <Properties>
               <string name="Name">Bubble</string>
               <ProtectedString name="Source">--!nonstrict
@@ -11462,7 +11904,7 @@ return Bubble
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000042">
+          <Item class="ModuleScript" referent="RBX00000043">
             <Properties>
               <string name="Name">CameraController</string>
               <ProtectedString name="Source">--!nonstrict
@@ -11699,7 +12141,7 @@ return CameraController
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000043">
+          <Item class="ModuleScript" referent="RBX00000044">
             <Properties>
               <string name="Name">PlayClient</string>
               <ProtectedString name="Source">--!nonstrict
@@ -11753,8 +12195,18 @@ function PlayClient.new(app, msg)
 		end
 	end
 
+	-- в витрине игроки видят только карту; создатель — маленькую кнопку своего меню
+	local mode = app.mode or {}
+	local inShowcase = mode.showcase ~= nil and msg.code ~= nil and msg.code == mode.showcase.code
+	self.inShowcase = inShowcase
+	if inShowcase then
+		if mode.creator then
+			Kit.button(gui, L.CreatorMenu, function()
+				app:openCreatorMenu()
+			end, { Size = UDim2.fromOffset(170, 40), Position = UDim2.new(1, -180, 0, 60), BackgroundTransparency = 0.35, TextSize = 14 })
+		end
 	-- выход из теста — только у автора и только в тесте (это часть редактора)
-	if self.kind == "test" and self.isOwner then
+	elseif self.kind == "test" and self.isOwner then
 		Kit.button(gui, L.StopTest, function()
 			app:stopPlay()
 		end, { Size = UDim2.fromOffset(190, 40), Position = UDim2.new(1, -200, 0, 60), BackgroundTransparency = 0.25, TextSize = 14 })
@@ -11917,11 +12369,11 @@ return PlayClient
             </Properties>
           </Item>
         </Item>
-        <Item class="Folder" referent="RBX00000044">
+        <Item class="Folder" referent="RBX00000045">
           <Properties>
             <string name="Name">UI</string>
           </Properties>
-          <Item class="ModuleScript" referent="RBX00000045">
+          <Item class="ModuleScript" referent="RBX00000046">
             <Properties>
               <string name="Name">AdminButton</string>
               <ProtectedString name="Source">--!nonstrict
@@ -12017,7 +12469,7 @@ return AdminButton
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000046">
+          <Item class="ModuleScript" referent="RBX00000047">
             <Properties>
               <string name="Name">Kit</string>
               <ProtectedString name="Source">--!nonstrict
@@ -12043,7 +12495,9 @@ Kit.C = {
 	bad = Color3.fromRGB(235, 80, 80),
 }
 
-Kit.TAP = 44
+local UIS = game:GetService("UserInputService")
+-- на сенсорных экранах кнопки крупнее, чтобы попадать пальцем
+Kit.TAP = if UIS.TouchEnabled then 52 else 44
 local UiText = require(game:GetService("ReplicatedStorage"):WaitForChild("Workshop"):WaitForChild("Shared"):WaitForChild("UiText"))
 Kit.YES = UiText.L.Yes
 Kit.NO = UiText.L.No
@@ -12383,7 +12837,7 @@ return Kit
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000047">
+          <Item class="ModuleScript" referent="RBX00000048">
             <Properties>
               <string name="Name">Menu</string>
               <ProtectedString name="Source">--!nonstrict
@@ -12439,9 +12893,29 @@ function Menu.new(app)
 		self:enterCode()
 	end)
 
+	-- витрина включена: создатель видит её название и может выключить или открыть
+	self.showcaseBanner = Kit.frame(box, {
+		Position = UDim2.new(0, 0, 1, -(Kit.TAP * 2 + 34)), Size = UDim2.new(1, 0, 0, Kit.TAP * 2 + 30),
+		BackgroundColor3 = Kit.C.accentDim, Visible = false, ZIndex = 5,
+	})
+	Kit.corner(self.showcaseBanner, 10)
+	Kit.pad(self.showcaseBanner, 8)
+	self.showcaseTitle = Kit.label(self.showcaseBanner, "", { Font = Kit.FONT_BOLD, Size = UDim2.new(1, 0, 0, 40), ZIndex = 6 })
+	Kit.button(self.showcaseBanner, L.ShowcaseOpen, function()
+		self.app:openShowcase()
+	end, { Size = UDim2.new(0.5, -4, 0, Kit.TAP), Position = UDim2.new(0, 0, 1, -Kit.TAP), ZIndex = 6 })
+	Kit.button(self.showcaseBanner, L.ShowcaseTurnOff, function()
+		local r = Remotes.fn("Request"):InvokeServer("SetShowcase", nil)
+		if r and r.ok then
+			self.app.mode.showcase = nil
+			self:updateShowcase()
+		end
+	end, { Size = UDim2.new(0.5, -4, 0, Kit.TAP), Position = UDim2.new(0.5, 4, 1, -Kit.TAP), ZIndex = 6, BackgroundColor3 = Kit.C.bad })
+
 	self.nameBox = Kit.textbox(box, "", L.MapNamePlaceholder, nil, { Position = UDim2.fromOffset(0, if Kit.compact() then 200 else 140), Size = UDim2.new(1, 0, 0, Kit.TAP) })
 	local listTop = if Kit.compact() then 252 else 192
 	Kit.label(box, L.MyMaps, { Font = Kit.FONT_BOLD, TextSize = 18, Position = UDim2.fromOffset(0, listTop), Size = UDim2.new(1, 0, 0, 26) })
+	self.listTop = listTop + 32
 	self.list = Kit.scroll(box, { Position = UDim2.fromOffset(0, listTop + 32), Size = UDim2.new(1, 0, 1, -(listTop + 32)) })
 	Kit.list(self.list, 6)
 	self:refresh()
@@ -12535,6 +13009,17 @@ function Menu:enterCode()
 	end, { Size = UDim2.new(0.5, -4, 0, Kit.TAP), Position = UDim2.new(0.5, 4, 1, -Kit.TAP), ZIndex = 42, BackgroundColor3 = Kit.C.accent })
 end
 
+function Menu:updateShowcase()
+	local mode = self.app.mode or {}
+	local sc = mode.showcase
+	self.showcaseBanner.Visible = sc ~= nil and mode.creator == true
+	local extra = if self.showcaseBanner.Visible then Kit.TAP * 2 + 42 else 0
+	self.list.Size = UDim2.new(1, 0, 1, -(self.listTop + extra))
+	if sc then
+		self.showcaseTitle.Text = string.format(L.ShowcaseOnTitle, sc.name or sc.code)
+	end
+end
+
 function Menu:showError(code: string?)
 	Kit.toast(self.gui, ERRORS[code or ""] or H.LoadFailedHint, Kit.C.bad)
 end
@@ -12543,6 +13028,7 @@ function Menu:setVisible(v: boolean)
 	self.gui.Enabled = v
 	if v then
 		self:refresh()
+		self:updateShowcase()
 	end
 end
 
