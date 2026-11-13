@@ -41,9 +41,9 @@ function Menu.new(app)
 	Kit.button(actions, L.NewMap, function()
 		self:createMap(nil)
 	end, { BackgroundColor3 = Kit.C.accent })
-	Kit.button(actions, L.TemplateCorp, function()
-		self:createMap("corp")
-	end)
+	Kit.button(actions, L.Mafia, function()
+		self.app:joinMafia()
+	end, { BackgroundColor3 = Color3.fromRGB(120, 30, 40) })
 	Kit.button(actions, L.NewDemo, function()
 		self:createMap("demo")
 	end)
@@ -72,6 +72,14 @@ function Menu.new(app)
 			self:updateShowcase()
 		end
 	end, { Size = UDim2.new(0.5, -4, 0, Kit.TAP), Position = UDim2.new(0.5, 4, 1, -Kit.TAP), ZIndex = 6, BackgroundColor3 = Kit.C.bad })
+
+	-- создатель может сделать «Мафию» тем, что видят все вместо меню
+	self.mafiaShowcase = Kit.button(box, L.ShowcaseMafia, function()
+		local r = Remotes.fn("Request"):InvokeServer("SetShowcase", "MAFIA")
+		if r and r.ok then
+			Kit.toast(self.gui, L.ShowcaseSetDone, Kit.C.good)
+		end
+	end, { Size = UDim2.fromOffset(220, 52), Position = UDim2.new(1, -220, 0, 0), Visible = false, TextSize = 13, BackgroundColor3 = Color3.fromRGB(120, 30, 40) })
 
 	self.nameBox = Kit.textbox(box, "", L.MapNamePlaceholder, nil, { Position = UDim2.fromOffset(0, if Kit.compact() then 200 else 140), Size = UDim2.new(1, 0, 0, Kit.TAP) })
 	local listTop = if Kit.compact() then 252 else 192
@@ -135,7 +143,7 @@ end
 function Menu:createMap(template: string?)
 	local name = self.nameBox.Text
 	if name == "" then
-		name = if template == "demo" then L.DemoMapName elseif template == "corp" then L.TemplateCorp else L.NewMap
+		name = if template == "demo" then L.DemoMapName else L.NewMap
 	end
 	local res = Remotes.fn("Request"):InvokeServer("CreateProject", name, template)
 	if res and res.ok then
@@ -191,6 +199,7 @@ function Menu:updateShowcase()
 	local mode = self.app.mode or {}
 	local sc = mode.showcase
 	self.showcaseBanner.Visible = sc ~= nil and mode.creator == true
+	self.mafiaShowcase.Visible = mode.creator == true and (sc == nil or sc.code ~= "MAFIA")
 	local extra = if self.showcaseBanner.Visible then Kit.TAP * 2 + 42 else 0
 	self.list.Size = UDim2.new(1, 0, 1, -(self.listTop + extra))
 	if sc then

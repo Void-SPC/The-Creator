@@ -644,234 +644,6 @@ return Closet
         </Item>
         <Item class="ModuleScript" referent="RBX0000000C">
           <Properties>
-            <string name="Name">Corp</string>
-            <ProtectedString name="Source">--!nonstrict
--- Шаблон «Корпорация»: дорога к небольшому дому-вестибюлю со статуей создателя,
--- большой зал со столами для каждого, второй этаж с деревянными перилами и личными
--- комнатами. При входе игрока ведут к дому (около 15 секунд), несколько игроков идут строем
--- Всё собрано из обычных объектов мастерской, поэтому шаблон можно менять в редакторе
-
-local Format = require(script.Parent.Format)
-local Ids = require(script.Parent.Ids)
-local Prefabs = require(script.Parent.Prefabs)
-local Logic = require(script.Parent.Logic)
-
-local Corp = {}
-
-Corp.SOURCE = [[
--- Вход: игрока ведут по дороге к дому
-on PlayerJoined() do
-  ShowMessage("Добро пожаловать в корпорацию", 4)
-  WalkPlayer(Path1)
-end
-
--- У входа дверь открывается, игрок проходит мимо статуи в зал
-on PlayerArrived(Path3) do
-  OpenDoor(MainDoor)
-  WalkPlayer(Path4)
-end
-
-on PlayerArrived(Path5) do
-  Wait(4)
-  CloseDoor(MainDoor)
-end
-]]
-
-local WALL = { 222, 216, 204 }
-
-function Corp.build(projectId: string, ownerId: number, ownerName: string?)
-	local p = Format.newProject(projectId, "Корпорация", ownerId)
-	local function add(objs)
-		for _, o in objs do
-			p.map.objects[o.id] = o
-		end
-		return objs[1]
-	end
-	local function block(name, size, pos, color, material, latin)
-		local o = Format.newPart(Ids.alloc(p, "o"), "Block")
-		o.name = name
-		o.size = size
-		o.pos = pos
-		o.color = color or WALL
-		o.material = material or "Plaster"
-		o.frozen = true
-		if latin then
-			o.latin = latin
-		end
-		p.map.objects[o.id] = o
-		return o
-	end
-	local function prefab(id, at, rot)
-		local o = add(Prefabs.build(p, id, at))
-		if rot then
-			o.rot = rot
-		end
-		return o
-	end
-
-	-- земля и дорога
-	local ground = add(Prefabs.build(p, "baseplate", { 0, 0, -35 }))
-	ground.name = "Газон"
-	ground.color = { 75, 120, 60 }
-	ground.material = "Grass"
-	local spawn = prefab("spawn", { 0, 0, -150 })
-	spawn.latin = "Start"
-	local route = { { 0, -150 }, { -14, -110 }, { 12, -60 }, { 0, -16 }, { 0, -9 } }
-	for i = 1, #route - 1 do
-		local a, b = route[i], route[i + 1]
-		local dx, dz = b[1] - a[1], b[2] - a[2]
-		local len = math.sqrt(dx * dx + dz * dz)
-		local road = block("Дорожка", { 6, 0.2, len + 3 }, { (a[1] + b[1]) / 2, 1.05, (a[2] + b[2]) / 2 }, { 150, 146, 140 }, "Pavement")
-		road.rot = { 0, math.floor(math.deg(math.atan2(dx, dz)) * 1000 + 0.5) / 1000, 0 }
-	end
-	-- фонари вдоль дороги
-	for i, xz in { { -6, -135 }, { 6, -120 }, { -18, -95 }, { 4, -80 }, { 17, -50 }, { -6, -30 } } do
-		block("Столб фонаря", { 0.4, 8, 0.4 }, { xz[1], 5, xz[2] }, { 40, 40, 44 }, "Metal")
-		local lamp = prefab("lamp", { xz[1], 0.3, xz[2] })
-		lamp.name = "Фонарь " .. i
-		lamp.latin = "StreetLamp" .. i
-		lamp.role.range = 30
-	end
-
-	-- точки маршрута входа: Path1 -&gt; Path2 -&gt; Path3 у двери, затем Path4 -&gt; Path5 в зал
-	local function point(name, latin, x, z)
-		local w = prefab("waypoint", { x, 0, z })
-		w.name = name
-		w.latin = latin
-		return w
-	end
-	local p1 = point("Дорога 1", "Path1", -14, -110)
-	local p2 = point("Дорога 2", "Path2", 12, -60)
-	local p3 = point("У входа", "Path3", 0, -16)
-	local p4 = point("У статуи", "Path4", -9, 6)
-	local p5 = point("Зал", "Path5", 0, 32)
-	p1.role.next = { ref = p2.id }
-	p2.role.next = { ref = p3.id }
-	p4.role.next = { ref = p5.id }
-
-	-- вестибюль 36 × 30, высота 12
-	block("Пол вестибюля", { 36, 0.2, 30 }, { 0, 1.1, 5 }, { 120, 84, 60 }, "WoodPlanks")
-	block("Потолок вестибюля", { 37, 1, 31 }, { 0, 13.5, 5 }, WALL)
-	block("Стена у входа", { 15, 12, 1 }, { -10.5, 7, -10 })
-	block("Стена у входа", { 15, 12, 1 }, { 10.5, 7, -10 })
-	block("Над входом", { 6, 4, 1 }, { 0, 11, -10 })
-	block("Стена вестибюля", { 1, 12, 30 }, { -18.5, 7, 5 })
-	block("Стена вестибюля", { 1, 12, 30 }, { 18.5, 7, 5 })
-	local door = prefab("door", { 0, 0, -10 })
-	door.name = "Главная дверь"
-	door.latin = "MainDoor"
-	door.size = { 6, 8, 0.4 }
-	door.pos = { 0, 5, -10 }
-	door.role.hinge = { -3, 0, 0 }
-	local sign = prefab("sign", { 0, 6, -10.65 })
-	sign.name = "Вывеска"
-	sign.latin = "CorpSign"
-	sign.size = { 8, 2, 0.2 }
-	sign.label.text = "Корпорация"
-	sign.label.size = 30
-	sign.label.color = { 235, 225, 200 }
-	sign.color = { 40, 44, 56 }
-	-- статуя создателя по центру, лицом к входу
-	local statueObjs = Prefabs.build(p, "statue", { 0, 1, 6 })
-	add(statueObjs)
-	statueObjs[2].role.username = ownerName or "Nataliaavira13"
-	statueObjs[2].name = "Статуя создателя"
-	statueObjs[2].latin = "CreatorStatue"
-	local vLamp = prefab("lamp", { 0, 3, -3 })
-	vLamp.name = "Лампа вестибюля"
-	vLamp.latin = "LobbyLamp"
-
-	-- зал 80 × 60, высота 24, проём из вестибюля шириной 10
-	block("Пол зала", { 80, 0.2, 60 }, { 0, 1.1, 50 }, { 70, 78, 96 }, "Carpet")
-	block("Потолок зала", { 82, 1, 62 }, { 0, 25.5, 50 }, WALL)
-	block("Стена между вестибюлем и залом", { 13, 12, 1 }, { -11.5, 7, 20 })
-	block("Стена между вестибюлем и залом", { 13, 12, 1 }, { 11.5, 7, 20 })
-	block("Над проёмом в зал", { 10, 3, 1 }, { 0, 11.5, 20 })
-	block("Фасад зала", { 36, 12, 1 }, { 0, 19, 20 })
-	block("Фасад зала", { 22, 24, 1 }, { -29, 13, 20 })
-	block("Фасад зала", { 22, 24, 1 }, { 29, 13, 20 })
-	block("Стена зала", { 1, 24, 60 }, { -40.5, 13, 50 })
-	block("Стена зала", { 1, 24, 60 }, { 40.5, 13, 50 })
-	block("Задняя стена зала", { 82, 24, 1 }, { 0, 13, 80.5 })
-	-- столы для каждого
-	local n = 0
-	for _, z in { 34, 46 } do
-		for _, x in { -27, -9, 9, 27 } do
-			n += 1
-			local d = prefab("desk", { x, 1.1, z })
-			d.name = "Стол " .. n
-			d.latin = "Desk" .. n
-			d.frozen = true
-		end
-	end
-	for i, xz in { { -18, 38 }, { 18, 38 }, { -18, 54 }, { 18, 54 } } do
-		local l = prefab("lamp", { xz[1], 14, xz[2] })
-		l.name = "Люстра " .. i
-		l.latin = "HallLamp" .. i
-		l.role.range = 40
-	end
-
-	-- второй этаж: галерея с перилами и лестница
-	block("Пол второго этажа", { 80, 1, 17 }, { 0, 12.5, 71.5 }, { 120, 84, 60 }, "WoodPlanks")
-	for _, x in { -30, -10, 10, 28 } do
-		block("Колонна", { 1.2, 11, 1.2 }, { x, 6.5, 63.6 }, { 205, 200, 192 }, "Marble")
-	end
-	local stairs = prefab("stairs", { 34, 1, 49 })
-	stairs.frozen = true
-	local rail1 = add(Prefabs.railing(p, 72))
-	rail1.pos = { -4, 13, 63.3 }
-	rail1.frozen = true
-	local rail2 = add(Prefabs.railing(p, 4))
-	rail2.pos = { 38, 13, 63.3 }
-	rail2.frozen = true
-
-	-- личные комнаты: 6 комнат по 12 × 10, каждому игроку своя
-	block("Стена галереи", { 4, 12, 0.5 }, { -38, 19, 70 })
-	block("Стена галереи", { 4, 12, 0.5 }, { 38, 19, 70 })
-	for i = 0, 6 do
-		block("Перегородка", { 0.5, 12, 10 }, { -36 + i * 12, 19, 75 })
-	end
-	for i = 0, 5 do
-		local cx = -30 + 12 * i
-		block("Стена комнаты", { 4, 12, 0.5 }, { cx - 4, 19, 70 })
-		block("Стена комнаты", { 4, 12, 0.5 }, { cx + 4, 19, 70 })
-		block("Над дверью", { 4, 5, 0.5 }, { cx, 22.5, 70 })
-		local rd = prefab("door", { 0, 0, 0 })
-		rd.name = "Дверь комнаты " .. (i + 1)
-		rd.latin = "RoomDoor" .. (i + 1)
-		rd.size = { 3.8, 7, 0.3 }
-		rd.pos = { cx, 16.5, 70 }
-		rd.role.hinge = { -1.9, 0, 0 }
-		rd.role.openAngle = -95
-		rd.role.owned = true
-		local bed = prefab("bed", { cx - 3, 13, 75.5 })
-		bed.name = "Кровать " .. (i + 1)
-		bed.latin = "Bed" .. (i + 1)
-		local rl = prefab("lamp", { cx + 3, 14, 76 })
-		rl.name = "Лампа комнаты " .. (i + 1)
-		rl.latin = "RoomLamp" .. (i + 1)
-		rl.role.brightness = 1.5
-		rl.role.range = 14
-	end
-
-	p.settings.lighting.clockTime = 20
-	p.settings.camera.bob = 0.6
-
-	local tree, errors = Logic.Parser.parse(Corp.SOURCE, Logic.nameResolver(p))
-	assert(tree and not errors, "corp logic must parse")
-	p.logic.mode = "blocks"
-	p.logic.blocks = tree
-	p.logic.text.source = Corp.SOURCE
-	p.logic.text.refs = Logic.collectRefs(tree)
-	return p
-end
-
-return Corp
-</ProtectedString>
-          </Properties>
-        </Item>
-        <Item class="ModuleScript" referent="RBX0000000D">
-          <Properties>
             <string name="Name">Demo</string>
             <ProtectedString name="Source">--!nonstrict
 -- Демонстрационная сцена: игрок открывает дверь, лисик выбирается из книжного шкафа
@@ -999,7 +771,7 @@ return Demo
 </ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX0000000E">
+        <Item class="ModuleScript" referent="RBX0000000D">
           <Properties>
             <string name="Name">Format</string>
             <ProtectedString name="Source">--!nonstrict
@@ -1734,7 +1506,7 @@ return Format
 </ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX0000000F">
+        <Item class="ModuleScript" referent="RBX0000000E">
           <Properties>
             <string name="Name">Ids</string>
             <ProtectedString name="Source">--!nonstrict
@@ -1819,7 +1591,7 @@ return Ids
 </ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX00000010">
+        <Item class="ModuleScript" referent="RBX0000000F">
           <Properties>
             <string name="Name">Logic</string>
             <ProtectedString name="Source">--!nonstrict
@@ -1962,7 +1734,7 @@ end
 return Logic
 </ProtectedString>
           </Properties>
-          <Item class="ModuleScript" referent="RBX00000011">
+          <Item class="ModuleScript" referent="RBX00000010">
             <Properties>
               <string name="Name">Commands</string>
               <ProtectedString name="Source">--!nonstrict
@@ -2156,7 +1928,7 @@ return Commands
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000012">
+          <Item class="ModuleScript" referent="RBX00000011">
             <Properties>
               <string name="Name">Interpreter</string>
               <ProtectedString name="Source">--!nonstrict
@@ -2474,7 +2246,7 @@ return Interpreter
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000013">
+          <Item class="ModuleScript" referent="RBX00000012">
             <Properties>
               <string name="Name">Parser</string>
               <ProtectedString name="Source">--!nonstrict
@@ -2841,7 +2613,7 @@ return Parser
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000014">
+          <Item class="ModuleScript" referent="RBX00000013">
             <Properties>
               <string name="Name">Printer</string>
               <ProtectedString name="Source">--!nonstrict
@@ -2962,7 +2734,7 @@ return Printer
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000015">
+          <Item class="ModuleScript" referent="RBX00000014">
             <Properties>
               <string name="Name">Validator</string>
               <ProtectedString name="Source">--!nonstrict
@@ -3172,7 +2944,211 @@ return Validator
             </Properties>
           </Item>
         </Item>
+        <Item class="ModuleScript" referent="RBX00000015">
+          <Properties>
+            <string name="Name">MafiaRules</string>
+            <ProtectedString name="Source">--!nonstrict
+-- Правила «Мафии» без Roblox API: раздача ролей, голосования, ночь, победа, чаты
+
+local Rules = {}
+
+Rules.MAX_PLAYERS = 13
+Rules.MIN_PLAYERS = 4
+
+Rules.ROLES = { mafia = true, doctor = true, sheriff = true, civilian = true }
+
+Rules.LIMITS = {
+	mafia = { 1, 6 },
+	doctor = { 1, 3 },
+	sheriff = { 1, 3 },
+}
+
+-- Автоматически: 1 доктор, 1 шериф, мафии примерно треть игроков (8 → 2, 12 → 4)
+function Rules.autoCounts(n: number)
+	local mafia = math.clamp(math.floor(n / 3), 1, 6)
+	local doctor = if n &gt;= 4 then 1 else 0
+	local sheriff = if n &gt;= 5 then 1 else 0
+	return { mafia = mafia, doctor = doctor, sheriff = sheriff }
+end
+
+-- Проверка ручных настроек. Возвращает nil или текст проблемы
+function Rules.checkCounts(n: number, c): string?
+	for role, lim in Rules.LIMITS do
+		local v = c[role]
+		if type(v) ~= "number" or v ~= math.floor(v) or v &lt; lim[1] or v &gt; lim[2] then
+			return role
+		end
+	end
+	if c.mafia + c.doctor + c.sheriff &gt; n then
+		return "too_many_roles"
+	end
+	if c.mafia * 2 &gt;= n then
+		return "too_much_mafia"
+	end
+	return nil
+end
+
+-- Раздача ролей случайно. ids — список игроков (без ведущего), rand(a, b) — целое
+function Rules.assign(ids: { any }, counts, rand: (number, number) -&gt; number)
+	local pool = table.clone(ids)
+	-- перемешивание Фишера — Йейтса
+	for i = #pool, 2, -1 do
+		local j = rand(1, i)
+		pool[i], pool[j] = pool[j], pool[i]
+	end
+	local roles = {}
+	local k = 1
+	for _, role in { "mafia", "doctor", "sheriff" } do
+		for _ = 1, counts[role] or 0 do
+			if pool[k] ~= nil then
+				roles[pool[k]] = role
+				k += 1
+			end
+		end
+	end
+	for i = k, #pool do
+		roles[pool[i]] = "civilian"
+	end
+	return roles
+end
+
+-- Дневное голосование: votes[voter] = цель или "skip". Изгоняется тот, у кого больше
+-- всех голосов, если голосов за него больше, чем за «пропустить», и нет ничьей
+function Rules.dayResult(votes, alive)
+	local tally = {}
+	local skip = 0
+	for voter, target in votes do
+		if alive[voter] then
+			if target == "skip" then
+				skip += 1
+			elseif alive[target] then
+				tally[target] = (tally[target] or 0) + 1
+			end
+		end
+	end
+	local best, bestN, tie = nil, 0, false
+	for target, n in tally do
+		if n &gt; bestN then
+			best, bestN, tie = target, n, false
+		elseif n == bestN then
+			tie = true
+		end
+	end
+	if not best or tie or bestN &lt;= skip then
+		return nil, tally, skip
+	end
+	return best, tally, skip
+end
+
+-- Мафия должна прийти к общему решению: цель засчитывается, только если все живые
+-- мафиози выбрали одного и того же
+function Rules.mafiaTarget(votes, roles, alive)
+	local target = nil
+	local total, voted = 0, 0
+	for id, role in roles do
+		if role == "mafia" and alive[id] then
+			total += 1
+			local v = votes[id]
+			if v ~= nil then
+				voted += 1
+				if target == nil then
+					target = v
+				elseif target ~= v then
+					return nil, false
+				end
+			end
+		end
+	end
+	if total == 0 or voted &lt; total or not alive[target] then
+		return nil, false
+	end
+	return target, true
+end
+
+-- Итог ночи: жертва мафии погибает, если её не вылечил ни один доктор
+function Rules.nightResult(target, heals)
+	if target == nil then
+		return nil, false
+	end
+	for _, healed in heals do
+		if healed == target then
+			return nil, true
+		end
+	end
+	return target, false
+end
+
+-- Победа: мафия, когда мирных (всех остальных) не больше мафии; город, когда мафии нет
+function Rules.winner(roles, alive): string?
+	local mafia, town = 0, 0
+	for id, role in roles do
+		if alive[id] then
+			if role == "mafia" then
+				mafia += 1
+			else
+				town += 1
+			end
+		end
+	end
+	if mafia == 0 then
+		return "town"
+	end
+	if mafia &gt;= town then
+		return "mafia"
+	end
+	return nil
+end
+
+-- Чаты. who = { role = ..., alive = bool, host = bool }, phase = "lobby" | "day" | "vote" | "night" | ...
+-- Возвращает, может ли игрок писать и видеть канал
+function Rules.chat(channel: string, who, phase: string)
+	if who.host then
+		return true, true
+	end
+	local night = phase == "night"
+	if channel == "general" then
+		-- общий видят все; писать могут живые, и не ночью
+		return who.alive and not night and phase ~= "reveal", true
+	elseif channel == "mafia" then
+		local isMafia = who.role == "mafia" and who.alive
+		return isMafia, isMafia
+	elseif channel == "ghost" then
+		local ghost = not who.alive and who.role ~= nil
+		return ghost, ghost
+	end
+	return false, false
+end
+
+return Rules
+</ProtectedString>
+          </Properties>
+        </Item>
         <Item class="ModuleScript" referent="RBX00000016">
+          <Properties>
+            <string name="Name">MafiaSounds</string>
+            <ProtectedString name="Source">--!nonstrict
+-- Звуки «Мафии». Встроенные звуки Roblox работают сразу. Свои звуки: загрузите их в
+-- Roblox или возьмите публичные из библиотеки и впишите сюда как "rbxassetid://ID"
+return {
+	start = "rbxasset://sounds/electronicpingshort.wav",
+	night = "rbxasset://sounds/button.wav",
+	death = "rbxasset://sounds/uuhhh.mp3",
+	vote = "rbxasset://sounds/clickfast.wav",
+	click = "rbxasset://sounds/clickfast.wav",
+	save = "rbxasset://sounds/electronicpingshort.wav",
+	win = "rbxasset://sounds/electronicpingshort.wav",
+	whoosh = "rbxasset://sounds/swoosh.wav",
+	join = "rbxasset://sounds/button.wav",
+	-- фоновые звуки сезонов (впишите ID, чтобы включить)
+	ambientSummer = "",
+	ambientSpring = "",
+	ambientAutumn = "",
+	ambientWinter = "",
+}
+</ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="RBX00000017">
           <Properties>
             <string name="Name">MathX</string>
             <ProtectedString name="Source">--!nonstrict
@@ -3415,7 +3391,7 @@ return MathX
 </ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX00000017">
+        <Item class="ModuleScript" referent="RBX00000018">
           <Properties>
             <string name="Name">Model</string>
             <ProtectedString name="Source">--!nonstrict
@@ -3655,7 +3631,7 @@ return Model
 </ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX00000018">
+        <Item class="ModuleScript" referent="RBX00000019">
           <Properties>
             <string name="Name">OfficeModels</string>
             <ProtectedString name="Source">-- Сгенерировано tools/import_office.py из исходников Office, не править вручную
@@ -3899,7 +3875,7 @@ return M
 </ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX00000019">
+        <Item class="ModuleScript" referent="RBX0000001A">
           <Properties>
             <string name="Name">Ops</string>
             <ProtectedString name="Source">--!nonstrict
@@ -4139,7 +4115,7 @@ return Ops
 </ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX0000001A">
+        <Item class="ModuleScript" referent="RBX0000001B">
           <Properties>
             <string name="Name">Prefabs</string>
             <ProtectedString name="Source">--!nonstrict
@@ -4731,7 +4707,7 @@ return Prefabs
 </ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX0000001B">
+        <Item class="ModuleScript" referent="RBX0000001C">
           <Properties>
             <string name="Name">Rig</string>
             <ProtectedString name="Source">--!nonstrict
@@ -4868,11 +4844,11 @@ return Rig
 </ProtectedString>
           </Properties>
         </Item>
-        <Item class="Folder" referent="RBX0000001C">
+        <Item class="Folder" referent="RBX0000001D">
           <Properties>
             <string name="Name">Roblox</string>
           </Properties>
-          <Item class="ModuleScript" referent="RBX0000001D">
+          <Item class="ModuleScript" referent="RBX0000001E">
             <Properties>
               <string name="Name">Animator</string>
               <ProtectedString name="Source">--!nonstrict
@@ -4975,7 +4951,7 @@ return Animator
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX0000001E">
+          <Item class="ModuleScript" referent="RBX0000001F">
             <Properties>
               <string name="Name">Convert</string>
               <ProtectedString name="Source">--!nonstrict
@@ -5034,7 +5010,7 @@ return Convert
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX0000001F">
+          <Item class="ModuleScript" referent="RBX00000020">
             <Properties>
               <string name="Name">Remotes</string>
               <ProtectedString name="Source">--!nonstrict
@@ -5045,8 +5021,8 @@ local RunService = game:GetService("RunService")
 
 local Remotes = {}
 
-local FUNCTIONS = { "Request" }
-local EVENTS = { "EditOps", "EditAck", "SaveStatus", "Play", "PlayInput" }
+local FUNCTIONS = { "Request", "MafiaRequest" }
+local EVENTS = { "EditOps", "EditAck", "SaveStatus", "Play", "PlayInput", "Mafia" }
 
 local folder: Folder
 
@@ -5092,7 +5068,7 @@ return Remotes
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000020">
+          <Item class="ModuleScript" referent="RBX00000021">
             <Properties>
               <string name="Name">WorldBuilder</string>
               <ProtectedString name="Source">--!nonstrict
@@ -5421,7 +5397,7 @@ return WorldBuilder
             </Properties>
           </Item>
         </Item>
-        <Item class="ModuleScript" referent="RBX00000021">
+        <Item class="ModuleScript" referent="RBX00000022">
           <Properties>
             <string name="Name">UiText</string>
             <ProtectedString name="Source">--!nonstrict
@@ -5555,6 +5531,77 @@ UiText.L = {
 	TimeOfDay = "Время суток, ч",
 	Score = "Очки",
 	Coins = "Монеты",
+	Mafia = "Мафия",
+	MafiaWins = "Мафия победила",
+	TownWins = "Мирные жители победили",
+	ExiledFormat = "Деревня изгнала игрока %s",
+	KilledFormat = "Этой ночью погиб %s",
+	LeftFormat = "%s покинул игру",
+	VoteNow = "Голосование началось",
+	NobodyExiled = "Деревня никого не изгнала",
+	GoHome = "Наступает ночь\nВсе по домам",
+	DoctorSaved = "Доктор спас жизнь этой ночью",
+	QuietNight = "Ночь прошла спокойно",
+	HostLeft = "Ведущий ушёл, игра идёт сама",
+	GameStarts = "Игра начинается\nПосмотрите свою роль",
+	PhaseLobby = "Ожидание игроков",
+	PhaseReveal = "Ваша роль",
+	PhaseDusk = "Вечер",
+	PhaseNight = "Ночь",
+	PhaseMorning = "Утро",
+	PhaseDay = "День",
+	PhaseVote = "Голосование",
+	PhaseVerdict = "Итог дня",
+	PhaseEnded = "Игра окончена",
+	RoleMafia = "Мафия",
+	RoleDoctor = "Доктор",
+	RoleSheriff = "Шериф",
+	RoleCivilian = "Мирный житель",
+	RoleHost = "Ведущий",
+	RoleGhost = "Призрак",
+	BecomeHost = "Стать ведущим",
+	StopHosting = "Не быть ведущим",
+	StartGame = "Начать игру",
+	LeaveMafia = "Выйти",
+	StyleSummer = "Лето",
+	StyleSpring = "Весна",
+	StyleAutumn = "Осень",
+	StyleWinter = "Зима",
+	ThemePlain = "Обычная",
+	ThemeApril = "1 апреля",
+	ThemeHalloween = "Хэллоуин",
+	ThemeNewYear = "Новый год",
+	RolesAuto = "Роли сами",
+	RolesManual = "Роли вручную",
+	CountMafia = "Мафия",
+	CountDoctor = "Доктора",
+	CountSheriff = "Шерифы",
+	PlayersFormat = "Игроков: %d из 13",
+	HostFormat = "Ведущий\n%s",
+	NoHost = "Ведущего нет\nИгра пойдёт сама",
+	VoteSkip = "Пропустить",
+	ChooseVictim = "Кого убрать этой ночью",
+	ChooseHeal = "Кого вылечить",
+	ChooseCheck = "Кого проверить",
+	ChooseExile = "Кого изгнать",
+	IsMafia = "%s\nмафия",
+	NotMafia = "%s\nне мафия",
+	Notebook = "Блокнот",
+	ChatTown = "Общий",
+	ChatMafia = "Мафия",
+	ChatGhost = "Призраки",
+	HostPanel = "Ведущий",
+	HostNext = "Дальше",
+	HostMore = "+30 с",
+	HostHome = "Все по домам",
+	HostTable = "Все к столу",
+	HostToss = "Пинок",
+	HostBring = "Ко мне",
+	HostSendHome = "Домой",
+	AllRoles = "Все роли",
+	MafiaVotesFormat = "%s выбрал %s",
+	YourHouse = "Ваш дом %d",
+	ShowcaseMafia = "Мафия для всех\nвместо меню",
 	AssignStatue = "Назначить как статую",
 	RoleStatue = "Статуя",
 	StatueUser = "Чей аватар (ник)",
@@ -5566,7 +5613,6 @@ UiText.L = {
 	LockRoom = "Запереть",
 	UnlockRoom = "Отпереть",
 	RoomOf = "Комната\n%s",
-	TemplateCorp = "Корпорация",
 	SavesCount = "Сохранений: %d из %d",
 	CustomColor = "Свой цвет",
 	AnyColor = "🎨",
@@ -5746,6 +5792,14 @@ UiText.H = {
 	ShowcaseHint = "Все игроки сразу попадают в эту карту и не видят меню создателя. Выключить витрину могут только создатели.",
 	ShowcaseOnlyCreators = "Включать витрину могут только создатели игры.",
 	RoomLockedHint = "Комната заперта хозяином.",
+	MafiaRoleHint = "Убирайте мирных ночью и не выдавайте себя днём. Мафия должна выбрать одну цель вместе.",
+	DoctorRoleHint = "Каждую ночь можно вылечить одного игрока, но не одного и того же две ночи подряд.",
+	SheriffRoleHint = "Каждую ночь проверяйте одного игрока. Записывайте выводы в блокнот.",
+	CivilianRoleHint = "Найдите мафию и изгоните её голосованием днём.",
+	HostRoleHint = "Вы видите все роли и все чаты. Переключайте фазы и следите за порядком.",
+	GhostHint = "Вы призрак и смотрите сверху. Подсказывать живым нельзя.",
+	NightSilenceHint = "Ночью все молчат. Говорить может только мафия в своём чате.",
+	FewPlayersHint = "Для игры нужно хотя бы четыре игрока.",
 	NameTakenHint = "Карта с таким названием у вас уже есть, придумайте другое.",
 	TooManyHint = "У вас уже 10 сохранений. Удалите или переименуйте одно из них.",
 	FlyHint = "Держите стрелки, чтобы лететь, а кнопки ⇧ и ⇩ поднимают и опускают камеру.",
@@ -5807,7 +5861,7 @@ return UiText
 </ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX00000022">
+        <Item class="ModuleScript" referent="RBX00000023">
           <Properties>
             <string name="Name">Util</string>
             <ProtectedString name="Source">--!nonstrict
@@ -5926,15 +5980,15 @@ return Util
       </Item>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="RBX00000023">
+  <Item class="ServerScriptService" referent="RBX00000024">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Folder" referent="RBX00000024">
+    <Item class="Folder" referent="RBX00000025">
       <Properties>
         <string name="Name">Workshop</string>
       </Properties>
-      <Item class="ModuleScript" referent="RBX00000025">
+      <Item class="ModuleScript" referent="RBX00000026">
         <Properties>
           <string name="Name">Access</string>
           <ProtectedString name="Source">--!nonstrict
@@ -6017,7 +6071,7 @@ return Access
 </ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX00000026">
+      <Item class="ModuleScript" referent="RBX00000027">
         <Properties>
           <string name="Name">AdminService</string>
           <ProtectedString name="Source">--!nonstrict
@@ -6069,7 +6123,7 @@ return AdminService
 </ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX00000027">
+      <Item class="ModuleScript" referent="RBX00000028">
         <Properties>
           <string name="Name">Config</string>
           <ProtectedString name="Source">--!nonstrict
@@ -6109,11 +6163,11 @@ return Config
 </ProtectedString>
         </Properties>
       </Item>
-      <Item class="Folder" referent="RBX00000028">
+      <Item class="Folder" referent="RBX00000029">
         <Properties>
           <string name="Name">Core</string>
         </Properties>
-        <Item class="ModuleScript" referent="RBX00000029">
+        <Item class="ModuleScript" referent="RBX0000002A">
           <Properties>
             <string name="Name">ProjectStore</string>
             <ProtectedString name="Source">--!nonstrict
@@ -6133,7 +6187,6 @@ local Util = require(Shared.Util)
 local Format = require(Shared.Format)
 local Demo = require(Shared.Demo)
 local Prefabs = require(Shared.Prefabs)
-local Corp = require(Shared.Corp)
 
 local ProjectStore = {}
 ProjectStore.__index = ProjectStore
@@ -6282,9 +6335,7 @@ function ProjectStore:createProject(userId: number, name: string, template: stri
 	if template == "demo" then
 		project = Demo.build(pid, userId)
 		project.meta.name = name
-	elseif template == "corp" then
-		project = Corp.build(pid, userId)
-		project.meta.name = name
+
 	else
 		project = Format.newProject(pid, name, userId)
 		-- новая карта сразу с платформой: на неё удобно ставить блоки, в игре это пол
@@ -6576,6 +6627,12 @@ function ProjectStore:getShowcase()
 end
 
 function ProjectStore:setShowcase(code: string?, userId: number)
+	if code == "MAFIA" then
+		-- особая витрина: все сразу попадают в «Мафию»
+		return self:_update("showcase", function()
+			return { enabled = true, code = "MAFIA", name = "Мафия", setBy = userId, at = self.now() }
+		end)
+	end
 	if code then
 		local okP, data = self:loadPublished(code)
 		if not okP then
@@ -6644,7 +6701,7 @@ return ProjectStore
           </Properties>
         </Item>
       </Item>
-      <Item class="ModuleScript" referent="RBX0000002A">
+      <Item class="ModuleScript" referent="RBX0000002B">
         <Properties>
           <string name="Name">CurrencyService</string>
           <ProtectedString name="Source">--!nonstrict
@@ -6786,7 +6843,7 @@ return CurrencyService
 </ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX0000002B">
+      <Item class="ModuleScript" referent="RBX0000002C">
         <Properties>
           <string name="Name">DataStoreAdapter</string>
           <ProtectedString name="Source">--!nonstrict
@@ -6872,7 +6929,7 @@ return Adapter
 </ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX0000002C">
+      <Item class="ModuleScript" referent="RBX0000002D">
         <Properties>
           <string name="Name">EditorService</string>
           <ProtectedString name="Source">--!nonstrict
@@ -7131,7 +7188,7 @@ function EditorService.createProject(player: Player, name: any, template: any)
 	if name == "" or utf8.len(name) == nil or (utf8.len(name) :: number) &gt; 60 then
 		return { ok = false, error = "bad_name" }
 	end
-	local tpl = if template == "demo" or template == "corp" then template else nil
+	local tpl = if template == "demo" then template else nil
 	local ok, project, rev = store:createProject(player.UserId, name, tpl)
 	return open(player, ok, project, rev, false)
 end
@@ -7189,7 +7246,7 @@ return EditorService
 </ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX0000002D">
+      <Item class="ModuleScript" referent="RBX0000002E">
         <Properties>
           <string name="Name">FilterService</string>
           <ProtectedString name="Source">--!nonstrict
@@ -7294,7 +7351,1479 @@ return FilterService
 </ProtectedString>
         </Properties>
       </Item>
-      <Item class="Script" referent="RBX0000002E">
+      <Item class="Folder" referent="RBX0000002F">
+        <Properties>
+          <string name="Name">Mafia</string>
+        </Properties>
+        <Item class="ModuleScript" referent="RBX00000030">
+          <Properties>
+            <string name="Name">MafiaGame</string>
+            <ProtectedString name="Source">--!nonstrict
+-- Игра «Мафия»: лобби, раздача ролей, ночь и день, голосования, призраки, ведущий, чаты
+-- Права проверяются только здесь, на сервере; клиент получает лишь то, что ему можно знать
+
+local Players = game:GetService("Players")
+local TextChatService = game:GetService("TextChatService")
+local HttpService = game:GetService("HttpService")
+
+local Shared = game:GetService("ReplicatedStorage").Workshop.Shared
+local Rules = require(Shared.MafiaRules)
+local UiText = require(Shared.UiText)
+local Remotes = require(Shared.Roblox.Remotes)
+local Village = require(script.Parent.Village)
+local Access = require(script.Parent.Parent.Access)
+
+local L = UiText.L
+
+local Game = {}
+
+local DURATION = { reveal = 8, dusk = 20, night = 40, morning = 7, day = 120, vote = 40, verdict = 7, ended = 25 }
+
+local state = {
+	phase = "idle", -- idle | lobby | reveal | dusk | night | morning | day | vote | verdict | ended
+	endsAt = 0,
+	players = {} :: { [Player]: any }, -- { role, alive, house, seat }
+	host = nil :: Player?,
+	settings = { style = "spring", theme = "plain", auto = true, counts = { mafia = 2, doctor = 1, sheriff = 1 } },
+	world = nil,
+	votes = {},
+	mafiaVotes = {},
+	heals = {},
+	checks = {},
+	lastHeal = {},
+	round = 0,
+	winner = nil,
+}
+Game.state = state
+
+local event: RemoteEvent
+local channels = {}
+
+local function inGame(p: Player): boolean
+	return state.players[p] ~= nil
+end
+
+local function participants(): { Player }
+	local out = {}
+	for p in state.players do
+		if p ~= state.host then
+			table.insert(out, p)
+		end
+	end
+	table.sort(out, function(a, b)
+		return a.UserId &lt; b.UserId
+	end)
+	return out
+end
+
+local function aliveMap()
+	local alive = {}
+	for p, info in state.players do
+		if info.role and info.alive then
+			alive[p] = true
+		end
+	end
+	return alive
+end
+
+local function rolesMap()
+	local roles = {}
+	for p, info in state.players do
+		if info.role then
+			roles[p] = info.role
+		end
+	end
+	return roles
+end
+
+local function send(p: Player, msg)
+	if p.Parent then
+		event:FireClient(p, msg)
+	end
+end
+
+local function sendAll(msg)
+	for p in state.players do
+		send(p, msg)
+	end
+end
+
+local function announce(text: string, sound: string?)
+	sendAll({ type = "announce", text = text, sound = sound })
+end
+
+-- Публичный список игроков: имена и кто жив; роли не раскрываются до конца игры
+local function publicPlayers()
+	local list = {}
+	for _, p in participants() do
+		local info = state.players[p]
+		table.insert(list, {
+			userId = p.UserId,
+			name = p.DisplayName,
+			alive = info.alive ~= false,
+			house = info.house,
+			role = if state.phase == "ended" then info.role else nil,
+		})
+	end
+	return list
+end
+
+-- Личное состояние: своя роль, свои действия; мафии — выбор остальных мафиози
+local function sync(p: Player)
+	local info = state.players[p]
+	if not info then
+		return
+	end
+	local isHost = p == state.host
+	local msg = {
+		type = "state",
+		phase = state.phase,
+		endsAt = state.endsAt,
+		round = state.round,
+		players = publicPlayers(),
+		hostId = state.host and state.host.UserId,
+		youHost = isHost,
+		canStart = isHost or state.host == nil,
+		creator = Access.isCreator(p),
+		settings = state.settings,
+		role = info.role,
+		alive = info.alive ~= false,
+		house = info.house,
+		vote = state.votes[p] and (if state.votes[p] == "skip" then "skip" else state.votes[p].UserId),
+		winner = state.winner,
+		chat = {},
+	}
+	-- голоса днём видят все (открытое голосование)
+	if state.phase == "vote" then
+		local tally = {}
+		for voter, target in state.votes do
+			local key = if target == "skip" then "skip" else tostring(target.UserId)
+			tally[key] = (tally[key] or 0) + 1
+			local _ = voter
+		end
+		msg.tally = tally
+	end
+	if info.role == "mafia" or isHost then
+		local mv = {}
+		for voter, target in state.mafiaVotes do
+			mv[tostring(voter.UserId)] = target.UserId
+		end
+		msg.mafiaVotes = mv
+		local team = {}
+		for q, qi in state.players do
+			if qi.role == "mafia" then
+				table.insert(team, q.UserId)
+			end
+		end
+		msg.mafiaTeam = team
+	end
+	if isHost then
+		local all = {}
+		for q, qi in state.players do
+			all[tostring(q.UserId)] = qi.role
+		end
+		msg.allRoles = all
+	end
+	if info.role == "sheriff" then
+		msg.checks = info.checks or {}
+	end
+	if info.role == "doctor" then
+		msg.lastHeal = state.lastHeal[p] and state.lastHeal[p].UserId
+		msg.heal = state.heals[p] and state.heals[p].UserId
+	end
+	for _, ch in { "general", "mafia", "ghost" } do
+		local canSend, canSee = Rules.chat(ch, { role = info.role, alive = info.alive ~= false, host = isHost }, state.phase)
+		msg.chat[ch] = { send = canSend, see = canSee }
+	end
+	send(p, msg)
+end
+
+local function syncAll()
+	for p in state.players do
+		sync(p)
+	end
+end
+
+-- ---------------------------------------------------------------------------
+-- чаты: свой общий канал игры, канал мафии и канал призраков
+
+local function channel(name: string): TextChannel
+	if channels[name] then
+		return channels[name]
+	end
+	local folder = TextChatService:FindFirstChild("TextChannels") or TextChatService
+	local c = folder:FindFirstChild(name) :: TextChannel?
+	if not c then
+		local nc = Instance.new("TextChannel")
+		nc.Name = name
+		nc.Parent = folder
+		c = nc
+	end
+	channels[name] = c
+	return c :: TextChannel
+end
+
+local NAMES = { general = "MafiaTown", mafia = "MafiaRoom", ghost = "GhostRoom" }
+
+local function sourceOf(c: TextChannel, p: Player): TextSource?
+	for _, s in c:GetChildren() do
+		if s:IsA("TextSource") and s.UserId == p.UserId then
+			return s
+		end
+	end
+	return nil
+end
+
+local function applyChat(p: Player)
+	local info = state.players[p]
+	for key, name in NAMES do
+		local c = channel(name)
+		local canSend, canSee = false, false
+		if info then
+			canSend, canSee = Rules.chat(key, { role = info.role, alive = info.alive ~= false, host = p == state.host }, state.phase)
+			if state.phase == "lobby" or state.phase == "idle" then
+				canSend, canSee = key == "general", key == "general"
+			end
+		end
+		local src = sourceOf(c, p)
+		if canSee then
+			if not src then
+				local ok, res = pcall(function()
+					return c:AddUserAsync(p.UserId)
+				end)
+				src = if ok then res else nil
+			end
+			if src then
+				src.CanSend = canSend
+			end
+		elseif src then
+			src:Destroy()
+		end
+	end
+	-- общий канал Roblox для игроков мафии закрыт, чтобы не было подсказок мимо правил
+	local general = TextChatService:FindFirstChild("TextChannels") and TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+	if general then
+		local src = sourceOf(general, p)
+		if src then
+			src.CanSend = info == nil
+		end
+	end
+end
+
+local function applyChatAll()
+	for p in state.players do
+		applyChat(p)
+	end
+end
+
+-- ---------------------------------------------------------------------------
+-- перемещения
+
+local function root(p: Player): BasePart?
+	return p.Character and p.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+end
+
+local function hideName(p: Player)
+	local hum = p.Character and p.Character:FindFirstChildOfClass("Humanoid")
+	if hum then
+		hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+		hum.NameDisplayDistance = 0
+	end
+end
+
+local function teleport(p: Player, cf: CFrame)
+	if p.Character then
+		local hrp = root(p)
+		if hrp then
+			hrp.Anchored = false
+			hrp.AssemblyLinearVelocity = Vector3.zero
+		end
+		p.Character:PivotTo(cf)
+	end
+end
+
+local function toLobby(p: Player)
+	if state.world then
+		local i = 0
+		for q in state.players do
+			i += 1
+			if q == p then
+				break
+			end
+		end
+		teleport(p, state.world.lobby * CFrame.new(((i - 1) % 5 - 2) * 4, 0, ((i - 1) // 5 - 1) * 4))
+	end
+end
+
+local function toSeat(p: Player)
+	local info = state.players[p]
+	if state.world and info and info.seat then
+		teleport(p, state.world.seats[info.seat])
+	end
+end
+
+local function toHouse(p: Player)
+	local info = state.players[p]
+	if state.world and info and info.house then
+		teleport(p, state.world.houses[info.house].inside)
+	end
+end
+
+local function makeGhost(p: Player)
+	if not state.world then
+		return
+	end
+	local char = p.Character
+	if char then
+		for _, d in char:GetDescendants() do
+			if d:IsA("BasePart") then
+				d.Transparency = 1
+				d.CanCollide = false
+			elseif d:IsA("Decal") then
+				d.Transparency = 1
+			end
+		end
+		teleport(p, state.world.sky)
+		local hrp = root(p)
+		if hrp then
+			hrp.Anchored = true
+		end
+	end
+end
+
+local function everyone(fn)
+	for p, info in state.players do
+		if p ~= state.host and info.alive ~= false then
+			fn(p)
+		end
+	end
+end
+
+local function setDoors(open: boolean)
+	if state.world then
+		for _, h in state.world.houses do
+			Village.setDoor(h, open)
+		end
+	end
+end
+
+-- ---------------------------------------------------------------------------
+-- фазы
+
+local function setPhase(phase: string, duration: number?)
+	state.phase = phase
+	state.endsAt = workspace:GetServerTimeNow() + (duration or DURATION[phase] or 30)
+	applyChatAll()
+	syncAll()
+	sendAll({ type = "phase", phase = phase, endsAt = state.endsAt, world = state.world and { sky = state.world.sky, center = state.world.center, weather = state.world.weather, style = state.world.style } })
+end
+
+local function checkWin(): boolean
+	local w = Rules.winner(rolesMap(), aliveMap())
+	if w then
+		state.winner = w
+		setPhase("ended")
+		announce(if w == "mafia" then L.MafiaWins else L.TownWins, "win")
+		return true
+	end
+	return false
+end
+
+local function kill(p: Player, cause: string)
+	local info = state.players[p]
+	if not info or info.alive == false then
+		return
+	end
+	info.alive = false
+	makeGhost(p)
+	send(p, { type = "ghost" })
+	announce(string.format(if cause == "vote" then L.ExiledFormat else L.KilledFormat, p.DisplayName), "death")
+end
+
+local startNight
+
+local function startDay()
+	state.votes = {}
+	setDoors(true)
+	everyone(toSeat)
+	setPhase("day")
+end
+
+local function startVote()
+	state.votes = {}
+	setPhase("vote")
+	announce(L.VoteNow, "vote")
+end
+
+local function finishVote()
+	if state.phase ~= "vote" then
+		return
+	end
+	local alive = aliveMap()
+	local votes = {}
+	for voter, target in state.votes do
+		votes[voter] = target
+	end
+	local exiled = Rules.dayResult(votes, alive)
+	if exiled then
+		kill(exiled, "vote")
+	else
+		announce(L.NobodyExiled)
+	end
+	if not checkWin() then
+		setPhase("verdict")
+	end
+end
+
+function startNight()
+	state.round += 1
+	state.mafiaVotes = {}
+	state.heals = {}
+	state.checks = {}
+	setPhase("dusk")
+	announce(L.GoHome, "night")
+end
+
+local function nightActions()
+	-- по домам: кто не дошёл, переносится сам
+	everyone(toHouse)
+	setDoors(false)
+	setPhase("night")
+end
+
+local function finishNight()
+	local target = Rules.mafiaTarget((function()
+		local v = {}
+		for voter, t in state.mafiaVotes do
+			v[voter] = t
+		end
+		return v
+	end)(), rolesMap(), aliveMap())
+	local heals = {}
+	for doctor, healed in state.heals do
+		table.insert(heals, healed)
+		state.lastHeal[doctor] = healed
+	end
+	local victim, saved = Rules.nightResult(target, heals)
+	setPhase("morning")
+	if victim then
+		kill(victim, "night")
+	elseif saved then
+		announce(L.DoctorSaved, "save")
+	else
+		announce(L.QuietNight)
+	end
+	checkWin()
+end
+
+local function advance()
+	local p = state.phase
+	if p == "reveal" then
+		startNight()
+	elseif p == "dusk" then
+		nightActions()
+	elseif p == "night" then
+		finishNight()
+	elseif p == "morning" then
+		startDay()
+	elseif p == "day" then
+		startVote()
+	elseif p == "vote" then
+		finishVote()
+	elseif p == "verdict" then
+		startNight()
+	elseif p == "ended" then
+		Game.backToLobby()
+	end
+end
+Game.advance = advance
+
+-- ---------------------------------------------------------------------------
+-- лобби и старт
+
+local function buildWorld()
+	state.world = Village.build(state.settings.style, state.settings.theme)
+end
+
+function Game.backToLobby()
+	state.winner = nil
+	state.round = 0
+	for p, info in state.players do
+		info.role = nil
+		info.alive = true
+		info.checks = nil
+		if p.Parent then
+			p:LoadCharacter()
+		end
+	end
+	state.lastHeal = {}
+	if state.world and state.world.lobbyModel then
+		state.world.lobbyModel.Parent = state.world.folder
+	end
+	setPhase("lobby", 3600)
+	for p in state.players do
+		task.delay(1, function()
+			hideName(p)
+			toLobby(p)
+		end)
+	end
+end
+
+function Game.join(p: Player)
+	if state.players[p] then
+		return { ok = true }
+	end
+	local count = 0
+	for _ in state.players do
+		count += 1
+	end
+	if count &gt;= Rules.MAX_PLAYERS + 1 then
+		return { ok = false, error = "full" }
+	end
+	if state.phase == "idle" then
+		buildWorld()
+		state.phase = "lobby"
+		state.endsAt = workspace:GetServerTimeNow() + 3600
+	end
+	state.players[p] = { role = nil, alive = true }
+	if not p.Character then
+		p.CharacterAdded:Wait()
+	end
+	hideName(p)
+	p.CharacterAdded:Connect(function()
+		task.wait()
+		hideName(p)
+		local info = state.players[p]
+		if not info then
+			return
+		end
+		if state.phase == "lobby" or state.phase == "idle" then
+			toLobby(p)
+		elseif info.alive == false or info.role == nil then
+			makeGhost(p)
+		elseif state.phase == "day" or state.phase == "vote" or state.phase == "verdict" or state.phase == "morning" then
+			toSeat(p)
+		else
+			toHouse(p)
+		end
+	end)
+	if state.phase == "lobby" then
+		toLobby(p)
+	else
+		-- игра уже идёт: новичок смотрит сверху и ждёт следующей партии
+		state.players[p].alive = false
+		makeGhost(p)
+	end
+	applyChat(p)
+	sendAll({ type = "joined", name = p.DisplayName })
+	syncAll()
+	sendAll({ type = "phase", phase = state.phase, endsAt = state.endsAt, world = { sky = state.world.sky, center = state.world.center, weather = state.world.weather, style = state.world.style } })
+	return { ok = true }
+end
+
+function Game.leave(p: Player)
+	local info = state.players[p]
+	if not info then
+		return
+	end
+	state.players[p] = nil
+	if state.host == p then
+		state.host = nil
+		announce(L.HostLeft)
+	end
+	applyChat(p)
+	if info.role and info.alive ~= false and state.phase ~= "lobby" and state.phase ~= "ended" then
+		announce(string.format(L.LeftFormat, p.DisplayName))
+		checkWin()
+	end
+	local any = next(state.players) ~= nil
+	if not any then
+		state.phase = "idle"
+		if state.world then
+			state.world.folder:Destroy()
+			state.world = nil
+		end
+	else
+		syncAll()
+	end
+end
+
+local function canControl(p: Player): boolean
+	return p == state.host or (state.host == nil and state.players[p] ~= nil)
+end
+
+local function start(p: Player)
+	if state.phase ~= "lobby" or not canControl(p) then
+		return { ok = false, error = "forbidden" }
+	end
+	local ids = participants()
+	if #ids &lt; Rules.MIN_PLAYERS then
+		return { ok = false, error = "few" }
+	end
+	local counts = if state.settings.auto then Rules.autoCounts(#ids) else state.settings.counts
+	local bad = Rules.checkCounts(#ids, counts)
+	if bad then
+		return { ok = false, error = bad }
+	end
+	local rng = Random.new()
+	local roles = Rules.assign(ids, counts, function(a, b)
+		return rng:NextInteger(a, b)
+	end)
+	-- дома и места у стола тоже по жребию
+	local order = table.clone(ids)
+	for i = #order, 2, -1 do
+		local j = rng:NextInteger(1, i)
+		order[i], order[j] = order[j], order[i]
+	end
+	for i, q in order do
+		local info = state.players[q]
+		info.role = roles[q]
+		info.alive = true
+		info.house = i
+		info.seat = i
+		info.checks = {}
+	end
+	if state.host then
+		state.players[state.host].role = nil
+		state.players[state.host].alive = false
+	end
+	if state.world and state.world.lobbyModel then
+		state.world.lobbyModel.Parent = nil
+	end
+	for _, q in ids do
+		toSeat(q)
+	end
+	if state.host then
+		teleport(state.host, state.world.seats[1] * CFrame.new(0, 0, 4))
+	end
+	setPhase("reveal")
+	announce(L.GameStarts, "start")
+	return { ok = true }
+end
+
+-- ---------------------------------------------------------------------------
+-- запросы клиента
+
+local function playerById(id): Player?
+	if type(id) ~= "number" then
+		return nil
+	end
+	local p = Players:GetPlayerByUserId(id)
+	if p and state.players[p] and p ~= state.host then
+		return p
+	end
+	return nil
+end
+
+local handlers = {}
+
+handlers.Join = function(p)
+	return Game.join(p)
+end
+
+handlers.Leave = function(p)
+	Game.leave(p)
+	return { ok = true }
+end
+
+handlers.BecomeHost = function(p, on)
+	if state.phase ~= "lobby" then
+		return { ok = false }
+	end
+	if on and state.host == nil then
+		state.host = p
+	elseif not on and state.host == p then
+		state.host = nil
+	elseif on and state.host and Access.isCreator(p) then
+		-- создатель может забрать роль ведущего
+		state.host = p
+	else
+		return { ok = false }
+	end
+	syncAll()
+	return { ok = true }
+end
+
+handlers.Settings = function(p, s)
+	if state.phase ~= "lobby" or not canControl(p) or type(s) ~= "table" then
+		return { ok = false }
+	end
+	local themes = { summer = { plain = true }, spring = { plain = true, april = true }, autumn = { plain = true, halloween = true }, winter = { plain = true, newyear = true } }
+	local style = if themes[s.style] then s.style else state.settings.style
+	local theme = if themes[style][s.theme] then s.theme else "plain"
+	local rebuild = style ~= state.settings.style or theme ~= state.settings.theme
+	state.settings.style = style
+	state.settings.theme = theme
+	state.settings.auto = s.auto ~= false
+	if type(s.counts) == "table" then
+		local c = {}
+		for _, k in { "mafia", "doctor", "sheriff" } do
+			local lim = Rules.LIMITS[k]
+			c[k] = math.clamp(math.floor(tonumber(s.counts[k]) or lim[1]), lim[1], lim[2])
+		end
+		state.settings.counts = c
+	end
+	if rebuild then
+		buildWorld()
+		for q in state.players do
+			toLobby(q)
+		end
+		sendAll({ type = "phase", phase = state.phase, endsAt = state.endsAt, world = { sky = state.world.sky, center = state.world.center, weather = state.world.weather, style = state.world.style } })
+	end
+	syncAll()
+	return { ok = true }
+end
+
+handlers.Start = function(p)
+	return start(p)
+end
+
+-- дневной голос
+handlers.Vote = function(p, targetId)
+	local info = state.players[p]
+	if state.phase ~= "vote" or not info or not info.role or info.alive == false then
+		return { ok = false }
+	end
+	if targetId == "skip" then
+		state.votes[p] = "skip"
+	else
+		local t = playerById(targetId)
+		if not t or state.players[t].alive == false then
+			return { ok = false }
+		end
+		state.votes[p] = t
+	end
+	syncAll()
+	-- все проголосовали: подводим итог раньше времени
+	local need, have = 0, 0
+	for q, qi in state.players do
+		if qi.role and qi.alive ~= false then
+			need += 1
+			if state.votes[q] then
+				have += 1
+			end
+		end
+	end
+	if have &gt;= need then
+		task.defer(finishVote)
+	end
+	return { ok = true }
+end
+
+-- ночные действия
+handlers.Night = function(p, targetId)
+	local info = state.players[p]
+	if state.phase ~= "night" or not info or info.alive == false then
+		return { ok = false }
+	end
+	local t = playerById(targetId)
+	if not t or state.players[t].alive == false then
+		return { ok = false }
+	end
+	if info.role == "mafia" then
+		if state.players[t].role == "mafia" then
+			return { ok = false }
+		end
+		state.mafiaVotes[p] = t
+		for q, qi in state.players do
+			if qi.role == "mafia" or q == state.host then
+				sync(q)
+			end
+		end
+	elseif info.role == "doctor" then
+		if state.lastHeal[p] == t then
+			return { ok = false, error = "same" }
+		end
+		state.heals[p] = t
+		sync(p)
+	elseif info.role == "sheriff" then
+		if state.checks[p] or t == p then
+			return { ok = false, error = "once" }
+		end
+		state.checks[p] = t
+		local isMafia = state.players[t].role == "mafia"
+		info.checks = info.checks or {}
+		table.insert(info.checks, { name = t.DisplayName, mafia = isMafia, round = state.round })
+		sync(p)
+	else
+		return { ok = false }
+	end
+	return { ok = true }
+end
+
+-- ведущий
+handlers.Host = function(p, action, arg)
+	if p ~= state.host and not (state.host == nil and Access.isCreator(p)) then
+		return { ok = false, error = "forbidden" }
+	end
+	if action == "next" then
+		advance()
+	elseif action == "more" then
+		state.endsAt += 30
+		syncAll()
+		sendAll({ type = "phase", phase = state.phase, endsAt = state.endsAt })
+	elseif action == "home" then
+		everyone(toHouse)
+		sendAll({ type = "sound", sound = "whoosh" })
+	elseif action == "table" then
+		everyone(toSeat)
+	elseif action == "toss" or action == "bring" or action == "sendHome" then
+		local t = playerById(arg)
+		local hrp = t and root(t)
+		if not t or not hrp then
+			return { ok = false }
+		end
+		if action == "toss" then
+			-- «пинок»: игрока подбрасывает в сторону его дома
+			local info = state.players[t]
+			local target = if info.house and state.world then state.world.houses[info.house].porch.Position else hrp.Position
+			local dir = target - hrp.Position
+			dir = Vector3.new(dir.X, 0, dir.Z)
+			dir = if dir.Magnitude &gt; 1 then dir.Unit else Vector3.new(0, 0, 1)
+			hrp.AssemblyLinearVelocity = dir * 70 + Vector3.new(0, 55, 0)
+			send(t, { type = "sound", sound = "whoosh" })
+		elseif action == "bring" then
+			local mine = root(p)
+			if mine then
+				teleport(t, mine.CFrame * CFrame.new(0, 0, -5))
+			end
+		else
+			toHouse(t)
+		end
+	end
+	return { ok = true }
+end
+
+-- ---------------------------------------------------------------------------
+
+function Game.init()
+	event = Remotes.event("Mafia")
+	Remotes.fn("MafiaRequest").OnServerInvoke = function(p: Player, action: any, ...: any)
+		local h = type(action) == "string" and handlers[action]
+		if not h then
+			return { ok = false }
+		end
+		local ok, res = pcall(h, p, ...)
+		if not ok then
+			warn("[Mafia] " .. tostring(action) .. ": " .. tostring(res))
+			return { ok = false }
+		end
+		return res
+	end
+	-- таймер фаз
+	task.spawn(function()
+		while true do
+			task.wait(0.5)
+			if state.phase ~= "idle" and state.phase ~= "lobby" and workspace:GetServerTimeNow() &gt;= state.endsAt then
+				local ok, err = pcall(advance)
+				if not ok then
+					warn("[Mafia] phase: " .. tostring(err))
+				end
+			end
+		end
+	end)
+	Players.PlayerRemoving:Connect(Game.leave)
+	local _ = HttpService
+end
+
+function Game.inGame(p: Player): boolean
+	return inGame(p)
+end
+
+return Game
+</ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="RBX00000031">
+          <Properties>
+            <string name="Name">Village</string>
+            <ProtectedString name="Source">--!nonstrict
+-- Деревня для «Мафии»: настоящий рельеф Roblox (песок, трава, снег, вода), 13 домиков
+-- по кругу дверями к центру, стол для обсуждения, деревья и оформление сезона
+-- Стили: summer (песок и море), spring (трава, деревья, озеро), autumn (непроходимый лес),
+-- winter (снег). Темы: winter — newyear | plain, autumn — halloween | plain,
+-- spring — april | plain (в обычной весне четыре статуи держат купол), summer — plain
+
+local Lighting = game:GetService("Lighting")
+
+local Statue = require(script.Parent.Parent.Statue)
+
+local Village = {}
+
+Village.ORIGIN = Vector3.new(0, 0, 9000)
+Village.HOUSES = 13
+Village.RING = 64
+Village.STATUE_USER = "Nataliaavira13"
+
+local V = Village.ORIGIN
+local terrain = workspace.Terrain
+
+local function rgb(r, g, b)
+	return Color3.fromRGB(r, g, b)
+end
+
+local function part(parent: Instance, props): BasePart
+	local cls = props.Class or "Part"
+	local p = Instance.new(cls)
+	p.Anchored = true
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	for k, v in props do
+		if k ~= "Class" and k ~= "Sphere" then
+			(p :: any)[k] = v
+		end
+	end
+	if props.Sphere then
+		local m = Instance.new("SpecialMesh")
+		m.MeshType = Enum.MeshType.Sphere
+		m.Parent = p
+	end
+	p.Parent = parent
+	return p
+end
+
+local function rnd(seed: number)
+	local s = seed
+	return function(a: number, b: number): number
+		s = (s * 1103515245 + 12345) % 2147483648
+		return a + (b - a) * ((s // 65536) % 10000) / 10000
+	end
+end
+
+-- ---------------------------------------------------------------------------
+-- деревья
+
+local function deciduous(parent, pos: Vector3, h: number, leaf: Color3, r)
+	local m = Instance.new("Model")
+	m.Name = "Tree"
+	part(m, { Name = "Trunk", Shape = Enum.PartType.Cylinder, Size = Vector3.new(h, 1.4, 1.4), CFrame = CFrame.new(pos + Vector3.new(0, h / 2, 0)) * CFrame.Angles(0, 0, math.pi / 2), Color = rgb(95, 68, 45), Material = Enum.Material.Wood })
+	for i = 1, 4 do
+		local d = r(5, 8)
+		local off = Vector3.new(r(-2.2, 2.2), h + r(-1, 2.2), r(-2.2, 2.2))
+		part(m, { Name = "Leaves", Shape = Enum.PartType.Ball, Size = Vector3.new(d, d, d), CFrame = CFrame.new(pos + off), Color = leaf:Lerp(rgb(0, 0, 0), r(0, 0.18)), Material = Enum.Material.LeafyGrass, CanCollide = i == 1 })
+	end
+	m.Parent = parent
+	return m
+end
+
+local function pine(parent, pos: Vector3, h: number, snowy: boolean, r)
+	local m = Instance.new("Model")
+	m.Name = "Pine"
+	part(m, { Name = "Trunk", Shape = Enum.PartType.Cylinder, Size = Vector3.new(h * 0.35, 1.1, 1.1), CFrame = CFrame.new(pos + Vector3.new(0, h * 0.175, 0)) * CFrame.Angles(0, 0, math.pi / 2), Color = rgb(85, 60, 40), Material = Enum.Material.Wood })
+	local tiers = 5
+	for i = 0, tiers - 1 do
+		local w = (1 - i / tiers) * h * 0.55 + 1
+		local y = h * 0.25 + i * h * 0.15
+		part(m, { Name = "Needles", Shape = Enum.PartType.Cylinder, Size = Vector3.new(h * 0.16, w, w), CFrame = CFrame.new(pos + Vector3.new(0, y, 0)) * CFrame.Angles(0, 0, math.pi / 2), Color = rgb(35, 85, 50), Material = Enum.Material.Grass, CanCollide = i == 0 })
+		if snowy then
+			part(m, { Name = "Snow", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.35, w * 0.8, w * 0.8), CFrame = CFrame.new(pos + Vector3.new(0, y + h * 0.08, 0)) * CFrame.Angles(0, 0, math.pi / 2), Color = rgb(245, 248, 255), Material = Enum.Material.Snow, CanCollide = false })
+		end
+	end
+	m.Parent = parent
+	return m
+end
+
+local function palm(parent, pos: Vector3, h: number, r)
+	local m = Instance.new("Model")
+	m.Name = "Palm"
+	local lean = r(-0.25, 0.25)
+	local top = pos
+	local seg = h / 5
+	for i = 1, 5 do
+		local a = lean * i / 5
+		local cf = CFrame.new(top) * CFrame.Angles(a, 0, a * 0.6) * CFrame.new(0, seg / 2, 0)
+		part(m, { Name = "Trunk", Shape = Enum.PartType.Cylinder, Size = Vector3.new(seg + 0.2, 1.1 - i * 0.08, 1.1 - i * 0.08), CFrame = cf * CFrame.Angles(0, 0, math.pi / 2), Color = rgb(150, 115, 75), Material = Enum.Material.Wood })
+		top = (cf * CFrame.new(0, seg / 2, 0)).Position
+	end
+	for k = 0, 6 do
+		local yaw = k / 7 * math.pi * 2
+		local leaf = CFrame.new(top) * CFrame.Angles(0, yaw, 0) * CFrame.Angles(-0.45, 0, 0) * CFrame.new(0, 0, -3.2)
+		part(m, { Name = "Leaf", Size = Vector3.new(1.6, 0.2, 6.5), CFrame = leaf, Color = rgb(60, 140, 60), Material = Enum.Material.LeafyGrass, CanCollide = false })
+	end
+	for k = 0, 2 do
+		part(m, { Name = "Coconut", Shape = Enum.PartType.Ball, Size = Vector3.new(0.9, 0.9, 0.9), CFrame = CFrame.new(top + Vector3.new(math.cos(k * 2.1) * 0.7, -0.6, math.sin(k * 2.1) * 0.7)), Color = rgb(90, 60, 35), CanCollide = false })
+	end
+	m.Parent = parent
+	return m
+end
+
+local function pumpkin(parent, cf: CFrame, s: number)
+	local m = Instance.new("Model")
+	m.Name = "Pumpkin"
+	part(m, { Name = "Body", Size = Vector3.new(2.2, 1.6, 2.2) * s, CFrame = cf, Color = rgb(230, 120, 25), Material = Enum.Material.SmoothPlastic, Sphere = true })
+	part(m, { Name = "Stem", Size = Vector3.new(0.25, 0.6, 0.25) * s, CFrame = cf * CFrame.new(0, 0.95 * s, 0), Color = rgb(70, 110, 40) })
+	for _, x in { -0.45, 0.45 } do
+		part(m, { Name = "Eye", Size = Vector3.new(0.35, 0.35, 0.1) * s, CFrame = cf * CFrame.new(x * s, 0.2 * s, -1.05 * s), Color = rgb(255, 210, 80), Material = Enum.Material.Neon, CanCollide = false })
+	end
+	part(m, { Name = "Mouth", Size = Vector3.new(1, 0.22, 0.1) * s, CFrame = cf * CFrame.new(0, -0.3 * s, -1.05 * s), Color = rgb(255, 210, 80), Material = Enum.Material.Neon, CanCollide = false })
+	local l = Instance.new("PointLight")
+	l.Color = rgb(255, 160, 60)
+	l.Range = 10
+	l.Brightness = 1.5
+	l.Parent = m:FindFirstChild("Body")
+	m.Parent = parent
+end
+
+-- ---------------------------------------------------------------------------
+-- стили
+
+local STYLES = {
+	summer = {
+		ground = Enum.Material.Sand, groundColor = rgb(232, 214, 160), path = Enum.Material.Sandstone,
+		wall = rgb(245, 236, 215), wallMat = Enum.Material.WoodPlanks, roof = rgb(205, 175, 95), roofMat = Enum.Material.Fabric,
+		clock = 14, ambient = rgb(140, 130, 120), weather = "Clear",
+	},
+	spring = {
+		ground = Enum.Material.Grass, groundColor = rgb(92, 160, 70), path = Enum.Material.Cobblestone,
+		wall = rgb(240, 236, 228), wallMat = Enum.Material.Plaster, roof = rgb(175, 80, 60), roofMat = Enum.Material.ClayRoofTiles,
+		clock = 13, ambient = rgb(120, 130, 120), weather = "Clear",
+	},
+	autumn = {
+		ground = Enum.Material.Grass, groundColor = rgb(160, 120, 55), path = Enum.Material.Ground,
+		wall = rgb(120, 85, 58), wallMat = Enum.Material.WoodPlanks, roof = rgb(75, 62, 60), roofMat = Enum.Material.RoofShingles,
+		clock = 16.5, ambient = rgb(130, 110, 95), weather = "Clear",
+	},
+	winter = {
+		ground = Enum.Material.Snow, groundColor = rgb(240, 244, 250), path = Enum.Material.Pavement,
+		wall = rgb(150, 105, 72), wallMat = Enum.Material.WoodPlanks, roof = rgb(245, 248, 255), roofMat = Enum.Material.Snow,
+		clock = 12, ambient = rgb(140, 145, 160), weather = "Snow",
+	},
+}
+Village.STYLES = STYLES
+
+-- ---------------------------------------------------------------------------
+-- дом: стены, окна, двускатная крыша, дверь к центру, номер, кровать, фонарь
+
+local function house(parent, cf: CFrame, index: number, st, theme: string, r)
+	local m = Instance.new("Model")
+	m.Name = "House" .. index
+	local wall = st.wall
+	if theme == "april" then
+		wall = Color3.fromHSV((index * 0.137) % 1, 0.45, 1)
+	end
+	local W, D, H = 14, 12, 8
+	local function at(x, y, z)
+		return cf * CFrame.new(x, y, z)
+	end
+	part(m, { Name = "Floor", Size = Vector3.new(W, 0.6, D), CFrame = at(0, 0.3, 0), Color = rgb(120, 86, 60), Material = Enum.Material.WoodPlanks })
+	part(m, { Name = "Wall", Size = Vector3.new(W, H, 0.6), CFrame = at(0, H / 2, D / 2), Color = wall, Material = st.wallMat })
+	part(m, { Name = "Wall", Size = Vector3.new(0.6, H, D), CFrame = at(-W / 2, H / 2, 0), Color = wall, Material = st.wallMat })
+	part(m, { Name = "Wall", Size = Vector3.new(0.6, H, D), CFrame = at(W / 2, H / 2, 0), Color = wall, Material = st.wallMat })
+	-- передняя стена с проёмом под дверь
+	part(m, { Name = "Wall", Size = Vector3.new(5.3, H, 0.6), CFrame = at(-4.35, H / 2, -D / 2), Color = wall, Material = st.wallMat })
+	part(m, { Name = "Wall", Size = Vector3.new(5.3, H, 0.6), CFrame = at(4.35, H / 2, -D / 2), Color = wall, Material = st.wallMat })
+	part(m, { Name = "Wall", Size = Vector3.new(3.4, 1.5, 0.6), CFrame = at(0, H - 0.75, -D / 2), Color = wall, Material = st.wallMat })
+	-- угловые брусья
+	for _, x in { -W / 2, W / 2 } do
+		for _, z in { -D / 2, D / 2 } do
+			part(m, { Name = "Beam", Size = Vector3.new(0.9, H, 0.9), CFrame = at(x, H / 2, z), Color = rgb(90, 64, 44), Material = Enum.Material.Wood })
+		end
+	end
+	-- окна: рама и стекло, ночью светятся изнутри
+	local function window(x, y, z, yaw)
+		local wcf = at(x, y, z) * CFrame.Angles(0, yaw, 0)
+		part(m, { Name = "Frame", Size = Vector3.new(2.6, 2.4, 0.25), CFrame = wcf, Color = rgb(70, 50, 35), Material = Enum.Material.Wood, CanCollide = false })
+		local g = part(m, { Name = "Window", Size = Vector3.new(2.1, 1.9, 0.3), CFrame = wcf, Color = rgb(255, 214, 140), Material = Enum.Material.Glass, Transparency = 0.25, CanCollide = false })
+		g:SetAttribute("NightGlow", true)
+		part(m, { Name = "Mullion", Size = Vector3.new(0.12, 1.9, 0.34), CFrame = wcf, Color = rgb(70, 50, 35), CanCollide = false })
+	end
+	window(-4.35, 4.6, -D / 2 - 0.3, 0)
+	window(4.35, 4.6, -D / 2 - 0.3, 0)
+	window(-W / 2 - 0.3, 4.6, 0, math.pi / 2)
+	window(W / 2 + 0.3, 4.6, 0, math.pi / 2)
+	-- двускатная крыша из клиньев: конёк вдоль дома
+	local RH = 4.6
+	for _, s in { -1, 1 } do
+		local roof = part(m, {
+			Class = "WedgePart", Name = "Roof", Size = Vector3.new(W + 1.6, RH, D / 2 + 1),
+			CFrame = at(0, H + RH / 2, s * (D / 4 + 0.5)) * CFrame.Angles(0, if s &gt; 0 then math.pi else 0, 0),
+			Color = st.roof, Material = st.roofMat,
+		})
+		roof:SetAttribute("Roof", true)
+	end
+	local chimney = part(m, { Name = "Chimney", Size = Vector3.new(1.4, 4, 1.4), CFrame = at(W / 2 - 3, H + RH - 0.5, D / 4), Color = rgb(140, 70, 55), Material = Enum.Material.Brick })
+	chimney:SetAttribute("Roof", true)
+	-- дверь на петлях, открывается кнопкой
+	local door = part(m, { Name = "Door", Size = Vector3.new(3.2, 6.4, 0.3), CFrame = at(0, 3.5, -D / 2), Color = rgb(110, 70, 45), Material = Enum.Material.Wood })
+	part(m, { Name = "Handle", Shape = Enum.PartType.Ball, Size = Vector3.new(0.3, 0.3, 0.3), CFrame = at(1.1, 3.4, -D / 2 - 0.25), Color = rgb(200, 170, 80), Material = Enum.Material.Metal, CanCollide = false })
+	-- номер дома (имена игроков скрыты)
+	local plate = part(m, { Name = "Plate", Size = Vector3.new(1.6, 1, 0.15), CFrame = at(0, H - 0.75, -D / 2 - 0.4), Color = rgb(40, 40, 46), CanCollide = false })
+	local sg = Instance.new("SurfaceGui")
+	sg.Face = Enum.NormalId.Front
+	sg.PixelsPerStud = 60
+	local t = Instance.new("TextLabel")
+	t.Size = UDim2.fromScale(1, 1)
+	t.BackgroundTransparency = 1
+	t.Text = tostring(index)
+	t.TextScaled = true
+	t.Font = Enum.Font.GothamBold
+	t.TextColor3 = rgb(240, 225, 190)
+	t.Parent = sg
+	sg.Parent = plate
+	-- фонарь у двери и свет в доме
+	local lamp = part(m, { Name = "Lantern", Size = Vector3.new(0.6, 0.9, 0.6), CFrame = at(2.4, 5.6, -D / 2 - 0.5), Color = rgb(255, 210, 140), Material = Enum.Material.Neon, CanCollide = false })
+	local ll = Instance.new("PointLight")
+	ll.Range = 14
+	ll.Brightness = 1.4
+	ll.Color = rgb(255, 200, 130)
+	ll.Parent = lamp
+	local inside = part(m, { Name = "Inside", Size = Vector3.new(0.2, 0.2, 0.2), CFrame = at(0, H - 1, 0), Transparency = 1, CanCollide = false })
+	local il = Instance.new("PointLight")
+	il.Range = 16
+	il.Brightness = 1.2
+	il.Color = rgb(255, 210, 150)
+	il.Parent = inside
+	-- кровать и тумбочка
+	part(m, { Name = "Bed", Size = Vector3.new(4, 1, 6.5), CFrame = at(-4, 1.1, 2), Color = rgb(90, 60, 40), Material = Enum.Material.Wood })
+	part(m, { Name = "Mattress", Size = Vector3.new(3.7, 0.6, 6.2), CFrame = at(-4, 1.9, 2), Color = rgb(235, 235, 240), Material = Enum.Material.Fabric })
+	part(m, { Name = "Blanket", Size = Vector3.new(3.8, 0.3, 4), CFrame = at(-4, 2.25, 1), Color = Color3.fromHSV((index * 0.21) % 1, 0.5, 0.8), Material = Enum.Material.Fabric })
+	part(m, { Name = "Table", Size = Vector3.new(3, 0.3, 2), CFrame = at(4, 2.8, 3.5), Color = rgb(110, 80, 55), Material = Enum.Material.Wood })
+	-- украшения тем
+	if theme == "newyear" then
+		for k = 0, 10 do
+			local x = -W / 2 - 0.4 + k * (W + 0.8) / 10
+			local bulb = part(m, { Name = "Garland", Shape = Enum.PartType.Ball, Size = Vector3.new(0.45, 0.45, 0.45), CFrame = at(x, H + 0.1, -D / 2 - 1.05), Color = ({ rgb(255, 60, 60), rgb(60, 220, 90), rgb(70, 140, 255), rgb(255, 210, 60) })[k % 4 + 1], Material = Enum.Material.Neon, CanCollide = false })
+			bulb:SetAttribute("Roof", true)
+		end
+	elseif theme == "halloween" then
+		pumpkin(m, at(-2.5, 1.2, -D / 2 - 1.6), 0.9)
+	elseif theme == "april" then
+		for k = 0, 2 do
+			local b = part(m, { Name = "Balloon", Size = Vector3.new(1.4, 1.8, 1.4), CFrame = at(-2 + k * 2, H + 6 + k * 0.6, -D / 2 - 1.2), Color = Color3.fromHSV(r(0, 1), 0.8, 1), Material = Enum.Material.SmoothPlastic, Sphere = true, CanCollide = false })
+			b:SetAttribute("Roof", true)
+			part(m, { Name = "String", Size = Vector3.new(0.05, 5.5, 0.05), CFrame = at(-2 + k * 2, H + 2.5 + k * 0.3, -D / 2 - 1.2), Color = rgb(250, 250, 250), CanCollide = false })
+		end
+	end
+	m.Parent = parent
+	return {
+		model = m,
+		door = door,
+		doorClosed = door.CFrame,
+		hinge = at(-1.6, 3.5, -D / 2),
+		inside = at(0, 3, -1) * CFrame.Angles(0, math.pi, 0),
+		porch = at(0, 3, -D / 2 - 4),
+	}
+end
+
+-- ---------------------------------------------------------------------------
+-- рельеф
+
+local function clear()
+	terrain:FillBlock(CFrame.new(V + Vector3.new(0, 30, 0)), Vector3.new(620, 140, 620), Enum.Material.Air)
+end
+
+local function ground(st, style: string, theme: string)
+	terrain:SetMaterialColor(Enum.Material.Grass, st.groundColor)
+	terrain:SetMaterialColor(Enum.Material.Sand, rgb(232, 214, 160))
+	if style == "summer" then
+		-- море вокруг песчаного острова
+		terrain:FillBlock(CFrame.new(V + Vector3.new(0, -9, 0)), Vector3.new(600, 16, 600), Enum.Material.Water)
+		terrain:FillCylinder(CFrame.new(V + Vector3.new(0, -6, 0)), 12, 168, Enum.Material.Sand)
+		terrain:FillCylinder(CFrame.new(V + Vector3.new(0, -4, 0)), 8, 150, Enum.Material.Sand)
+	else
+		terrain:FillCylinder(CFrame.new(V + Vector3.new(0, -5, 0)), 10, 290, st.ground)
+		if style == "spring" then
+			terrain:FillCylinder(CFrame.new(V + Vector3.new(0, -0.6, 0)), 1.2, 175, Enum.Material.LeafyGrass)
+			terrain:FillCylinder(CFrame.new(V + Vector3.new(0, -0.5, 0)), 1.2, 120, Enum.Material.Grass)
+			-- озеро за деревней
+			local lake = V + Vector3.new(118, 0, -88)
+			terrain:FillCylinder(CFrame.new(lake + Vector3.new(0, -0.4, 0)), 1.2, 34, Enum.Material.Sand)
+			terrain:FillCylinder(CFrame.new(lake + Vector3.new(0, 0, 0)), 9, 30, Enum.Material.Air)
+			terrain:FillCylinder(CFrame.new(lake + Vector3.new(0, -2.8, 0)), 3.6, 30, Enum.Material.Water)
+		elseif style == "winter" then
+			-- замёрзший пруд
+			local pond = V + Vector3.new(-100, 0, 70)
+			terrain:FillCylinder(CFrame.new(pond + Vector3.new(0, -0.3, 0)), 1, 22, Enum.Material.Ice)
+		elseif style == "autumn" then
+			terrain:FillCylinder(CFrame.new(V + Vector3.new(0, -0.5, 0)), 1.2, 260, Enum.Material.Ground)
+			terrain:FillCylinder(CFrame.new(V + Vector3.new(0, -0.45, 0)), 1.2, 95, Enum.Material.Grass)
+			terrain:SetMaterialColor(Enum.Material.Ground, rgb(120, 85, 50))
+		end
+	end
+	-- дорожки от центра к домам
+	for i = 0, Village.HOUSES - 1 do
+		local a = i / Village.HOUSES * math.pi * 2
+		local dir = Vector3.new(math.sin(a), 0, math.cos(a))
+		local mid = V + dir * (Village.RING / 2 + 6)
+		terrain:FillBlock(CFrame.lookAt(mid + Vector3.new(0, -0.35, 0), mid + dir + Vector3.new(0, -0.35, 0)), Vector3.new(4, 1, Village.RING - 20), st.path)
+	end
+	terrain:FillCylinder(CFrame.new(V + Vector3.new(0, -0.35, 0)), 1, 17, st.path)
+	local _ = theme
+end
+
+-- невидимая стена по кругу, чтобы не уйти с карты
+local function barrier(parent, radius: number, height: number)
+	local n = 36
+	for i = 0, n - 1 do
+		local a = (i + 0.5) / n * math.pi * 2
+		local p = V + Vector3.new(math.sin(a) * radius, height / 2, math.cos(a) * radius)
+		local w = 2 * math.pi * radius / n + 2
+		part(parent, { Name = "Barrier", Size = Vector3.new(w, height, 2), CFrame = CFrame.lookAt(p, Vector3.new(V.X, p.Y, V.Z)), Transparency = 1, CanQuery = false })
+	end
+end
+
+-- ---------------------------------------------------------------------------
+-- сборка
+
+-- Возвращает описание мира для игры: дома, места у стола, лобби, небо для призраков
+function Village.build(style: string, theme: string)
+	local st = STYLES[style] or STYLES.spring
+	local old = workspace:FindFirstChild("MafiaVillage")
+	if old then
+		old:Destroy()
+	end
+	local folder = Instance.new("Folder")
+	folder.Name = "MafiaVillage"
+	folder.Parent = workspace
+	local r = rnd(1234)
+	clear()
+	ground(st, style, theme)
+
+	-- центр: круглый стол и 13 табуретов
+	local center = Instance.new("Model")
+	center.Name = "Center"
+	part(center, { Name = "Table", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1, 14, 14), CFrame = CFrame.new(V + Vector3.new(0, 3, 0)) * CFrame.Angles(0, 0, math.pi / 2), Color = rgb(115, 80, 52), Material = Enum.Material.WoodPlanks })
+	part(center, { Name = "Leg", Shape = Enum.PartType.Cylinder, Size = Vector3.new(2.6, 2.4, 2.4), CFrame = CFrame.new(V + Vector3.new(0, 1.3, 0)) * CFrame.Angles(0, 0, math.pi / 2), Color = rgb(90, 64, 44), Material = Enum.Material.Wood })
+	local candle = part(center, { Name = "Candle", Size = Vector3.new(0.6, 1.2, 0.6), CFrame = CFrame.new(V + Vector3.new(0, 4.1, 0)), Color = rgb(255, 200, 120), Material = Enum.Material.Neon })
+	local cl = Instance.new("PointLight")
+	cl.Range = 22
+	cl.Brightness = 2
+	cl.Color = rgb(255, 190, 120)
+	cl.Parent = candle
+	local seats = {}
+	for i = 0, Village.HOUSES - 1 do
+		local a = i / Village.HOUSES * math.pi * 2
+		local p = V + Vector3.new(math.sin(a) * 10, 0, math.cos(a) * 10)
+		part(center, { Name = "Stool", Shape = Enum.PartType.Cylinder, Size = Vector3.new(2, 2.2, 2.2), CFrame = CFrame.new(p + Vector3.new(0, 1, 0)) * CFrame.Angles(0, 0, math.pi / 2), Color = rgb(125, 90, 60), Material = Enum.Material.Wood })
+		seats[i + 1] = CFrame.lookAt(p + Vector3.new(0, 4, 0) + (p - V).Unit * 1.6, Vector3.new(V.X, p.Y + 4, V.Z))
+	end
+	center.Parent = folder
+
+	-- дома по кругу, дверью к центру
+	local houses = {}
+	for i = 0, Village.HOUSES - 1 do
+		local a = i / Village.HOUSES * math.pi * 2
+		local p = V + Vector3.new(math.sin(a) * Village.RING, 0, math.cos(a) * Village.RING)
+		local cf = CFrame.lookAt(p, Vector3.new(V.X, 0, V.Z))
+		houses[i + 1] = house(folder, cf, i + 1, st, theme, r)
+	end
+
+	-- деревья и украшения
+	local deco = Instance.new("Folder")
+	deco.Name = "Nature"
+	deco.Parent = folder
+	local function ringPos(radius: number, a: number)
+		return V + Vector3.new(math.sin(a) * radius, 0, math.cos(a) * radius)
+	end
+	if style == "summer" then
+		for i = 0, 33 do
+			local a = i / 34 * math.pi * 2 + r(-0.05, 0.05)
+			palm(deco, ringPos(r(96, 138), a), r(14, 20), r)
+		end
+		-- лодка у берега и зонтики
+		for i = 0, 5 do
+			local a = i / 6 * math.pi * 2 + 0.3
+			local p = ringPos(118, a)
+			part(deco, { Name = "Umbrella", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, 7, 7), CFrame = CFrame.new(p + Vector3.new(0, 5, 0)) * CFrame.Angles(0, 0, math.pi / 2), Color = ({ rgb(230, 70, 70), rgb(70, 150, 230), rgb(250, 210, 60) })[i % 3 + 1], Material = Enum.Material.Fabric })
+			part(deco, { Name = "Pole", Size = Vector3.new(0.25, 5, 0.25), CFrame = CFrame.new(p + Vector3.new(0, 2.5, 0)), Color = rgb(240, 240, 240) })
+			part(deco, { Name = "Towel", Size = Vector3.new(2.4, 0.1, 5), CFrame = CFrame.new(p + Vector3.new(2.5, 0.1, 0)) * CFrame.Angles(0, a, 0), Color = Color3.fromHSV(i / 6, 0.5, 0.95), Material = Enum.Material.Fabric, CanCollide = false })
+		end
+		barrier(folder, 175, 60)
+	elseif style == "spring" then
+		for i = 0, 23 do
+			local a = i / 24 * math.pi * 2 + r(-0.1, 0.1)
+			deciduous(deco, ringPos(r(90, 160), a), r(9, 13), rgb(70, 150, 60), r)
+		end
+		-- цветы
+		for _ = 1, 140 do
+			local a = r(0, math.pi * 2)
+			local p = ringPos(r(22, 150), a)
+			if (p - V).Magnitude &lt; 52 or (p - V).Magnitude &gt; 78 then
+				part(deco, { Name = "Flower", Shape = Enum.PartType.Ball, Size = Vector3.new(0.6, 0.6, 0.6), CFrame = CFrame.new(p + Vector3.new(0, 0.5, 0)), Color = Color3.fromHSV(r(0, 1), 0.65, 1), CanCollide = false })
+			end
+		end
+		if theme == "april" then
+			local c = part(folder, { Name = "Confetti", Size = Vector3.new(60, 1, 60), CFrame = CFrame.new(V + Vector3.new(0, 40, 0)), Transparency = 1, CanCollide = false, CanQuery = false })
+			local e = Instance.new("ParticleEmitter")
+			e.Rate = 40
+			e.Speed = NumberRange.new(4, 8)
+			e.EmissionDirection = Enum.NormalId.Bottom
+			e.Lifetime = NumberRange.new(6, 9)
+			e.Size = NumberSequence.new(0.35)
+			e.Rotation = NumberRange.new(0, 360)
+			e.RotSpeed = NumberRange.new(-180, 180)
+			e.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, rgb(255, 80, 80)), ColorSequenceKeypoint.new(0.33, rgb(80, 220, 120)), ColorSequenceKeypoint.new(0.66, rgb(80, 140, 255)), ColorSequenceKeypoint.new(1, rgb(255, 220, 60)) })
+			e.Parent = c
+			barrier(folder, 175, 60)
+		end
+	elseif style == "autumn" then
+		-- густой лес, через который не пройти
+		local leaves = { rgb(210, 110, 40), rgb(190, 60, 40), rgb(225, 170, 50), rgb(150, 90, 40) }
+		local n = 0
+		for ring = 0, 4 do
+			local radius = 100 + ring * 14
+			local count = 34 + ring * 6
+			for i = 0, count - 1 do
+				n += 1
+				local a = (i + ring * 0.5) / count * math.pi * 2 + r(-0.03, 0.03)
+				deciduous(deco, ringPos(radius + r(-3, 3), a), r(11, 16), leaves[n % 4 + 1], r)
+			end
+		end
+		barrier(folder, 98, 60)
+		if theme == "halloween" then
+			for i = 0, 11 do
+				local a = i / 12 * math.pi * 2 + 0.13
+				pumpkin(deco, CFrame.lookAt(ringPos(30, a) + Vector3.new(0, 1, 0), V + Vector3.new(0, 1, 0)), 1.3)
+			end
+		end
+	elseif style == "winter" then
+		for i = 0, 29 do
+			local a = i / 30 * math.pi * 2 + r(-0.08, 0.08)
+			pine(deco, ringPos(r(92, 150), a), r(14, 22), true, r)
+		end
+		if theme == "newyear" then
+			-- нарядная ёлка у центра
+			local treePos = V + Vector3.new(0, 0, -24)
+			local t = pine(deco, treePos, 26, true, r)
+			for k = 0, 40 do
+				local h = 5 + k * 0.45
+				local w = (1 - (h - 4) / 22) * 8
+				local a = k * 2.4
+				local ball = part(t, { Name = "Ornament", Shape = Enum.PartType.Ball, Size = Vector3.new(0.7, 0.7, 0.7), CFrame = CFrame.new(treePos + Vector3.new(math.sin(a) * w, h, math.cos(a) * w)), Color = ({ rgb(255, 60, 60), rgb(255, 215, 60), rgb(70, 140, 255), rgb(240, 240, 255) })[k % 4 + 1], Material = Enum.Material.Neon, CanCollide = false })
+				local _ = ball
+			end
+			local star = part(t, { Name = "Star", Shape = Enum.PartType.Ball, Size = Vector3.new(1.8, 1.8, 1.8), CFrame = CFrame.new(treePos + Vector3.new(0, 27.5, 0)), Color = rgb(255, 220, 80), Material = Enum.Material.Neon, CanCollide = false })
+			local sl = Instance.new("PointLight")
+			sl.Range = 30
+			sl.Brightness = 2
+			sl.Color = rgb(255, 220, 120)
+			sl.Parent = star
+			for k = 0, 5 do
+				local a = k / 6 * math.pi * 2
+				local g = treePos + Vector3.new(math.sin(a) * 5, 0.8, math.cos(a) * 5)
+				part(deco, { Name = "Gift", Size = Vector3.new(1.6, 1.4, 1.6), CFrame = CFrame.new(g) * CFrame.Angles(0, a, 0), Color = Color3.fromHSV(k / 6, 0.7, 0.9) })
+				part(deco, { Name = "Ribbon", Size = Vector3.new(1.7, 1.45, 0.3), CFrame = CFrame.new(g) * CFrame.Angles(0, a, 0), Color = rgb(250, 230, 120), CanCollide = false })
+			end
+		end
+		barrier(folder, 160, 60)
+	end
+
+	-- статуи Натальи: в три раза больше обычного роста
+	local statues = Instance.new("Folder")
+	statues.Name = "Statues"
+	statues.Parent = folder
+	local domeMode = style == "spring" and theme == "plain"
+	local lobbyCF
+	local function pedestal(cf: CFrame)
+		local stone = rgb(200, 198, 194)
+		part(statues, { Name = "Step", Size = Vector3.new(16, 1.2, 16), CFrame = cf * CFrame.new(0, 0.6, 0), Color = stone, Material = Enum.Material.Marble })
+		part(statues, { Name = "Step", Size = Vector3.new(12.5, 1.2, 12.5), CFrame = cf * CFrame.new(0, 1.8, 0), Color = stone, Material = Enum.Material.Marble })
+		part(statues, { Name = "Plinth", Size = Vector3.new(9, 3, 9), CFrame = cf * CFrame.new(0, 3.9, 0), Color = stone, Material = Enum.Material.Marble })
+		part(statues, { Name = "Cornice", Size = Vector3.new(10, 0.6, 10), CFrame = cf * CFrame.new(0, 5.7, 0), Color = stone, Material = Enum.Material.Marble })
+		return cf * CFrame.new(0, 6, 0)
+	end
+	local beamAnchor
+	if domeMode then
+		-- четыре статуи по сторонам света, сферы светятся и лучами держат купол
+		local apex = part(folder, { Name = "DomeApex", Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(V + Vector3.new(0, 95, 0)), Transparency = 1, CanCollide = false, CanQuery = false })
+		beamAnchor = Instance.new("Attachment")
+		beamAnchor.Parent = apex
+		local dome = part(folder, { Name = "Dome", Shape = Enum.PartType.Ball, Size = Vector3.new(212, 212, 212), CFrame = CFrame.new(V), Color = rgb(150, 200, 255), Material = Enum.Material.ForceField, Transparency = 0.2, CanCollide = false, CanQuery = false, CastShadow = false })
+		local _ = dome
+		barrier(folder, 102, 110)
+		local colors = { rgb(60, 130, 255), rgb(150, 70, 230), rgb(60, 220, 110), Color3.new(0, 0, 0) }
+		for k = 0, 3 do
+			local a = k * math.pi / 2
+			local p = V + Vector3.new(math.sin(a) * 86, 0, math.cos(a) * 86)
+			local face = CFrame.lookAt(p, p + (p - V))
+			local top = pedestal(face)
+			local color = colors[k + 1]
+			task.spawn(function()
+				local model = Statue.spawn(Village.STATUE_USER, "admire", true, top, statues, { scale = 3, orbColor = color })
+				local orb = model and model:FindFirstChild("Orb")
+				if orb and beamAnchor then
+					local a0 = Instance.new("Attachment")
+					a0.Parent = orb
+					local beam = Instance.new("Beam")
+					beam.Attachment0 = a0
+					beam.Attachment1 = beamAnchor
+					beam.Color = ColorSequence.new(if color == Color3.new(0, 0, 0) then rgb(90, 40, 140) else color)
+					beam.LightEmission = 1
+					beam.Width0 = 2
+					beam.Width1 = 0.6
+					beam.FaceCamera = true
+					beam.Transparency = NumberSequence.new(0.15)
+					beam.Parent = orb
+				end
+			end)
+			if k == 0 then
+				lobbyCF = face * CFrame.new(0, 0, -30)
+			end
+		end
+	else
+		-- одна статуя у центра, не мешая столу
+		local p = V + Vector3.new(0, 0, if style == "winter" and theme == "newyear" then 30 else -30)
+		local face = CFrame.lookAt(p, Vector3.new(V.X, 0, V.Z))
+		local top = pedestal(face)
+		task.spawn(function()
+			Statue.spawn(Village.STATUE_USER, "admire", true, top, statues, { scale = 3 })
+		end)
+		lobbyCF = CFrame.lookAt(V + Vector3.new(0, 0, (p - V).Z * -0.1), p)
+	end
+
+	-- лобби: стеклянная комната перед статуей, где все ждут начала
+	local lobby = Instance.new("Model")
+	lobby.Name = "Lobby"
+	local function lobbyPart(props)
+		props.Parent = nil
+		local pp = part(lobby, props)
+		pp:SetAttribute("Lobby", true)
+		return pp
+	end
+	lobbyPart({ Name = "Floor", Size = Vector3.new(34, 0.6, 26), CFrame = lobbyCF * CFrame.new(0, 0.3, 0), Color = rgb(225, 225, 230), Material = Enum.Material.Marble })
+	for _, s in { { 0, 13, 34, 0.6 }, { 0, -13, 34, 0.6 }, { 17, 0, 0.6, 26 }, { -17, 0, 0.6, 26 } } do
+		lobbyPart({ Name = "Glass", Size = Vector3.new(s[3], 12, s[4]), CFrame = lobbyCF * CFrame.new(s[1], 6, s[2]), Color = rgb(200, 230, 255), Material = Enum.Material.Glass, Transparency = 0.6 })
+	end
+	lobbyPart({ Name = "Roof", Size = Vector3.new(34, 0.6, 26), CFrame = lobbyCF * CFrame.new(0, 12.3, 0), Color = rgb(200, 230, 255), Material = Enum.Material.Glass, Transparency = 0.7 })
+	lobby.Parent = folder
+
+	-- освещение сезона
+	Lighting.ClockTime = st.clock
+	Lighting.Ambient = st.ambient
+	Lighting.FogEnd = if style == "autumn" then 420 else 2000
+	Lighting.FogColor = if theme == "halloween" then rgb(60, 40, 80) else rgb(190, 200, 210)
+	if theme == "halloween" then
+		Lighting.Ambient = rgb(90, 70, 110)
+	end
+
+	return {
+		folder = folder,
+		houses = houses,
+		seats = seats,
+		lobby = lobbyCF * CFrame.new(0, 3, 0),
+		lobbyModel = lobby,
+		sky = CFrame.new(V + Vector3.new(0, 150, 0)),
+		center = V,
+		weather = st.weather,
+		style = style,
+		theme = theme,
+	}
+end
+
+-- дверь дома: открыть или закрыть
+function Village.setDoor(h, open: boolean)
+	local hinge = h.hinge
+	local rel = hinge:ToObjectSpace(h.doorClosed)
+	h.door.CFrame = if open then hinge * CFrame.Angles(0, math.rad(-100), 0) * rel else h.doorClosed
+	h.door.CanCollide = not open
+end
+
+return Village
+</ProtectedString>
+          </Properties>
+        </Item>
+      </Item>
+      <Item class="Script" referent="RBX00000032">
         <Properties>
           <string name="Name">Main</string>
           <ProtectedString name="Source">--!nonstrict
@@ -7318,6 +8847,7 @@ local FilterService = require(script.Parent.FilterService)
 local AdminService = require(script.Parent.AdminService)
 local Access = require(script.Parent.Access)
 local CurrencyService = require(script.Parent.CurrencyService)
+local MafiaGame = require(script.Parent.Mafia.MafiaGame)
 
 local adapter = Adapter.create()
 local store = ProjectStore.new(adapter, { jobId = if game.JobId ~= "" then game.JobId else HttpService:GenerateGUID(false) })
@@ -7352,6 +8882,7 @@ buildLobby()
 
 EditorService.init(store)
 CurrencyService.init(store)
+MafiaGame.init()
 PlayService.init(store)
 
 -- ---------------------------------------------------------------------------
@@ -7536,6 +9067,12 @@ local function enterShowcase(player: Player)
 		player.CharacterAdded:Wait()
 	end
 	task.wait(0.5)
+	if showcase.code == "MAFIA" then
+		EditorService.closeProject(player)
+		PlayService.leave(player)
+		MafiaGame.join(player)
+		return
+	end
 	local current = PlayService.sessionOf(player)
 	if current and current.code == showcase.code then
 		return
@@ -7617,6 +9154,7 @@ handlers.OpenCreatorMenu = function(player)
 	if not Access.isCreator(player) then
 		return { ok = false, error = "forbidden" }
 	end
+	MafiaGame.leave(player)
 	return PlayService.leave(player)
 end
 
@@ -7656,7 +9194,7 @@ end
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX0000002F">
+      <Item class="ModuleScript" referent="RBX00000033">
         <Properties>
           <string name="Name">PlayService</string>
           <ProtectedString name="Source">--!nonstrict
@@ -7848,7 +9386,7 @@ return PlayService
 </ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX00000030">
+      <Item class="ModuleScript" referent="RBX00000034">
         <Properties>
           <string name="Name">PlaySession</string>
           <ProtectedString name="Source">--!nonstrict
@@ -8016,7 +9554,7 @@ function PlaySession:start()
 			WorldBuilder.setVisible(h, false)
 			local feet = WorldBuilder.objectCFrame(obj, self.origin) * CFrame.new(0, -(obj.size and obj.size[2] or 5) / 2, 0)
 			task.spawn(function()
-				local model = Statue.spawn(obj.role.username, obj.role.pose, obj.role.orb ~= false, feet, folder)
+				local model = Statue.spawn(obj.role.username, obj.role.pose, obj.role.orb ~= false, feet, folder, nil)
 				if not model then
 					-- аватар не загрузился: оставляем каменную заготовку
 					WorldBuilder.setVisible(h, true)
@@ -9108,7 +10646,7 @@ return PlaySession
 </ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX00000031">
+      <Item class="ModuleScript" referent="RBX00000035">
         <Properties>
           <string name="Name">Statue</string>
           <ProtectedString name="Source">--!nonstrict
@@ -9193,7 +10731,9 @@ local function petrify(model: Model)
 end
 
 -- Строит статую и ставит её так, чтобы ступни стояли в точке feetCF
-function Statue.spawn(username: string, pose: string, orb: boolean, feetCF: CFrame, parent: Instance): Model?
+-- opts: { scale = 1, orbColor = Color3? } — orbColor делает сферу светящейся
+function Statue.spawn(username: string, pose: string, orb: boolean, feetCF: CFrame, parent: Instance, opts): Model?
+	opts = opts or {}
 	local userId = userIdOf(username)
 	if not userId then
 		return nil
@@ -9219,7 +10759,7 @@ function Statue.spawn(username: string, pose: string, orb: boolean, feetCF: CFra
 		animator:Destroy()
 	end
 	petrify(model)
-	-- поза: поворачиваем C0 суставов, пока детали ещё держатся только на суставах
+	-- поза: поворачиваем C0 суставов, пока детали держатся только на суставах
 	local r15 = hum.RigType == Enum.HumanoidRigType.R15
 	local angles = (if r15 then Statue.POSE else Statue.POSE_R6)[pose] or {}
 	for _, j in model:GetDescendants() do
@@ -9231,41 +10771,64 @@ function Statue.spawn(username: string, pose: string, orb: boolean, feetCF: CFra
 	for _, d in model:GetDescendants() do
 		if d:IsA("BasePart") then
 			d.Anchored = d == root
-			d.CanCollide = d == root
+			d.CanCollide = false
 		end
 	end
-	local lift = if r15 then hum.HipHeight + root.Size.Y / 2 else 3
 	model.Parent = parent
-	model:PivotTo(feetCF * CFrame.new(0, lift, 0))
-	-- то, на что смотрит статуя: каменная сфера в поднятой руке
+	model:PivotTo(feetCF * CFrame.new(0, 3, 0))
+	local scale = opts.scale or 1
+	if scale ~= 1 then
+		pcall(function()
+			model:ScaleTo(scale)
+		end)
+	end
+	-- то, на что смотрит статуя: сфера в поднятой руке
+	local ball: BasePart? = nil
 	if orb then
 		local hand = model:FindFirstChild(if r15 then "RightHand" else "Right Arm") :: BasePart?
 		if hand then
-			local ball = Instance.new("Part")
-			ball.Name = "Orb"
-			ball.Shape = Enum.PartType.Ball
-			ball.Size = Vector3.new(1.3, 1.3, 1.3)
-			ball.Material = Enum.Material.Marble
-			ball.Color = STONE
-			ball.CanCollide = false
-			ball.Massless = true
-			ball.CFrame = hand.CFrame * CFrame.new(0, -hand.Size.Y / 2 - 0.5, 0)
+			local b = Instance.new("Part")
+			b.Name = "Orb"
+			b.Shape = Enum.PartType.Ball
+			local d = 1.3 * scale
+			b.Size = Vector3.new(d, d, d)
+			b.CanCollide = false
+			b.Massless = true
+			if opts.orbColor then
+				b.Material = Enum.Material.Neon
+				b.Color = opts.orbColor
+				local light = Instance.new("PointLight")
+				light.Color = if opts.orbColor == Color3.new(0, 0, 0) then Color3.fromRGB(120, 60, 180) else opts.orbColor
+				light.Range = 30
+				light.Brightness = 3
+				light.Parent = b
+			else
+				b.Material = Enum.Material.Marble
+				b.Color = STONE
+			end
+			b.CFrame = hand.CFrame * CFrame.new(0, -hand.Size.Y / 2 - d * 0.4, 0)
 			local weld = Instance.new("WeldConstraint")
 			weld.Part0 = hand
-			weld.Part1 = ball
-			weld.Parent = ball
-			ball.Parent = model
+			weld.Part1 = b
+			weld.Parent = b
+			b.Parent = model
+			ball = b
 		end
 	end
-	-- суставы успели расставить детали: закрепляем всё, чтобы статуя не падала
-	task.delay(0.3, function()
-		for _, d in model:GetDescendants() do
-			if d:IsA("BasePart") then
-				d.Anchored = true
-				d.CanCollide = true
-			end
+	-- суставы расставили детали: закрепляем всё и ставим ступни ровно на постамент
+	task.wait(0.3)
+	for _, d in model:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Anchored = true
+			d.CanCollide = true
 		end
-	end)
+	end
+	local cf, size = model:GetBoundingBox()
+	local bottom = cf.Position.Y - size.Y / 2
+	model:PivotTo(model:GetPivot() + Vector3.new(0, feetCF.Position.Y - bottom, 0))
+	if ball then
+		model:SetAttribute("HasOrb", true)
+	end
 	return model
 end
 
@@ -9275,25 +10838,25 @@ return Statue
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="RBX00000032">
+  <Item class="StarterPlayer" referent="RBX00000036">
     <Properties>
       <string name="Name">StarterPlayer</string>
       <float name="CharacterWalkSpeed">14</float>
       <float name="CameraMaxZoomDistance">40</float>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="RBX00000033">
+    <Item class="StarterPlayerScripts" referent="RBX00000037">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="Folder" referent="RBX00000034">
+      <Item class="Folder" referent="RBX00000038">
         <Properties>
           <string name="Name">Workshop</string>
         </Properties>
-        <Item class="Folder" referent="RBX00000035">
+        <Item class="Folder" referent="RBX00000039">
           <Properties>
             <string name="Name">Editor</string>
           </Properties>
-          <Item class="ModuleScript" referent="RBX00000036">
+          <Item class="ModuleScript" referent="RBX0000003A">
             <Properties>
               <string name="Name">Editor</string>
               <ProtectedString name="Source">--!nonstrict
@@ -10535,7 +12098,7 @@ return Editor
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000037">
+          <Item class="ModuleScript" referent="RBX0000003B">
             <Properties>
               <string name="Name">FreeCamera</string>
               <ProtectedString name="Source">--!nonstrict
@@ -10740,7 +12303,7 @@ return FreeCamera
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000038">
+          <Item class="ModuleScript" referent="RBX0000003C">
             <Properties>
               <string name="Name">Gizmo</string>
               <ProtectedString name="Source">--!nonstrict
@@ -10908,11 +12471,11 @@ return Gizmo
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="Folder" referent="RBX00000039">
+          <Item class="Folder" referent="RBX0000003D">
             <Properties>
               <string name="Name">Panels</string>
             </Properties>
-            <Item class="ModuleScript" referent="RBX0000003A">
+            <Item class="ModuleScript" referent="RBX0000003E">
               <Properties>
                 <string name="Name">AnimPanel</string>
                 <ProtectedString name="Source">--!nonstrict
@@ -11630,7 +13193,7 @@ return AnimPanel
 </ProtectedString>
               </Properties>
             </Item>
-            <Item class="ModuleScript" referent="RBX0000003B">
+            <Item class="ModuleScript" referent="RBX0000003F">
               <Properties>
                 <string name="Name">CreaturePanel</string>
                 <ProtectedString name="Source">--!nonstrict
@@ -11690,7 +13253,7 @@ return CreaturePanel
 </ProtectedString>
               </Properties>
             </Item>
-            <Item class="ModuleScript" referent="RBX0000003C">
+            <Item class="ModuleScript" referent="RBX00000040">
               <Properties>
                 <string name="Name">ExplorerPanel</string>
                 <ProtectedString name="Source">--!nonstrict
@@ -11767,7 +13330,7 @@ return ExplorerPanel
 </ProtectedString>
               </Properties>
             </Item>
-            <Item class="ModuleScript" referent="RBX0000003D">
+            <Item class="ModuleScript" referent="RBX00000041">
               <Properties>
                 <string name="Name">LogicPanel</string>
                 <ProtectedString name="Source">--!nonstrict
@@ -12299,7 +13862,7 @@ return LogicPanel
 </ProtectedString>
               </Properties>
             </Item>
-            <Item class="ModuleScript" referent="RBX0000003E">
+            <Item class="ModuleScript" referent="RBX00000042">
               <Properties>
                 <string name="Name">MapPanel</string>
                 <ProtectedString name="Source">--!nonstrict
@@ -12868,7 +14431,7 @@ return MapPanel
 </ProtectedString>
               </Properties>
             </Item>
-            <Item class="ModuleScript" referent="RBX0000003F">
+            <Item class="ModuleScript" referent="RBX00000043">
               <Properties>
                 <string name="Name">SettingsPanel</string>
                 <ProtectedString name="Source">--!nonstrict
@@ -12982,7 +14545,7 @@ return SettingsPanel
 </ProtectedString>
               </Properties>
             </Item>
-            <Item class="ModuleScript" referent="RBX00000040">
+            <Item class="ModuleScript" referent="RBX00000044">
               <Properties>
                 <string name="Name">TextsPanel</string>
                 <ProtectedString name="Source">--!nonstrict
@@ -13156,7 +14719,7 @@ return TextsPanel
               </Properties>
             </Item>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000041">
+          <Item class="ModuleScript" referent="RBX00000045">
             <Properties>
               <string name="Name">Picker</string>
               <ProtectedString name="Source">--!nonstrict
@@ -13247,7 +14810,7 @@ return Picker
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000042">
+          <Item class="ModuleScript" referent="RBX00000046">
             <Properties>
               <string name="Name">Preview</string>
               <ProtectedString name="Source">--!nonstrict
@@ -13403,7 +14966,7 @@ return Preview
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000043">
+          <Item class="ModuleScript" referent="RBX00000047">
             <Properties>
               <string name="Name">State</string>
               <ProtectedString name="Source">--!nonstrict
@@ -13541,7 +15104,687 @@ return State
             </Properties>
           </Item>
         </Item>
-        <Item class="LocalScript" referent="RBX00000044">
+        <Item class="Folder" referent="RBX00000048">
+          <Properties>
+            <string name="Name">Mafia</string>
+          </Properties>
+          <Item class="ModuleScript" referent="RBX00000049">
+            <Properties>
+              <string name="Name">MafiaClient</string>
+              <ProtectedString name="Source">--!nonstrict
+-- Клиент «Мафии»: лобби с выбором стиля, своя роль, таймер фаз, голосования,
+-- ночные действия, блокнот шерифа, переключатель чатов, панель ведущего, вид призрака
+
+local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local RunService = game:GetService("RunService")
+local SoundService = game:GetService("SoundService")
+local TextChatService = game:GetService("TextChatService")
+local TweenService = game:GetService("TweenService")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Workshop"):WaitForChild("Shared")
+local UiText = require(Shared.UiText)
+local Remotes = require(Shared.Roblox.Remotes)
+local MafiaSounds = require(Shared.MafiaSounds)
+
+local Kit = require(script.Parent.Parent.UI.Kit)
+local FreeCamera = require(script.Parent.Parent.Editor.FreeCamera)
+local WeatherFx = require(script.Parent.Parent.Play.WeatherFx)
+
+local L, H = UiText.L, UiText.H
+
+local MafiaClient = {}
+MafiaClient.__index = MafiaClient
+
+local player = Players.LocalPlayer
+
+local PHASE_TITLE = {
+	lobby = L.PhaseLobby, reveal = L.PhaseReveal, dusk = L.PhaseDusk, night = L.PhaseNight,
+	morning = L.PhaseMorning, day = L.PhaseDay, vote = L.PhaseVote, verdict = L.PhaseVerdict, ended = L.PhaseEnded,
+}
+local ROLE_TITLE = { mafia = L.RoleMafia, doctor = L.RoleDoctor, sheriff = L.RoleSheriff, civilian = L.RoleCivilian }
+local ROLE_HINT = { mafia = H.MafiaRoleHint, doctor = H.DoctorRoleHint, sheriff = H.SheriffRoleHint, civilian = H.CivilianRoleHint }
+local ROLE_COLOR = {
+	mafia = Color3.fromRGB(170, 40, 50), doctor = Color3.fromRGB(60, 160, 110),
+	sheriff = Color3.fromRGB(70, 110, 200), civilian = Color3.fromRGB(110, 110, 120),
+}
+local CLOCK = { lobby = 14, reveal = 19, dusk = 19.5, night = 0, morning = 6.5, day = 13, vote = 16, verdict = 17.5, ended = 14 }
+
+local function request(...)
+	local ok, res = pcall(function(...)
+		return Remotes.fn("MafiaRequest"):InvokeServer(...)
+	end, ...)
+	return if ok then res else nil
+end
+
+function MafiaClient.new(app)
+	local self = setmetatable({}, MafiaClient)
+	self.app = app
+	self.state = {}
+	self.notes = ""
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "WsMafia"
+	gui.ResetOnSpawn = false
+	gui.IgnoreGuiInset = false
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	gui.Parent = app.playerGui
+	self.gui = gui
+	self.weather = WeatherFx.new()
+
+	-- фаза и таймер: название и время двумя строками
+	self.phaseBox = Kit.frame(gui, { Size = UDim2.fromOffset(170, 52), Position = UDim2.new(0.5, -85, 0, 6), BackgroundTransparency = 0.25, BackgroundColor3 = Kit.C.bg })
+	Kit.corner(self.phaseBox, 12)
+	self.phaseLabel = Kit.label(self.phaseBox, "", { Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, Font = Kit.FONT_BOLD, TextSize = 16 })
+	-- своя роль
+	self.roleChip = Kit.button(gui, "", function()
+		self:showRoleCard()
+	end, { Size = UDim2.fromOffset(150, 40), Position = UDim2.new(0.5, -75, 0, 62), TextSize = 14, Visible = false })
+	-- крупное объявление
+	self.banner = Kit.label(gui, "", {
+		Size = UDim2.new(0.8, 0, 0, 90), Position = UDim2.new(0.1, 0, 0.22, 0), TextXAlignment = Enum.TextXAlignment.Center,
+		Font = Kit.FONT_BOLD, TextSize = 28, TextStrokeTransparency = 0.3, Visible = false,
+	})
+	-- переключатель чатов слева
+	self.chatBar = Kit.frame(gui, { BackgroundTransparency = 1, Size = UDim2.fromOffset(110, 3 * (Kit.TAP + 4)), Position = UDim2.new(0, 6, 0.42, 0) })
+	Kit.list(self.chatBar, 4)
+	self.chatButtons = {}
+	for i, ch in { { "general", L.ChatTown, "MafiaTown" }, { "mafia", L.ChatMafia, "MafiaRoom" }, { "ghost", L.ChatGhost, "GhostRoom" } } do
+		self.chatButtons[ch[1]] = Kit.button(self.chatBar, ch[2], function()
+			self:setChannel(ch[3], ch[1])
+		end, { Size = UDim2.new(1, 0, 0, Kit.TAP), LayoutOrder = i, TextSize = 13, Visible = false, BackgroundTransparency = 0.2 })
+	end
+	-- нижняя панель: лобби, голосование, ночные действия
+	self.sheet = Kit.frame(gui, { Size = UDim2.new(0, math.min(520, Kit.viewport().X - 24), 0, 0), AutomaticSize = Enum.AutomaticSize.Y, Position = UDim2.new(0.5, 0, 1, -8), AnchorPoint = Vector2.new(0.5, 1), BackgroundTransparency = 0.08 })
+	Kit.corner(self.sheet, 14)
+	Kit.pad(self.sheet, 10)
+	-- кнопки справа: блокнот шерифа и панель ведущего
+	self.side = Kit.frame(gui, { BackgroundTransparency = 1, Size = UDim2.fromOffset(120, 2 * (Kit.TAP + 4)), Position = UDim2.new(1, -126, 0.42, 0) })
+	Kit.list(self.side, 4)
+	self.noteButton = Kit.button(self.side, L.Notebook, function()
+		self:openNotebook()
+	end, { Size = UDim2.new(1, 0, 0, Kit.TAP), LayoutOrder = 1, Visible = false, TextSize = 13 })
+	self.hostButton = Kit.button(self.side, L.HostPanel, function()
+		self:openHostPanel()
+	end, { Size = UDim2.new(1, 0, 0, Kit.TAP), LayoutOrder = 2, Visible = false, TextSize = 13, BackgroundColor3 = Kit.C.accentDim })
+
+	self.conn = Remotes.event("Mafia").OnClientEvent:Connect(function(msg)
+		self:onMessage(msg)
+	end)
+	self.tick = RunService.Heartbeat:Connect(function()
+		self:updateTimer()
+	end)
+	return self
+end
+
+-- ---------------------------------------------------------------------------
+
+function MafiaClient:sound(key: string?)
+	local id = key and MafiaSounds[key]
+	if not id or id == "" then
+		return
+	end
+	local s = Instance.new("Sound")
+	s.SoundId = id
+	s.Volume = 0.6
+	s.Parent = SoundService
+	s.Ended:Once(function()
+		s:Destroy()
+	end)
+	s:Play()
+	task.delay(15, function()
+		if s.Parent then
+			s:Destroy()
+		end
+	end)
+end
+
+function MafiaClient:announce(text: string)
+	self.banner.Text = text
+	self.banner.Visible = true
+	local token = {}
+	self.bannerToken = token
+	task.delay(4, function()
+		if self.bannerToken == token then
+			self.banner.Visible = false
+		end
+	end)
+	-- то же сообщение в чате как системное
+	local tc = TextChatService:FindFirstChild("TextChannels")
+	local town = tc and tc:FindFirstChild("MafiaTown")
+	if town then
+		pcall(function()
+			(town :: TextChannel):DisplaySystemMessage((string.gsub(text, "\n", " ")))
+		end)
+	end
+end
+
+function MafiaClient:updateTimer()
+	local st = self.state
+	local title = PHASE_TITLE[st.phase or "lobby"] or ""
+	if st.phase and st.phase ~= "lobby" and st.endsAt then
+		local left = math.max(0, math.floor(st.endsAt - workspace:GetServerTimeNow()))
+		self.phaseLabel.Text = string.format("%s\n%d:%02d", title, left // 60, left % 60)
+	else
+		self.phaseLabel.Text = title
+	end
+end
+
+function MafiaClient:setChannel(name: string, key: string)
+	local tc = TextChatService:FindFirstChild("TextChannels")
+	local c = tc and tc:FindFirstChild(name)
+	if c then
+		pcall(function()
+			TextChatService.ChatInputBarConfiguration.TargetTextChannel = c
+		end)
+	end
+	self.channel = key
+	for k, b in self.chatButtons do
+		Kit.setActive(b, k == key)
+	end
+end
+
+function MafiaClient:applyChat()
+	local chat = self.state.chat or {}
+	local firstSend = nil
+	for key, b in self.chatButtons do
+		local rights = chat[key]
+		b.Visible = rights ~= nil and rights.see == true
+		if rights and rights.send and not firstSend then
+			firstSend = key
+		end
+	end
+	pcall(function()
+		TextChatService.ChannelTabsConfiguration.Enabled = true
+	end)
+	local cur = self.channel and chat[self.channel]
+	if not cur or not cur.send then
+		local key = firstSend or "general"
+		local names = { general = "MafiaTown", mafia = "MafiaRoom", ghost = "GhostRoom" }
+		self:setChannel(names[key], key)
+	end
+end
+
+-- ---------------------------------------------------------------------------
+-- мир: время суток, окна, погода, крыши для призраков
+
+function MafiaClient:applyWorld()
+	local st = self.state
+	local clock = CLOCK[st.phase or "lobby"] or 14
+	TweenService:Create(Lighting, TweenInfo.new(3), { ClockTime = clock }):Play()
+	local village = workspace:FindFirstChild("MafiaVillage")
+	local night = clock &lt; 6 or clock &gt; 18.5
+	if village then
+		for _, d in village:GetDescendants() do
+			if d:IsA("BasePart") and d:GetAttribute("NightGlow") then
+				d.Material = if night then Enum.Material.Neon else Enum.Material.Glass
+			end
+		end
+	end
+	local ghost = st.role ~= nil and st.alive == false or (st.alive == false and st.phase ~= "lobby")
+	-- призракам крыши прозрачны, чтобы видеть всё сверху
+	if village then
+		for _, d in village:GetDescendants() do
+			if d:IsA("BasePart") and d:GetAttribute("Roof") then
+				d.LocalTransparencyModifier = if ghost then 0.85 else 0
+			end
+		end
+	end
+	if ghost and not self.ghostCam and self.world then
+		self.ghostCam = FreeCamera.new(self.world.center + Vector3.new(0, 4, 0))
+		self.ghostCam.dist = 150
+		self.ghostCam.pitch = math.rad(-62)
+	elseif not ghost and self.ghostCam then
+		self.ghostCam:destroy()
+		self.ghostCam = nil
+		workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+	end
+	if self.world then
+		self.weather:set({ weather = self.world.weather or "Clear", at = 0, auto = false, minutes = 5 })
+		-- фоновый звук сезона, если указан в MafiaSounds
+		local style = self.world.style or "spring"
+		local id = MafiaSounds["ambient" .. string.upper(string.sub(style, 1, 1)) .. string.sub(style, 2)]
+		if self.ambientStyle ~= style then
+			self.ambientStyle = style
+			if self.ambient then
+				self.ambient:Destroy()
+				self.ambient = nil
+			end
+			if id and id ~= "" then
+				local s = Instance.new("Sound")
+				s.SoundId = id
+				s.Looped = true
+				s.Volume = 0.35
+				s.Parent = SoundService
+				s:Play()
+				self.ambient = s
+			end
+		end
+	end
+end
+
+-- ---------------------------------------------------------------------------
+-- сообщения сервера
+
+function MafiaClient:onMessage(msg)
+	local t = msg.type
+	if t == "state" then
+		local prevRole = self.state.role
+		self.state = msg
+		self.roleChip.Visible = msg.role ~= nil or msg.youHost
+		if msg.youHost then
+			self.roleChip.Text = L.RoleHost
+			self.roleChip.BackgroundColor3 = Kit.C.accentDim
+		elseif msg.role then
+			self.roleChip.Text = if msg.alive then ROLE_TITLE[msg.role] else L.RoleGhost
+			self.roleChip.BackgroundColor3 = if msg.alive then ROLE_COLOR[msg.role] else Kit.C.panel2
+		end
+		self.noteButton.Visible = msg.role == "sheriff"
+		self.hostButton.Visible = msg.youHost == true or (msg.hostId == nil and msg.creator == true and msg.phase ~= "lobby")
+		if not self.hostButton.Visible and self.hostPanel then
+			self.hostPanel:Destroy()
+			self.hostPanel = nil
+		end
+		if msg.role and msg.role ~= prevRole then
+			self:showRoleCard()
+		end
+		self:applyChat()
+		self:applyWorld()
+		self:renderSheet()
+		if self.hostPanel then
+			self:openHostPanel(true)
+		end
+	elseif t == "phase" then
+		self.state.phase = msg.phase
+		self.state.endsAt = msg.endsAt
+		if msg.world then
+			self.world = msg.world
+		end
+		if msg.phase == "night" then
+			self:announce(H.NightSilenceHint)
+		end
+		self:applyWorld()
+		self:renderSheet()
+	elseif t == "announce" then
+		self:announce(msg.text)
+		self:sound(msg.sound)
+	elseif t == "sound" then
+		self:sound(msg.sound)
+	elseif t == "ghost" then
+		self:announce(H.GhostHint)
+	elseif t == "joined" then
+		self:sound("join")
+	end
+end
+
+-- ---------------------------------------------------------------------------
+-- карточка роли
+
+function MafiaClient:showRoleCard()
+	local st = self.state
+	if self.card then
+		self.card:Destroy()
+	end
+	local role = st.role
+	local title = if st.youHost then L.RoleHost elseif role then ROLE_TITLE[role] else nil
+	if not title then
+		return
+	end
+	local hint = if st.youHost then H.HostRoleHint else ROLE_HINT[role]
+	local w = math.min(360, Kit.viewport().X - 32)
+	local card = Kit.frame(self.gui, { Size = UDim2.fromOffset(w, 0), AutomaticSize = Enum.AutomaticSize.Y, Position = UDim2.new(0.5, -w / 2, 0.2, 0), BackgroundColor3 = if role then ROLE_COLOR[role] else Kit.C.accentDim, ZIndex = 40 })
+	Kit.corner(card, 16)
+	Kit.pad(card, 16)
+	Kit.list(card, 8)
+	Kit.label(card, title, { Font = Kit.FONT_BOLD, TextSize = 30, TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.new(1, 0, 0, 40), ZIndex = 41, LayoutOrder = 1 })
+	Kit.label(card, hint or "", { TextSize = 16, TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, ZIndex = 41, LayoutOrder = 2 })
+	if st.house then
+		Kit.label(card, string.format(L.YourHouse, st.house), { TextSize = 15, TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 41, LayoutOrder = 3 })
+	end
+	if role == "mafia" and st.mafiaTeam then
+		local names = {}
+		for _, p in st.players or {} do
+			if table.find(st.mafiaTeam, p.userId) and p.userId ~= player.UserId then
+				table.insert(names, p.name)
+			end
+		end
+		if #names &gt; 0 then
+			Kit.label(card, table.concat(names, ", "), { TextSize = 15, TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 41, LayoutOrder = 4 })
+		end
+	end
+	Kit.button(card, L.GotIt, function()
+		card:Destroy()
+		self.card = nil
+	end, { ZIndex = 42, LayoutOrder = 10, BackgroundColor3 = Kit.C.bg })
+	self.card = card
+end
+
+-- ---------------------------------------------------------------------------
+-- нижняя панель по фазе
+
+local function clear(f: Instance)
+	for _, c in f:GetChildren() do
+		if c:IsA("GuiObject") then
+			c:Destroy()
+		end
+	end
+end
+
+function MafiaClient:playerGrid(order: number, filter, onPick, marked, labelOf)
+	local grid = Kit.frame(self.sheet, { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = order })
+	local g = Instance.new("UIGridLayout")
+	g.CellSize = UDim2.new(0.5, -4, 0, Kit.TAP)
+	g.CellPadding = UDim2.fromOffset(6, 6)
+	g.SortOrder = Enum.SortOrder.LayoutOrder
+	g.Parent = grid
+	for i, p in self.state.players or {} do
+		if filter(p) then
+			local b = Kit.button(grid, if labelOf then labelOf(p) else p.name, function()
+				self:sound("click")
+				onPick(p)
+			end, { LayoutOrder = i, TextSize = 14 })
+			if marked and marked(p) then
+				Kit.setActive(b, true)
+			end
+		end
+	end
+	return grid
+end
+
+function MafiaClient:renderSheet()
+	local st = self.state
+	clear(self.sheet)
+	Kit.list(self.sheet, 8)
+	local phase = st.phase
+	self.sheet.Visible = true
+	if phase == "lobby" then
+		self:renderLobby()
+		return
+	end
+	local me = nil
+	for _, p in st.players or {} do
+		if p.userId == player.UserId then
+			me = p
+		end
+	end
+	if phase == "ended" then
+		Kit.label(self.sheet, L.AllRoles, { Font = Kit.FONT_BOLD, LayoutOrder = 1 })
+		for i, p in st.players or {} do
+			Kit.label(self.sheet, p.name .. "   " .. (ROLE_TITLE[p.role] or ""), { TextSize = 14, LayoutOrder = 1 + i, TextColor3 = ROLE_COLOR[p.role] or Kit.C.text })
+		end
+		return
+	end
+	if not st.alive or not st.role then
+		self.sheet.Visible = false
+		return
+	end
+	if phase == "vote" then
+		Kit.label(self.sheet, L.ChooseExile, { Font = Kit.FONT_BOLD, LayoutOrder = 1 })
+		local tally = st.tally or {}
+		self:playerGrid(2, function(p)
+			return p.alive
+		end, function(p)
+			request("Vote", p.userId)
+		end, function(p)
+			return st.vote == p.userId
+		end, function(p)
+			local n = tally[tostring(p.userId)]
+			return if n then p.name .. "   " .. tostring(n) else p.name
+		end)
+		local skip = Kit.button(self.sheet, L.VoteSkip .. (if tally.skip then "   " .. tally.skip else ""), function()
+			request("Vote", "skip")
+		end, { LayoutOrder = 3 })
+		Kit.setActive(skip, st.vote == "skip")
+	elseif phase == "night" then
+		local role = st.role
+		if role == "mafia" then
+			Kit.label(self.sheet, L.ChooseVictim, { Font = Kit.FONT_BOLD, LayoutOrder = 1 })
+			local myPick = st.mafiaVotes and st.mafiaVotes[tostring(player.UserId)]
+			self:playerGrid(2, function(p)
+				return p.alive and not table.find(st.mafiaTeam or {}, p.userId)
+			end, function(p)
+				request("Night", p.userId)
+			end, function(p)
+				return myPick == p.userId
+			end)
+			-- выбор остальных мафиози, чтобы договориться
+			local byId = {}
+			for _, p in st.players do
+				byId[tostring(p.userId)] = p.name
+			end
+			local order = 3
+			for voter, target in st.mafiaVotes or {} do
+				order += 1
+				Kit.label(self.sheet, string.format(L.MafiaVotesFormat, byId[voter] or "?", byId[tostring(target)] or "?"), { TextSize = 13, TextColor3 = Kit.C.dim, LayoutOrder = order })
+			end
+		elseif role == "doctor" then
+			Kit.label(self.sheet, L.ChooseHeal, { Font = Kit.FONT_BOLD, LayoutOrder = 1 })
+			self:playerGrid(2, function(p)
+				return p.alive and p.userId ~= st.lastHeal
+			end, function(p)
+				request("Night", p.userId)
+			end, function(p)
+				return st.heal == p.userId
+			end)
+		elseif role == "sheriff" then
+			Kit.label(self.sheet, L.ChooseCheck, { Font = Kit.FONT_BOLD, LayoutOrder = 1 })
+			local checked = false
+			for _, c in st.checks or {} do
+				if c.round == st.round then
+					checked = true
+					Kit.label(self.sheet, string.format(if c.mafia then L.IsMafia else L.NotMafia, c.name), { Font = Kit.FONT_BOLD, TextSize = 18, LayoutOrder = 3, Size = UDim2.new(1, 0, 0, 48), TextColor3 = if c.mafia then Kit.C.bad else Kit.C.good })
+				end
+			end
+			if not checked then
+				self:playerGrid(2, function(p)
+					return p.alive and p.userId ~= player.UserId
+				end, function(p)
+					request("Night", p.userId)
+				end)
+			end
+		else
+			self.sheet.Visible = false
+		end
+	else
+		self.sheet.Visible = false
+	end
+	local _ = me
+end
+
+function MafiaClient:renderLobby()
+	local st = self.state
+	local s = st.settings or {}
+	local n = #(st.players or {})
+	local order = 0
+	local function o()
+		order += 1
+		return order
+	end
+	Kit.label(self.sheet, string.format(L.PlayersFormat, n), { Font = Kit.FONT_BOLD, LayoutOrder = o() })
+	local hostName = nil
+	for _, p in Players:GetPlayers() do
+		if p.UserId == st.hostId then
+			hostName = p.DisplayName
+		end
+	end
+	Kit.label(self.sheet, if hostName then string.format(L.HostFormat, hostName) else L.NoHost, { TextSize = 14, TextColor3 = Kit.C.dim, LayoutOrder = o(), Size = UDim2.new(1, 0, 0, 40) })
+	Kit.button(self.sheet, if st.youHost then L.StopHosting else L.BecomeHost, function()
+		request("BecomeHost", not st.youHost)
+	end, { LayoutOrder = o(), Visible = st.youHost or st.hostId == nil or st.creator })
+	if st.canStart then
+		-- стиль деревни
+		local row = Kit.frame(self.sheet, { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, Kit.TAP), LayoutOrder = o() })
+		Kit.list(row, 4, true)
+		for i, sty in { { "summer", L.StyleSummer }, { "spring", L.StyleSpring }, { "autumn", L.StyleAutumn }, { "winter", L.StyleWinter } } do
+			local b = Kit.button(row, sty[2], function()
+				request("Settings", { style = sty[1], theme = "plain", auto = s.auto, counts = s.counts })
+			end, { Size = UDim2.new(0.25, -3, 1, 0), LayoutOrder = i, TextSize = 14 })
+			Kit.setActive(b, s.style == sty[1])
+		end
+		local themes = ({
+			summer = {},
+			spring = { { "april", L.ThemeApril } },
+			autumn = { { "halloween", L.ThemeHalloween } },
+			winter = { { "newyear", L.ThemeNewYear } },
+		})[s.style or "spring"] or {}
+		if #themes &gt; 0 then
+			local trow = Kit.frame(self.sheet, { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, Kit.TAP), LayoutOrder = o() })
+			Kit.list(trow, 4, true)
+			local plain = Kit.button(trow, L.ThemePlain, function()
+				request("Settings", { style = s.style, theme = "plain", auto = s.auto, counts = s.counts })
+			end, { Size = UDim2.new(0.5, -2, 1, 0), LayoutOrder = 1, TextSize = 14 })
+			Kit.setActive(plain, s.theme == "plain")
+			for i, th in themes do
+				local b = Kit.button(trow, th[2], function()
+					request("Settings", { style = s.style, theme = th[1], auto = s.auto, counts = s.counts })
+				end, { Size = UDim2.new(0.5, -2, 1, 0), LayoutOrder = 1 + i, TextSize = 14 })
+				Kit.setActive(b, s.theme == th[1])
+			end
+		end
+		-- роли: сами или вручную
+		local rrow = Kit.frame(self.sheet, { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, Kit.TAP), LayoutOrder = o() })
+		Kit.list(rrow, 4, true)
+		local auto = Kit.button(rrow, L.RolesAuto, function()
+			request("Settings", { style = s.style, theme = s.theme, auto = true, counts = s.counts })
+		end, { Size = UDim2.new(0.5, -2, 1, 0), LayoutOrder = 1, TextSize = 14 })
+		local manual = Kit.button(rrow, L.RolesManual, function()
+			request("Settings", { style = s.style, theme = s.theme, auto = false, counts = s.counts })
+		end, { Size = UDim2.new(0.5, -2, 1, 0), LayoutOrder = 2, TextSize = 14 })
+		Kit.setActive(auto, s.auto ~= false)
+		Kit.setActive(manual, s.auto == false)
+		if s.auto == false then
+			for _, k in { { "mafia", L.CountMafia, 1, 6 }, { "doctor", L.CountDoctor, 1, 3 }, { "sheriff", L.CountSheriff, 1, 3 } } do
+				Kit.stepper(self.sheet, k[2], (s.counts or {})[k[1]] or k[3], 1, k[3], k[4], function(v)
+					local c = table.clone(s.counts or {})
+					c[k[1]] = v
+					request("Settings", { style = s.style, theme = s.theme, auto = false, counts = c })
+				end, o())
+			end
+		end
+		Kit.button(self.sheet, L.StartGame, function()
+			local res = request("Start")
+			if res and not res.ok then
+				Kit.toast(self.gui, if res.error == "few" then H.FewPlayersHint else tostring(res.error), Kit.C.bad)
+			end
+		end, { LayoutOrder = o(), BackgroundColor3 = Kit.C.accent, Font = Kit.FONT_BOLD })
+	end
+	if not (self.app.mode and self.app.mode.showcase and self.app.mode.showcase.code == "MAFIA" and not self.app.mode.creator) then
+		Kit.button(self.sheet, L.LeaveMafia, function()
+			request("Leave")
+			self.app:leaveMafia()
+		end, { LayoutOrder = o(), BackgroundColor3 = Kit.C.panel2 })
+	end
+end
+
+-- ---------------------------------------------------------------------------
+-- блокнот шерифа: только у себя на устройстве
+
+function MafiaClient:openNotebook()
+	if self.notebook then
+		self.notebook:Destroy()
+		self.notebook = nil
+		return
+	end
+	local w = math.min(380, Kit.viewport().X - 24)
+	local box = Kit.frame(self.gui, { Size = UDim2.fromOffset(w, 320), Position = UDim2.new(0.5, -w / 2, 0.15, 0), ZIndex = 30 })
+	Kit.corner(box, 12)
+	Kit.pad(box, 10)
+	Kit.label(box, L.Notebook, { Font = Kit.FONT_BOLD, ZIndex = 31, Size = UDim2.new(1, -50, 0, 28) })
+	Kit.button(box, "✕", function()
+		box:Destroy()
+		self.notebook = nil
+	end, { Size = UDim2.fromOffset(40, 32), Position = UDim2.new(1, -40, 0, -2), ZIndex = 31 })
+	local history = {}
+	for _, c in self.state.checks or {} do
+		table.insert(history, (string.gsub(string.format(if c.mafia then L.IsMafia else L.NotMafia, c.name), "\n", " — ")))
+	end
+	local t = Kit.textbox(box, self.notes, "…", function(text)
+		self.notes = text
+	end, { MultiLine = true, TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Top, Position = UDim2.fromOffset(0, 34), Size = UDim2.new(1, 0, 1, -34 - (#history &gt; 0 and 60 or 0)), ZIndex = 31 })
+	t:GetPropertyChangedSignal("Text"):Connect(function()
+		self.notes = t.Text
+	end)
+	if #history &gt; 0 then
+		Kit.label(box, table.concat(history, "\n"), { Position = UDim2.new(0, 0, 1, -56), Size = UDim2.new(1, 0, 0, 56), TextSize = 13, ZIndex = 31, TextColor3 = Kit.C.dim })
+	end
+	self.notebook = box
+end
+
+-- ---------------------------------------------------------------------------
+-- панель ведущего
+
+function MafiaClient:openHostPanel(refresh: boolean?)
+	if self.hostPanel then
+		self.hostPanel:Destroy()
+		self.hostPanel = nil
+		if not refresh then
+			return
+		end
+	elseif refresh then
+		return
+	end
+	local st = self.state
+	local w = math.min(420, Kit.viewport().X - 24)
+	local box = Kit.frame(self.gui, { Size = UDim2.fromOffset(w, math.min(460, Kit.viewport().Y - 140)), Position = UDim2.new(1, -w - 12, 0, 110), ZIndex = 30 })
+	Kit.corner(box, 12)
+	Kit.pad(box, 10)
+	Kit.label(box, L.HostPanel, { Font = Kit.FONT_BOLD, ZIndex = 31, Size = UDim2.new(1, -50, 0, 28) })
+	Kit.button(box, "✕", function()
+		box:Destroy()
+		self.hostPanel = nil
+	end, { Size = UDim2.fromOffset(40, 32), Position = UDim2.new(1, -40, 0, -2), ZIndex = 31 })
+	local list = Kit.scroll(box, { Position = UDim2.fromOffset(0, 34), Size = UDim2.new(1, 0, 1, -34), ZIndex = 31 })
+	Kit.list(list, 6)
+	local row = Kit.frame(list, { BackgroundTransparency = 1, Size = UDim2.new(1, -6, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 1, ZIndex = 31 })
+	local g = Instance.new("UIGridLayout")
+	g.CellSize = UDim2.new(0.5, -4, 0, Kit.TAP)
+	g.CellPadding = UDim2.fromOffset(6, 6)
+	g.Parent = row
+	for _, a in { { "next", L.HostNext }, { "more", L.HostMore }, { "home", L.HostHome }, { "table", L.HostTable } } do
+		Kit.button(row, a[2], function()
+			request("Host", a[1])
+		end, { ZIndex = 32, TextSize = 14 })
+	end
+	local roles = st.allRoles or {}
+	for i, p in st.players or {} do
+		local card = Kit.frame(list, { BackgroundColor3 = Kit.C.panel2, Size = UDim2.new(1, -6, 0, Kit.TAP * 2 + 14), LayoutOrder = 10 + i, ZIndex = 31 })
+		Kit.corner(card, 8)
+		Kit.pad(card, 4)
+		local role = roles[tostring(p.userId)]
+		Kit.label(card, p.name .. "   " .. (if role then ROLE_TITLE[role] else "") .. (if p.alive then "" else "   " .. L.RoleGhost), { Size = UDim2.new(1, 0, 0, Kit.TAP), ZIndex = 32, TextSize = 14, TextColor3 = if role then ROLE_COLOR[role]:Lerp(Color3.new(1, 1, 1), 0.35) else Kit.C.text })
+		local br = Kit.frame(card, { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, Kit.TAP + 4), Size = UDim2.new(1, 0, 0, Kit.TAP), ZIndex = 32 })
+		Kit.list(br, 4, true)
+		for j, a in { { "toss", L.HostToss }, { "bring", L.HostBring }, { "sendHome", L.HostSendHome } } do
+			Kit.button(br, a[2], function()
+				request("Host", a[1], p.userId)
+			end, { Size = UDim2.new(1 / 3, -3, 1, 0), LayoutOrder = j, ZIndex = 33, TextSize = 13 })
+		end
+	end
+	self.hostPanel = box
+end
+
+function MafiaClient:destroy()
+	self.conn:Disconnect()
+	self.tick:Disconnect()
+	self.weather:destroy()
+	if self.ambient then
+		self.ambient:Destroy()
+	end
+	if self.ghostCam then
+		self.ghostCam:destroy()
+	end
+	workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+	self.gui:Destroy()
+	pcall(function()
+		TextChatService.ChatInputBarConfiguration.TargetTextChannel = nil
+	end)
+end
+
+return MafiaClient
+</ProtectedString>
+            </Properties>
+          </Item>
+        </Item>
+        <Item class="LocalScript" referent="RBX0000004A">
           <Properties>
             <string name="Name">Main</string>
             <ProtectedString name="Source">--!nonstrict
@@ -13559,6 +15802,7 @@ local Menu = require(script.Parent.UI.Menu)
 local AdminButton = require(script.Parent.UI.AdminButton)
 local Editor = require(script.Parent.Editor.Editor)
 local PlayClient = require(script.Parent.Play.PlayClient)
+local MafiaClient = require(script.Parent.Mafia.MafiaClient)
 
 local player = Players.LocalPlayer
 
@@ -13599,7 +15843,7 @@ local function applyMode(mode)
 			app.editor = nil
 		end
 		app.menu:setVisible(false)
-		splash.Enabled = app.play == nil
+		splash.Enabled = app.play == nil and app.mafia == nil
 	else
 		splash.Enabled = false
 		if not app.editor and not app.play then
@@ -13647,6 +15891,53 @@ function app:closeEditor()
 	workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
 	self.menu:setVisible(true)
 end
+
+-- «Мафия»: отдельный режим со своим экраном
+local function openMafia()
+	if app.mafia then
+		return app.mafia
+	end
+	if app.editor then
+		app.editor:destroy()
+		app.editor = nil
+	end
+	if app.play then
+		app.play:destroy()
+		app.play = nil
+	end
+	app.menu:setVisible(false)
+	splash.Enabled = false
+	app.mafia = MafiaClient.new(app)
+	return app.mafia
+end
+
+function app:joinMafia()
+	Remotes.fn("Request"):InvokeServer("CloseProject")
+	openMafia()
+	local ok, res = pcall(function()
+		return Remotes.fn("MafiaRequest"):InvokeServer("Join")
+	end)
+	if not ok or not res or not res.ok then
+		self:leaveMafia()
+		self.menu:showError(nil)
+	end
+end
+
+function app:leaveMafia()
+	if self.mafia then
+		self.mafia:destroy()
+		self.mafia = nil
+	end
+	workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+	self.menu:setVisible(true)
+end
+
+Remotes.event("Mafia").OnClientEvent:Connect(function(msg)
+	-- сервер сам привёл игрока в мафию (например, «Мафия для всех»)
+	if not app.mafia and type(msg) == "table" and msg.type == "state" then
+		openMafia():onMessage(msg)
+	end
+end)
 
 function app:joinByCode(code: string)
 	if self.editor then
@@ -13730,11 +16021,11 @@ end)
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="Folder" referent="RBX00000045">
+        <Item class="Folder" referent="RBX0000004B">
           <Properties>
             <string name="Name">Play</string>
           </Properties>
-          <Item class="ModuleScript" referent="RBX00000046">
+          <Item class="ModuleScript" referent="RBX0000004C">
             <Properties>
               <string name="Name">Bubble</string>
               <ProtectedString name="Source">--!nonstrict
@@ -13795,7 +16086,7 @@ return Bubble
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000047">
+          <Item class="ModuleScript" referent="RBX0000004D">
             <Properties>
               <string name="Name">CameraController</string>
               <ProtectedString name="Source">--!nonstrict
@@ -14081,7 +16372,7 @@ return CameraController
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000048">
+          <Item class="ModuleScript" referent="RBX0000004E">
             <Properties>
               <string name="Name">PlayClient</string>
               <ProtectedString name="Source">--!nonstrict
@@ -14405,7 +16696,7 @@ return PlayClient
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000049">
+          <Item class="ModuleScript" referent="RBX0000004F">
             <Properties>
               <string name="Name">WeatherFx</string>
               <ProtectedString name="Source">--!nonstrict
@@ -14535,11 +16826,11 @@ return WeatherFx
             </Properties>
           </Item>
         </Item>
-        <Item class="Folder" referent="RBX0000004A">
+        <Item class="Folder" referent="RBX00000050">
           <Properties>
             <string name="Name">UI</string>
           </Properties>
-          <Item class="ModuleScript" referent="RBX0000004B">
+          <Item class="ModuleScript" referent="RBX00000051">
             <Properties>
               <string name="Name">AdminButton</string>
               <ProtectedString name="Source">--!nonstrict
@@ -14635,7 +16926,7 @@ return AdminButton
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX0000004C">
+          <Item class="ModuleScript" referent="RBX00000052">
             <Properties>
               <string name="Name">Kit</string>
               <ProtectedString name="Source">--!nonstrict
@@ -15178,7 +17469,7 @@ return Kit
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX0000004D">
+          <Item class="ModuleScript" referent="RBX00000053">
             <Properties>
               <string name="Name">Menu</string>
               <ProtectedString name="Source">--!nonstrict
@@ -15224,9 +17515,9 @@ function Menu.new(app)
 	Kit.button(actions, L.NewMap, function()
 		self:createMap(nil)
 	end, { BackgroundColor3 = Kit.C.accent })
-	Kit.button(actions, L.TemplateCorp, function()
-		self:createMap("corp")
-	end)
+	Kit.button(actions, L.Mafia, function()
+		self.app:joinMafia()
+	end, { BackgroundColor3 = Color3.fromRGB(120, 30, 40) })
 	Kit.button(actions, L.NewDemo, function()
 		self:createMap("demo")
 	end)
@@ -15255,6 +17546,14 @@ function Menu.new(app)
 			self:updateShowcase()
 		end
 	end, { Size = UDim2.new(0.5, -4, 0, Kit.TAP), Position = UDim2.new(0.5, 4, 1, -Kit.TAP), ZIndex = 6, BackgroundColor3 = Kit.C.bad })
+
+	-- создатель может сделать «Мафию» тем, что видят все вместо меню
+	self.mafiaShowcase = Kit.button(box, L.ShowcaseMafia, function()
+		local r = Remotes.fn("Request"):InvokeServer("SetShowcase", "MAFIA")
+		if r and r.ok then
+			Kit.toast(self.gui, L.ShowcaseSetDone, Kit.C.good)
+		end
+	end, { Size = UDim2.fromOffset(220, 52), Position = UDim2.new(1, -220, 0, 0), Visible = false, TextSize = 13, BackgroundColor3 = Color3.fromRGB(120, 30, 40) })
 
 	self.nameBox = Kit.textbox(box, "", L.MapNamePlaceholder, nil, { Position = UDim2.fromOffset(0, if Kit.compact() then 200 else 140), Size = UDim2.new(1, 0, 0, Kit.TAP) })
 	local listTop = if Kit.compact() then 252 else 192
@@ -15318,7 +17617,7 @@ end
 function Menu:createMap(template: string?)
 	local name = self.nameBox.Text
 	if name == "" then
-		name = if template == "demo" then L.DemoMapName elseif template == "corp" then L.TemplateCorp else L.NewMap
+		name = if template == "demo" then L.DemoMapName else L.NewMap
 	end
 	local res = Remotes.fn("Request"):InvokeServer("CreateProject", name, template)
 	if res and res.ok then
@@ -15374,6 +17673,7 @@ function Menu:updateShowcase()
 	local mode = self.app.mode or {}
 	local sc = mode.showcase
 	self.showcaseBanner.Visible = sc ~= nil and mode.creator == true
+	self.mafiaShowcase.Visible = mode.creator == true and (sc == nil or sc.code ~= "MAFIA")
 	local extra = if self.showcaseBanner.Visible then Kit.TAP * 2 + 42 else 0
 	self.list.Size = UDim2.new(1, 0, 1, -(self.listTop + extra))
 	if sc then

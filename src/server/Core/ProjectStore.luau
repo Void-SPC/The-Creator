@@ -15,7 +15,6 @@ local Util = require(Shared.Util)
 local Format = require(Shared.Format)
 local Demo = require(Shared.Demo)
 local Prefabs = require(Shared.Prefabs)
-local Corp = require(Shared.Corp)
 
 local ProjectStore = {}
 ProjectStore.__index = ProjectStore
@@ -164,9 +163,7 @@ function ProjectStore:createProject(userId: number, name: string, template: stri
 	if template == "demo" then
 		project = Demo.build(pid, userId)
 		project.meta.name = name
-	elseif template == "corp" then
-		project = Corp.build(pid, userId)
-		project.meta.name = name
+
 	else
 		project = Format.newProject(pid, name, userId)
 		-- новая карта сразу с платформой: на неё удобно ставить блоки, в игре это пол
@@ -458,6 +455,12 @@ function ProjectStore:getShowcase()
 end
 
 function ProjectStore:setShowcase(code: string?, userId: number)
+	if code == "MAFIA" then
+		-- особая витрина: все сразу попадают в «Мафию»
+		return self:_update("showcase", function()
+			return { enabled = true, code = "MAFIA", name = "Мафия", setBy = userId, at = self.now() }
+		end)
+	end
 	if code then
 		local okP, data = self:loadPublished(code)
 		if not okP then

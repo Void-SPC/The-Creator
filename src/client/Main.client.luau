@@ -13,6 +13,7 @@ local Menu = require(script.Parent.UI.Menu)
 local AdminButton = require(script.Parent.UI.AdminButton)
 local Editor = require(script.Parent.Editor.Editor)
 local PlayClient = require(script.Parent.Play.PlayClient)
+local MafiaClient = require(script.Parent.Mafia.MafiaClient)
 
 local player = Players.LocalPlayer
 
@@ -53,7 +54,7 @@ local function applyMode(mode)
 			app.editor = nil
 		end
 		app.menu:setVisible(false)
-		splash.Enabled = app.play == nil
+		splash.Enabled = app.play == nil and app.mafia == nil
 	else
 		splash.Enabled = false
 		if not app.editor and not app.play then
@@ -101,6 +102,53 @@ function app:closeEditor()
 	workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
 	self.menu:setVisible(true)
 end
+
+-- «Мафия»: отдельный режим со своим экраном
+local function openMafia()
+	if app.mafia then
+		return app.mafia
+	end
+	if app.editor then
+		app.editor:destroy()
+		app.editor = nil
+	end
+	if app.play then
+		app.play:destroy()
+		app.play = nil
+	end
+	app.menu:setVisible(false)
+	splash.Enabled = false
+	app.mafia = MafiaClient.new(app)
+	return app.mafia
+end
+
+function app:joinMafia()
+	Remotes.fn("Request"):InvokeServer("CloseProject")
+	openMafia()
+	local ok, res = pcall(function()
+		return Remotes.fn("MafiaRequest"):InvokeServer("Join")
+	end)
+	if not ok or not res or not res.ok then
+		self:leaveMafia()
+		self.menu:showError(nil)
+	end
+end
+
+function app:leaveMafia()
+	if self.mafia then
+		self.mafia:destroy()
+		self.mafia = nil
+	end
+	workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+	self.menu:setVisible(true)
+end
+
+Remotes.event("Mafia").OnClientEvent:Connect(function(msg)
+	-- сервер сам привёл игрока в мафию (например, «Мафия для всех»)
+	if not app.mafia and type(msg) == "table" and msg.type == "state" then
+		openMafia():onMessage(msg)
+	end
+end)
 
 function app:joinByCode(code: string)
 	if self.editor then

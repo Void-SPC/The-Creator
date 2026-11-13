@@ -19,6 +19,7 @@ local FilterService = require(script.Parent.FilterService)
 local AdminService = require(script.Parent.AdminService)
 local Access = require(script.Parent.Access)
 local CurrencyService = require(script.Parent.CurrencyService)
+local MafiaGame = require(script.Parent.Mafia.MafiaGame)
 
 local adapter = Adapter.create()
 local store = ProjectStore.new(adapter, { jobId = if game.JobId ~= "" then game.JobId else HttpService:GenerateGUID(false) })
@@ -53,6 +54,7 @@ buildLobby()
 
 EditorService.init(store)
 CurrencyService.init(store)
+MafiaGame.init()
 PlayService.init(store)
 
 -- ---------------------------------------------------------------------------
@@ -237,6 +239,12 @@ local function enterShowcase(player: Player)
 		player.CharacterAdded:Wait()
 	end
 	task.wait(0.5)
+	if showcase.code == "MAFIA" then
+		EditorService.closeProject(player)
+		PlayService.leave(player)
+		MafiaGame.join(player)
+		return
+	end
 	local current = PlayService.sessionOf(player)
 	if current and current.code == showcase.code then
 		return
@@ -318,6 +326,7 @@ handlers.OpenCreatorMenu = function(player)
 	if not Access.isCreator(player) then
 		return { ok = false, error = "forbidden" }
 	end
+	MafiaGame.leave(player)
 	return PlayService.leave(player)
 end
 

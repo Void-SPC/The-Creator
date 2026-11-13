@@ -215,31 +215,6 @@ return function(T)
 		T.ok(s2:createProject(1, "Дом_1", nil), "name is free again")
 	end)
 
-	T.test("corporation template", function()
-		local ad = memoryAdapter()
-		local s = store(ad)
-		local ok, p = s:createProject(1, "Корпорация", "corp")
-		T.ok(ok, tostring(p))
-		local Logic = require(Shared.Logic)
-		local _, errs = Logic.compile(p)
-		T.eq(#errs, 0, T.show(errs))
-		local statues, owned, desks = 0, 0, 0
-		for _, o in p.map.objects do
-			if o.role and o.role.type == "statue" then
-				statues += 1
-				T.eq(o.role.username, "Nataliaavira13")
-				T.eq(o.role.pose, "admire")
-			elseif o.role and o.role.type == "door" and o.role.owned then
-				owned += 1
-			elseif o.latin and string.match(o.latin, "^Desk%d") then
-				desks += 1
-			end
-		end
-		T.eq(statues, 1)
-		T.eq(owned, 6, "six personal rooms")
-		T.eq(desks, 8, "a desk for everyone")
-	end)
-
 	T.test("library models", function()
 		local ad = memoryAdapter()
 		local s = store(ad)

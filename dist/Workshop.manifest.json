@@ -1,8 +1,8 @@
 {
   "file": "Workshop.rbxlx",
-  "version": "0.8.0",
-  "sha256": "2a9ba244aae111828ab90863c4f69e5d4722613776dbec065f0b60a6ebc9ad87",
-  "bytes": 608699,
+  "version": "0.9.0",
+  "sha256": "d622a4d856f743db9bf01078f2a2621eabcf409a8fa5915eac33f4d1001a08fc",
+  "bytes": 692041,
   "scripts": [
     {
       "path": "src/shared/Anim.luau",
@@ -18,11 +18,6 @@
       "path": "src/shared/Closet.luau",
       "class": "ModuleScript",
       "name": "Closet"
-    },
-    {
-      "path": "src/shared/Corp.luau",
-      "class": "ModuleScript",
-      "name": "Corp"
     },
     {
       "path": "src/shared/Demo.luau",
@@ -68,6 +63,16 @@
       "path": "src/shared/Logic/Validator.luau",
       "class": "ModuleScript",
       "name": "Validator"
+    },
+    {
+      "path": "src/shared/MafiaRules.luau",
+      "class": "ModuleScript",
+      "name": "MafiaRules"
+    },
+    {
+      "path": "src/shared/MafiaSounds.luau",
+      "class": "ModuleScript",
+      "name": "MafiaSounds"
     },
     {
       "path": "src/shared/MathX.luau",
@@ -170,6 +175,16 @@
       "name": "FilterService"
     },
     {
+      "path": "src/server/Mafia/MafiaGame.luau",
+      "class": "ModuleScript",
+      "name": "MafiaGame"
+    },
+    {
+      "path": "src/server/Mafia/Village.luau",
+      "class": "ModuleScript",
+      "name": "Village"
+    },
+    {
       "path": "src/server/Main.server.luau",
       "class": "Script",
       "name": "Main"
@@ -253,6 +268,11 @@
       "path": "src/client/Editor/State.luau",
       "class": "ModuleScript",
       "name": "State"
+    },
+    {
+      "path": "src/client/Mafia/MafiaClient.luau",
+      "class": "ModuleScript",
+      "name": "MafiaClient"
     },
     {
       "path": "src/client/Main.client.luau",

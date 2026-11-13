@@ -163,7 +163,7 @@ function PlaySession:start()
 			WorldBuilder.setVisible(h, false)
 			local feet = WorldBuilder.objectCFrame(obj, self.origin) * CFrame.new(0, -(obj.size and obj.size[2] or 5) / 2, 0)
 			task.spawn(function()
-				local model = Statue.spawn(obj.role.username, obj.role.pose, obj.role.orb ~= false, feet, folder)
+				local model = Statue.spawn(obj.role.username, obj.role.pose, obj.role.orb ~= false, feet, folder, nil)
 				if not model then
 					-- аватар не загрузился: оставляем каменную заготовку
 					WorldBuilder.setVisible(h, true)

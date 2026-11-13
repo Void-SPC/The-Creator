@@ -80,7 +80,9 @@ local function petrify(model: Model)
 end
 
 -- Строит статую и ставит её так, чтобы ступни стояли в точке feetCF
-function Statue.spawn(username: string, pose: string, orb: boolean, feetCF: CFrame, parent: Instance): Model?
+-- opts: { scale = 1, orbColor = Color3? } — orbColor делает сферу светящейся
+function Statue.spawn(username: string, pose: string, orb: boolean, feetCF: CFrame, parent: Instance, opts): Model?
+	opts = opts or {}
 	local userId = userIdOf(username)
 	if not userId then
 		return nil
@@ -106,7 +108,7 @@ function Statue.spawn(username: string, pose: string, orb: boolean, feetCF: CFra
 		animator:Destroy()
 	end
 	petrify(model)
-	-- поза: поворачиваем C0 суставов, пока детали ещё держатся только на суставах
+	-- поза: поворачиваем C0 суставов, пока детали держатся только на суставах
 	local r15 = hum.RigType == Enum.HumanoidRigType.R15
 	local angles = (if r15 then Statue.POSE else Statue.POSE_R6)[pose] or {}
 	for _, j in model:GetDescendants() do
@@ -118,41 +120,64 @@ function Statue.spawn(username: string, pose: string, orb: boolean, feetCF: CFra
 	for _, d in model:GetDescendants() do
 		if d:IsA("BasePart") then
 			d.Anchored = d == root
-			d.CanCollide = d == root
+			d.CanCollide = false
 		end
 	end
-	local lift = if r15 then hum.HipHeight + root.Size.Y / 2 else 3
 	model.Parent = parent
-	model:PivotTo(feetCF * CFrame.new(0, lift, 0))
-	-- то, на что смотрит статуя: каменная сфера в поднятой руке
+	model:PivotTo(feetCF * CFrame.new(0, 3, 0))
+	local scale = opts.scale or 1
+	if scale ~= 1 then
+		pcall(function()
+			model:ScaleTo(scale)
+		end)
+	end
+	-- то, на что смотрит статуя: сфера в поднятой руке
+	local ball: BasePart? = nil
 	if orb then
 		local hand = model:FindFirstChild(if r15 then "RightHand" else "Right Arm") :: BasePart?
 		if hand then
-			local ball = Instance.new("Part")
-			ball.Name = "Orb"
-			ball.Shape = Enum.PartType.Ball
-			ball.Size = Vector3.new(1.3, 1.3, 1.3)
-			ball.Material = Enum.Material.Marble
-			ball.Color = STONE
-			ball.CanCollide = false
-			ball.Massless = true
-			ball.CFrame = hand.CFrame * CFrame.new(0, -hand.Size.Y / 2 - 0.5, 0)
+			local b = Instance.new("Part")
+			b.Name = "Orb"
+			b.Shape = Enum.PartType.Ball
+			local d = 1.3 * scale
+			b.Size = Vector3.new(d, d, d)
+			b.CanCollide = false
+			b.Massless = true
+			if opts.orbColor then
+				b.Material = Enum.Material.Neon
+				b.Color = opts.orbColor
+				local light = Instance.new("PointLight")
+				light.Color = if opts.orbColor == Color3.new(0, 0, 0) then Color3.fromRGB(120, 60, 180) else opts.orbColor
+				light.Range = 30
+				light.Brightness = 3
+				light.Parent = b
+			else
+				b.Material = Enum.Material.Marble
+				b.Color = STONE
+			end
+			b.CFrame = hand.CFrame * CFrame.new(0, -hand.Size.Y / 2 - d * 0.4, 0)
 			local weld = Instance.new("WeldConstraint")
 			weld.Part0 = hand
-			weld.Part1 = ball
-			weld.Parent = ball
-			ball.Parent = model
+			weld.Part1 = b
+			weld.Parent = b
+			b.Parent = model
+			ball = b
 		end
 	end
-	-- суставы успели расставить детали: закрепляем всё, чтобы статуя не падала
-	task.delay(0.3, function()
-		for _, d in model:GetDescendants() do
-			if d:IsA("BasePart") then
-				d.Anchored = true
-				d.CanCollide = true
-			end
+	-- суставы расставили детали: закрепляем всё и ставим ступни ровно на постамент
+	task.wait(0.3)
+	for _, d in model:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Anchored = true
+			d.CanCollide = true
 		end
-	end)
+	end
+	local cf, size = model:GetBoundingBox()
+	local bottom = cf.Position.Y - size.Y / 2
+	model:PivotTo(model:GetPivot() + Vector3.new(0, feetCF.Position.Y - bottom, 0))
+	if ball then
+		model:SetAttribute("HasOrb", true)
+	end
 	return model
 end
 

@@ -254,7 +254,7 @@ function EditorService.createProject(player: Player, name: any, template: any)
 	if name == "" or utf8.len(name) == nil or (utf8.len(name) :: number) > 60 then
 		return { ok = false, error = "bad_name" }
 	end
-	local tpl = if template == "demo" or template == "corp" then template else nil
+	local tpl = if template == "demo" then template else nil
 	local ok, project, rev = store:createProject(player.UserId, name, tpl)
 	return open(player, ok, project, rev, false)
 end
