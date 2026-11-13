@@ -460,6 +460,7 @@ end
 
 function Prefabs.officeInspector(project)
 	local m = fromOffice(project, OfficeModels.inspector, "Inspector")
+	m.name = "Билетёрша"
 	m.role = {
 		type = "npc",
 		trigger = "logic", -- сам по себе ни на что не реагирует

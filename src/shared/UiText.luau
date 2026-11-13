@@ -13,8 +13,8 @@
 local UiText = {}
 
 UiText.L = {
-	AppTitle = "Мастерская",
-	AppSubtitle = "Карты, модели и существа",
+	AppTitle = "Creator",
+	AppSubtitle = "Мастерская карт, моделей и существ",
 	MyMaps = "Мои карты",
 	NewMap = "Новая карта",
 	NewDemo = "Демосцена",

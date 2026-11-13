@@ -76,9 +76,9 @@ Catalog.PREFABS = {
 	{ id = "npcNew", title = "NPC «Новый»", group = "Персонажи" },
 	{ id = "npcRetro", title = "NPC «Ретро»", group = "Персонажи" },
 	{ id = "fox", title = "Лисик", group = "Персонажи" },
-	{ id = "officeInspector", title = "Инспектор", group = "Из игры «Офисы»" },
-	{ id = "officeCoin", title = "Монета-джентльмен", group = "Из игры «Офисы»" },
-	{ id = "officeCoinMoustache", title = "Монета-джентльмен с усами", group = "Из игры «Офисы»" },
+	{ id = "officeInspector", title = "Билетёрша", group = "Джентльмен и Билетёрша" },
+	{ id = "officeCoin", title = "Монета-джентльмен", group = "Джентльмен и Билетёрша" },
+	{ id = "officeCoinMoustache", title = "Монета-джентльмен с усами", group = "Джентльмен и Билетёрша" },
 }
 
 return Catalog
