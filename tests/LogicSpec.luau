@@ -223,6 +223,52 @@ end
 		T.eq(errs[1].line, 5)
 	end)
 
+	T.test("weather, sound, player and timer commands", function()
+		local p = Demo.build("p", 1)
+		p.logic.mode = "text"
+		p.logic.text.source = [[
+on Timer(30) do
+  if IsWeather("Rain") then
+    SetWeather("Snow")
+  end
+end
+on PlayerDied() do
+  ShowMessage("Попробуй ещё раз", 3)
+  AddScore(-1)
+end
+on Interacted(Start) do
+  DamagePlayer(10)
+  PlaySound("1837849285", 0.5, Fox)
+  PlayMusic("rbxassetid://1837849285")
+  TeleportPlayer(NoisePoint)
+  SetWeather("Hail")
+  PlaySound("abc")
+end
+]]
+		local tree, errs = Logic.compile(p)
+		T.eq(#errs, 2, T.show(errs))
+		T.eq(errs[1].line, 15)
+		T.eq(errs[2].line, 16)
+		-- Timer с числом срабатывает только для своего интервала
+		p.logic.text.source = "on Timer(30) do\n  AddScore(1)\nend\non Timer(5) do\n  AddScore(2)\nend\n"
+		tree = Logic.compile(p)
+		local got = {}
+		local rt = Logic.Interpreter.new(tree, {
+			now = function()
+				return 0
+			end,
+			action = function(name, args)
+				table.insert(got, args[1])
+			end,
+			condition = function()
+				return false
+			end,
+			onError = function() end,
+		})
+		T.eq(rt.dispatch("Timer", { 5 }), 1)
+		T.eq(got[1], 2)
+	end)
+
 	T.test("reserved names", function()
 		T.ok(Logic.isReservedName("Wait"))
 		T.ok(Logic.isReservedName("end"))

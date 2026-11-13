@@ -76,6 +76,10 @@ function PlaySession.new(service, opts)
 	local lt = self.project.settings.lighting or {}
 	self.clockBase = lt.clockTime or 14
 	self.clockAt = workspace:GetServerTimeNow()
+	local w = self.project.settings.weather or {}
+	self.weatherBase = w.type or "Clear"
+	self.weatherAt = self.clockAt
+	self.timers = {}
 	return self
 end
 
@@ -154,6 +158,14 @@ function PlaySession:start()
 		self:step(dt)
 	end))
 	self.zoneTimer = 0
+	-- «Каждые N секунд»: свой счётчик на каждый интервал
+	if self.tree then
+		for _, h in self.tree.handlers do
+			if h.event == "Timer" and h.args[1] and h.args[1].kind == "num" then
+				self.timers[h.args[1].value] = 0
+			end
+		end
+	end
 	self:emit("MapStarted", {})
 end
 
@@ -171,11 +183,11 @@ function PlaySession:setupLogic()
 	self.tree = tree
 	local host = {
 		now = os.clock,
-		action = function(name, args, node)
-			return self:action(name, args, node)
+		action = function(name, args, node, eventArgs)
+			return self:action(name, args, node, eventArgs)
 		end,
-		condition = function(name, args)
-			return self:condition(name, args)
+		condition = function(name, args, eventArgs)
+			return self:condition(name, args, eventArgs)
 		end,
 		onError = function(e)
 			self:reportError(e)
@@ -199,7 +211,7 @@ function PlaySession:setupLogic()
 			if prompt then
 				table.insert(self.connections, prompt.Triggered:Connect(function(player)
 					if self.players[player] then
-						self:emit("Interacted", { { ref = id } })
+						self:emit("Interacted", { { ref = id } }, player)
 					end
 				end))
 			end
@@ -207,10 +219,56 @@ function PlaySession:setupLogic()
 	end
 end
 
-function PlaySession:emit(event: string, args)
+-- player — игрок, из-за которого случилось событие; действия «…игрока» применяются к нему,
+-- а если игрока нет (например, «Когда карта запущена»), то ко всем игрокам карты
+function PlaySession:emit(event: string, args, player: Player?)
 	if self.runtime and not self.destroyed then
+		args.player = player
 		self.runtime.dispatch(event, args)
 	end
+end
+
+function PlaySession:targetPlayers(eventArgs): { Player }
+	local p = eventArgs and eventArgs.player
+	if p and self.players[p] then
+		return { p }
+	end
+	local out = {}
+	for pl in self.players do
+		table.insert(out, pl)
+	end
+	return out
+end
+
+local function humanoidOf(player: Player): Humanoid?
+	local char = player.Character
+	return char and char:FindFirstChildOfClass("Humanoid")
+end
+
+function PlaySession:score(player: Player): IntValue
+	local stats = player:FindFirstChild("leaderstats")
+	if not stats then
+		stats = Instance.new("Folder")
+		stats.Name = "leaderstats"
+		stats.Parent = player
+	end
+	local v = stats:FindFirstChild(UiText.L.Score) :: IntValue?
+	if not v then
+		local nv = Instance.new("IntValue")
+		nv.Name = UiText.L.Score
+		nv.Parent = stats
+		v = nv
+	end
+	return v :: IntValue
+end
+
+function PlaySession:weatherMessage()
+	local w = self.project.settings.weather or {}
+	return { type = "weather", weather = self.weatherBase, at = self.weatherAt, auto = w.auto == true, minutes = w.minutes or 5 }
+end
+
+function PlaySession:currentWeather(): string
+	return Format.weatherAt(self.project.settings.weather, self.weatherBase, self.weatherAt, workspace:GetServerTimeNow())
 end
 
 local function refOf(v, what: string): string
@@ -230,7 +288,7 @@ function PlaySession:target(v, what: string)
 	return id, h
 end
 
-function PlaySession:action(name: string, args, _node)
+function PlaySession:action(name: string, args, _node, eventArgs)
 	if name == "PlayClip" then
 		local id = self:target(args[1], "PlayClip")
 		local a = self.animators[id]
@@ -286,6 +344,57 @@ function PlaySession:action(name: string, args, _node)
 	elseif name == "SetVisible" then
 		local _, h = self:target(args[1], "SetVisible")
 		WorldBuilder.setVisible(h, args[2] == true)
+	elseif name == "SetWeather" then
+		self.weatherBase = tostring(args[1])
+		self.weatherAt = workspace:GetServerTimeNow()
+		self:broadcast(self:weatherMessage())
+	elseif name == "PlaySound" or name == "PlayMusic" then
+		local id = string.match(tostring(args[1]), "(%d+)")
+		local part = nil
+		if name == "PlaySound" and args[3] then
+			local _, h = self:target(args[3], "PlaySound")
+			part = h.primary
+		end
+		if name == "PlayMusic" then
+			self.musicNow = { id = id, volume = args[2] or 0.6 }
+		end
+		self:broadcast({ type = if name == "PlayMusic" then "music" else "sound", id = id, volume = args[2] or 0.6, part = part })
+	elseif name == "StopMusic" then
+		self.musicNow = { id = nil }
+		self:broadcast({ type = "music", id = nil })
+	elseif name == "DamagePlayer" or name == "HealPlayer" or name == "SetPlayerSpeed" then
+		for _, p in self:targetPlayers(eventArgs) do
+			local hum = humanoidOf(p)
+			if hum and hum.Health > 0 then
+				local n = tonumber(args[1]) or 0
+				if name == "DamagePlayer" then
+					hum:TakeDamage(n)
+				elseif name == "HealPlayer" then
+					hum.Health = math.min(hum.MaxHealth, hum.Health + n)
+				else
+					hum.WalkSpeed = math.clamp(n, 0, 100)
+				end
+			end
+		end
+	elseif name == "TeleportPlayer" then
+		local pointId, h = self:target(args[1], "TeleportPlayer")
+		local _ = pointId
+		local cf = WorldBuilder.objectCFrame(h.obj, self.origin) * CFrame.new(0, 3.5, 0)
+		for _, p in self:targetPlayers(eventArgs) do
+			if p.Character and not self.closetOf[p] then
+				p.Character:PivotTo(cf)
+			end
+		end
+	elseif name == "ShowMessage" then
+		local msg = { type = "message", text = tostring(args[1]), seconds = args[2] or 3 }
+		for _, p in self:targetPlayers(eventArgs) do
+			self.playEvent:FireClient(p, msg)
+		end
+	elseif name == "AddScore" then
+		for _, p in self:targetPlayers(eventArgs) do
+			local v = self:score(p)
+			v.Value += math.floor(tonumber(args[1]) or 0)
+		end
 	elseif name == "SetTime" then
 		local h = tonumber(args[1])
 		if not h then
@@ -308,7 +417,7 @@ function PlaySession:action(name: string, args, _node)
 	return nil
 end
 
-function PlaySession:condition(name: string, args)
+function PlaySession:condition(name: string, args, eventArgs)
 	if name == "LightIsOn" then
 		local _, h = self:target(args[1], "LightIsOn")
 		return h.obj.role and h.obj.role.on == true
@@ -322,6 +431,18 @@ function PlaySession:condition(name: string, args)
 		local id = self:target(args[1], "ClosetOccupied")
 		local c = self.closets[id]
 		return c ~= nil and c.state.state ~= Closet.FREE
+	elseif name == "IsWeather" then
+		return self:currentWeather() == args[1]
+	elseif name == "ScoreAtLeast" or name == "HealthBelow" then
+		local p = eventArgs and eventArgs.player
+		if not p then
+			error("условие про игрока работает только в событиях с игроком", 0)
+		end
+		if name == "ScoreAtLeast" then
+			return self:score(p).Value >= (tonumber(args[1]) or 0)
+		end
+		local hum = humanoidOf(p)
+		return hum ~= nil and hum.Health < (tonumber(args[1]) or 0)
 	elseif name == "IsNight" then
 		return Format.isNight(self:clock())
 	elseif name == "Chance" then
@@ -387,8 +508,8 @@ function PlaySession:setupDoor(id: string)
 	if prompt then
 		table.insert(self.connections, prompt.Triggered:Connect(function(player)
 			if self.players[player] and not role.locked then
-				self:setDoor(id, not door.open)
-				self:emit("Interacted", { { ref = id } })
+				self:setDoor(id, not door.open, nil, player)
+				self:emit("Interacted", { { ref = id } }, player)
 			end
 		end))
 	end
@@ -398,7 +519,7 @@ function PlaySession:setupDoor(id: string)
 	end
 end
 
-function PlaySession:setDoor(id: string, open: boolean, instant: boolean?)
+function PlaySession:setDoor(id: string, open: boolean, instant: boolean?, player: Player?)
 	local door = self.doors[id]
 	if not door or door.open == open then
 		return
@@ -432,7 +553,7 @@ function PlaySession:setDoor(id: string, open: boolean, instant: boolean?)
 		end)
 		door.tween:Play()
 	end
-	self:emit(if open then "DoorOpened" else "DoorClosed", { { ref = id } })
+	self:emit(if open then "DoorOpened" else "DoorClosed", { { ref = id } }, player)
 end
 
 -- ---------------------------------------------------------------------------
@@ -583,10 +704,10 @@ function PlaySession:closetComplete(id: string)
 			rootPart.CFrame = charPose(rootPart, self:closetPose(id, c.role.inside))
 		end
 		self.playEvent:FireClient(player, { type = "closet", phase = "inside", closetId = id, base = self:closetCF(id), pose = c.role.inside })
-		self:emit("ClosetEntered", { { ref = id } })
+		self:emit("ClosetEntered", { { ref = id } }, player)
 	else
 		self:closetFinishOutside(id, player)
-		self:emit("ClosetExited", { { ref = id } })
+		self:emit("ClosetExited", { { ref = id } }, player)
 	end
 end
 
@@ -662,7 +783,7 @@ function PlaySession:setupNpc(id: string)
 			table.insert(self.connections, prompt.Triggered:Connect(function(player)
 				if self.players[player] then
 					self:greet(id, player)
-					self:emit("Interacted", { { ref = id } })
+					self:emit("Interacted", { { ref = id } }, player)
 				end
 			end))
 		end
@@ -750,7 +871,7 @@ function PlaySession:stepZones()
 				end
 				if inside and not members[player] then
 					members[player] = true
-					self:emit("ZoneEntered", { { ref = id } })
+					self:emit("ZoneEntered", { { ref = id } }, player)
 					for npcId, nh in self.handles do
 						local nr = nh.obj.role
 						if nr and nr.type == "npc" and nr.trigger == "roomEnter" and nr.zone and nr.zone.ref == id then
@@ -759,7 +880,7 @@ function PlaySession:stepZones()
 					end
 				elseif not inside and members[player] then
 					members[player] = nil
-					self:emit("ZoneLeft", { { ref = id } })
+					self:emit("ZoneLeft", { { ref = id } }, player)
 				end
 			end
 		end
@@ -787,6 +908,14 @@ function PlaySession:step(dt: number)
 	if self.zoneTimer >= 0.1 then
 		self.zoneTimer = 0
 		self:stepZones()
+	end
+	for interval, acc in self.timers do
+		acc += dt
+		if acc >= interval then
+			acc -= interval
+			self:emit("Timer", { interval })
+		end
+		self.timers[interval] = acc
 	end
 	if self.runtime then
 		self.runtime.update()
@@ -830,11 +959,33 @@ function PlaySession:addPlayer(player: Player)
 		isOwner = player.UserId == self.ownerId,
 	})
 	self.playEvent:FireClient(player, self:timeMessage())
+	self.playEvent:FireClient(player, self:weatherMessage())
+	local music = self.musicNow or self.project.settings.music
+	if music and music.id then
+		self.playEvent:FireClient(player, { type = "music", id = string.match(tostring(music.id), "(%d+)"), volume = music.volume })
+	end
+	local function watchDeath()
+		local hum = humanoidOf(player)
+		if hum then
+			hum.Died:Once(function()
+				if self.players[player] then
+					self:emit("PlayerDied", {}, player)
+				end
+			end)
+		end
+	end
+	watchDeath()
 	local conn = player.CharacterAdded:Connect(function()
 		task.wait()
 		if self.players[player] then
 			self:placeCharacter(player)
 			self.playEvent:FireClient(player, { type = "respawn" })
+			watchDeath()
+		end
+	end)
+	task.defer(function()
+		if self.players[player] then
+			self:emit("PlayerJoined", {}, player)
 		end
 	end)
 	self.charConns = self.charConns or {}

@@ -62,6 +62,10 @@ function Format.newSettings()
 			bob = 0.5, -- 0 отключает покачивание
 		},
 		hud = { health = false },
+		-- погода: Clear, Rain, Snow, Fog, Storm; auto — менять сама каждые minutes минут
+		weather = { type = "Clear", auto = false, minutes = 5 },
+		-- музыка карты: ID звука Roblox (число) и громкость 0–1, или nil
+		music = nil,
 		-- clockTime — время суток в часах; dayNight включает смену дня и ночи,
 		-- dayMinutes — сколько реальных минут длятся одни игровые сутки
 		lighting = { ambient = { 40, 40, 48 }, clockTime = 14, brightness = 1, dayNight = false, dayMinutes = 12 },
@@ -572,6 +576,27 @@ function Format.validateSettings(s): string?
 	if type(s.hud.health) ~= "boolean" then
 		return "hud.health"
 	end
+	local w = s.weather
+	if w ~= nil then
+		if type(w) ~= "table" or not Format.WEATHER_SET[w.type] then
+			return "weather.type"
+		end
+		if w.auto ~= nil and type(w.auto) ~= "boolean" then
+			return "weather.auto"
+		end
+		if w.minutes ~= nil and (not isNum(w.minutes) or w.minutes < 1 or w.minutes > 120) then
+			return "weather.minutes"
+		end
+	end
+	local m = s.music
+	if m ~= nil then
+		if type(m) ~= "table" or not Format.isSoundId(m.id) then
+			return "music.id"
+		end
+		if not isNum(m.volume) or m.volume < 0 or m.volume > 1 then
+			return "music.volume"
+		end
+	end
 	local lt = s.lighting
 	if lt ~= nil then
 		if type(lt) ~= "table" then
@@ -591,6 +616,38 @@ function Format.validateSettings(s): string?
 		end
 	end
 	return nil
+end
+
+Format.WEATHER = { "Clear", "Rain", "Snow", "Fog", "Storm" }
+Format.WEATHER_SET = { Clear = true, Rain = true, Snow = true, Fog = true, Storm = true }
+
+-- Погода в момент now. При автосмене последовательность одинакова у сервера и всех
+-- клиентов: она зависит только от общего серверного времени
+function Format.weatherAt(weather, base: string, at: number, now: number): string
+	if not weather or not weather.auto then
+		return base
+	end
+	local period = math.max(1, weather.minutes or 5) * 60
+	local step = math.floor(math.max(0, now - at) / period)
+	if step == 0 then
+		return base
+	end
+	local list = Format.WEATHER
+	local idx = (table.find(list, base) or 1) - 1
+	-- каждый следующий период — другая погода; выбор повторяем на всех клиентах
+	for j = 1, math.min(step, 100000) do
+		local h = (j * 1103515245 + 12345) % 2147483648
+		idx = (idx + 1 + (h // 65536) % (#list - 1)) % #list
+	end
+	return list[idx + 1]
+end
+
+function Format.isSoundId(s): boolean
+	if type(s) ~= "string" then
+		return false
+	end
+	local id = string.match(s, "^%d+$") or string.match(s, "^rbxassetid://(%d+)$")
+	return id ~= nil and #id <= 20
 end
 
 -- Время суток в момент now (секунды), если сутки начались в момент at со значения base

@@ -72,6 +72,15 @@ function Validator.validate(tree, project)
 						modelObj = obj
 					end
 				end
+			elseif t == "weather" then
+				if a.kind ~= "str" or not Commands.WEATHER_TITLES[a.value] then
+					report(owner, title .. ": погода бывает Clear, Rain, Snow, Fog или Storm")
+				end
+			elseif t == "sound" then
+				local id = a.kind == "str" and (string.match(a.value, "^%d+$") or string.match(a.value, "^rbxassetid://(%d+)$"))
+				if not id or #id > 20 then
+					report(owner, title .. ": нужен ID звука Roblox, например \"1837849285\"")
+				end
 			elseif t == "clip" then
 				if a.kind ~= "str" then
 					report(owner, title .. ": имя клипа должно быть строкой")

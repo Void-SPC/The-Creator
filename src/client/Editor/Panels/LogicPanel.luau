@@ -32,7 +32,9 @@ local function defaultArg(spec)
 		return { kind = "num", value = spec.min or 1 }
 	elseif t == "bool" then
 		return { kind = "bool", value = true }
-	elseif t == "text" or t == "string" or t == "clip" then
+	elseif t == "weather" then
+		return { kind = "str", value = "Rain" }
+	elseif t == "text" or t == "string" or t == "clip" or t == "sound" then
 		return { kind = "str", value = "" }
 	end
 	return { kind = "ref", ref = "" }
@@ -199,6 +201,19 @@ function LogicPanel.render(editor, panel: Frame)
 					else
 						node.args[i] = nil
 					end
+					setTree(tree)
+				end)
+			end, { TextSize = 13 })
+		elseif t == "weather" then
+			local _, slot = Kit.row(parent, title, order)
+			local cur = a and a.kind == "str" and Commands.WEATHER_TITLES[a.value] or "…"
+			Kit.button(slot, cur, function()
+				local opts = {}
+				for _, id in { "Clear", "Rain", "Snow", "Fog", "Storm" } do
+					table.insert(opts, { id = id, title = Commands.WEATHER_TITLES[id] })
+				end
+				Kit.choose(editor.gui, title, opts, function(id)
+					node.args[i] = { kind = "str", value = id }
 					setTree(tree)
 				end)
 			end, { TextSize = 13 })

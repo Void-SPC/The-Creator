@@ -835,6 +835,10 @@ function Format.newSettings()
 			bob = 0.5, -- 0 отключает покачивание
 		},
 		hud = { health = false },
+		-- погода: Clear, Rain, Snow, Fog, Storm; auto — менять сама каждые minutes минут
+		weather = { type = "Clear", auto = false, minutes = 5 },
+		-- музыка карты: ID звука Roblox (число) и громкость 0–1, или nil
+		music = nil,
 		-- clockTime — время суток в часах; dayNight включает смену дня и ночи,
 		-- dayMinutes — сколько реальных минут длятся одни игровые сутки
 		lighting = { ambient = { 40, 40, 48 }, clockTime = 14, brightness = 1, dayNight = false, dayMinutes = 12 },
@@ -1345,6 +1349,27 @@ function Format.validateSettings(s): string?
 	if type(s.hud.health) ~= "boolean" then
 		return "hud.health"
 	end
+	local w = s.weather
+	if w ~= nil then
+		if type(w) ~= "table" or not Format.WEATHER_SET[w.type] then
+			return "weather.type"
+		end
+		if w.auto ~= nil and type(w.auto) ~= "boolean" then
+			return "weather.auto"
+		end
+		if w.minutes ~= nil and (not isNum(w.minutes) or w.minutes &lt; 1 or w.minutes &gt; 120) then
+			return "weather.minutes"
+		end
+	end
+	local m = s.music
+	if m ~= nil then
+		if type(m) ~= "table" or not Format.isSoundId(m.id) then
+			return "music.id"
+		end
+		if not isNum(m.volume) or m.volume &lt; 0 or m.volume &gt; 1 then
+			return "music.volume"
+		end
+	end
 	local lt = s.lighting
 	if lt ~= nil then
 		if type(lt) ~= "table" then
@@ -1364,6 +1389,38 @@ function Format.validateSettings(s): string?
 		end
 	end
 	return nil
+end
+
+Format.WEATHER = { "Clear", "Rain", "Snow", "Fog", "Storm" }
+Format.WEATHER_SET = { Clear = true, Rain = true, Snow = true, Fog = true, Storm = true }
+
+-- Погода в момент now. При автосмене последовательность одинакова у сервера и всех
+-- клиентов: она зависит только от общего серверного времени
+function Format.weatherAt(weather, base: string, at: number, now: number): string
+	if not weather or not weather.auto then
+		return base
+	end
+	local period = math.max(1, weather.minutes or 5) * 60
+	local step = math.floor(math.max(0, now - at) / period)
+	if step == 0 then
+		return base
+	end
+	local list = Format.WEATHER
+	local idx = (table.find(list, base) or 1) - 1
+	-- каждый следующий период — другая погода; выбор повторяем на всех клиентах
+	for j = 1, math.min(step, 100000) do
+		local h = (j * 1103515245 + 12345) % 2147483648
+		idx = (idx + 1 + (h // 65536) % (#list - 1)) % #list
+	end
+	return list[idx + 1]
+end
+
+function Format.isSoundId(s): boolean
+	if type(s) ~= "string" then
+		return false
+	end
+	local id = string.match(s, "^%d+$") or string.match(s, "^rbxassetid://(%d+)$")
+	return id ~= nil and #id &lt;= 20
 end
 
 -- Время суток в момент now (секунды), если сутки начались в момент at со значения base
@@ -1695,6 +1752,12 @@ Commands.events = {
 	},
 	ClosetEntered = { title = "Когда игрок спрятался в шкаф", args = { arg("closet", "closet", "Шкаф") } },
 	ClosetExited = { title = "Когда игрок вышел из шкафа", args = { arg("closet", "closet", "Шкаф") } },
+	Timer = {
+		title = "Каждые N секунд",
+		args = { arg("seconds", "number", "Секунд", { min = 0.5, max = 3600 }) },
+	},
+	PlayerJoined = { title = "Когда игрок зашёл на карту", args = {} },
+	PlayerDied = { title = "Когда игрок погиб", args = {} },
 	Arrived = { title = "Когда модель дошла до точки", args = { arg("model", "model", "Модель"), arg("point", "waypoint", "Точка") } },
 }
 
@@ -1704,6 +1767,9 @@ Commands.conditions = {
 	ZoneHasPlayer = { title = "В зоне есть игрок", args = { arg("zone", "zone", "Зона") } },
 	ClosetOccupied = { title = "Шкаф занят", args = { arg("closet", "closet", "Шкаф") } },
 	IsNight = { title = "Сейчас ночь", args = {} },
+	IsWeather = { title = "Сейчас погода", args = { arg("weather", "weather", "Погода") } },
+	ScoreAtLeast = { title = "У игрока очков не меньше", args = { arg("score", "number", "Очки", { min = -1000000, max = 1000000 }) } },
+	HealthBelow = { title = "Здоровье игрока ниже", args = { arg("health", "number", "Здоровье", { min = 0, max = 1000 }) } },
 	Chance = { title = "Случайно с шансом", args = { arg("percent", "number", "Шанс, %", { min = 0, max = 100 }) } },
 }
 
@@ -1749,6 +1815,29 @@ Commands.actions = {
 		title = "Показать надпись",
 		args = { arg("target", "any", "Объект с надписью"), arg("visible", "bool", "Видна") },
 	},
+	SetWeather = { title = "Сменить погоду", args = { arg("weather", "weather", "Погода") } },
+	PlaySound = {
+		title = "Проиграть звук",
+		args = {
+			arg("sound", "sound", "ID звука"),
+			arg("volume", "number", "Громкость", { optional = true, min = 0, max = 1 }),
+			arg("target", "any", "Где звучит", { optional = true }),
+		},
+	},
+	PlayMusic = {
+		title = "Включить музыку",
+		args = { arg("sound", "sound", "ID звука"), arg("volume", "number", "Громкость", { optional = true, min = 0, max = 1 }) },
+	},
+	StopMusic = { title = "Выключить музыку", args = {} },
+	DamagePlayer = { title = "Нанести урон игроку", args = { arg("amount", "number", "Урон", { min = 0, max = 1000 }) } },
+	HealPlayer = { title = "Вылечить игрока", args = { arg("amount", "number", "Здоровье", { min = 0, max = 1000 }) } },
+	TeleportPlayer = { title = "Переместить игрока", args = { arg("point", "waypoint", "Точка") } },
+	SetPlayerSpeed = { title = "Скорость игрока", args = { arg("speed", "number", "Скорость", { min = 0, max = 100 }) } },
+	ShowMessage = {
+		title = "Сообщение на экран",
+		args = { arg("text", "text", "Текст"), arg("seconds", "number", "Секунд", { optional = true, min = 0.5, max = 60 }) },
+	},
+	AddScore = { title = "Добавить очки", args = { arg("amount", "number", "Очки", { min = -100000, max = 100000 }) } },
 	SetTime = {
 		title = "Установить время суток",
 		args = { arg("hours", "number", "Часы, 0–24", { min = 0, max = 24 }) },
@@ -1787,6 +1876,8 @@ Commands.TARGET_TYPES = {
 		return true
 	end,
 }
+
+Commands.WEATHER_TITLES = { Clear = "Ясно", Rain = "Дождь", Snow = "Снег", Fog = "Туман", Storm = "Гроза" }
 
 function Commands.lookup(category: string, name: string)
 	local t = (Commands :: any)[category]
@@ -2065,7 +2156,7 @@ function Interpreter.new(tree, host, limits)
 							match = false
 							break
 						end
-					elseif a.kind == "str" then
+					elseif a.kind == "str" or a.kind == "num" then
 						if v ~= a.value then
 							match = false
 							break
@@ -2689,6 +2780,15 @@ function Validator.validate(tree, project)
 					elseif t == "model" and not modelObj then
 						modelObj = obj
 					end
+				end
+			elseif t == "weather" then
+				if a.kind ~= "str" or not Commands.WEATHER_TITLES[a.value] then
+					report(owner, title .. ": погода бывает Clear, Rain, Snow, Fog или Storm")
+				end
+			elseif t == "sound" then
+				local id = a.kind == "str" and (string.match(a.value, "^%d+$") or string.match(a.value, "^rbxassetid://(%d+)$"))
+				if not id or #id &gt; 20 then
+					report(owner, title .. ": нужен ID звука Roblox, например \"1837849285\"")
 				end
 			elseif t == "clip" then
 				if a.kind ~= "str" then
@@ -5056,7 +5156,7 @@ UiText.L = {
 	TabCreatures = "Существа",
 	TabAnimation = "Анимация",
 	TabLogic = "Логика",
-	TabCamera = "Камера и время",
+	TabCamera = "Мир и камера",
 	TabTexts = "Тексты",
 
 	ToolSelect = "Выбор",
@@ -5144,6 +5244,17 @@ UiText.L = {
 	TextureIdPlaceholder = "Число или rbxassetid://",
 	ObjectsCount = "Объектов: %d",
 	TimeOfDay = "Время суток, ч",
+	Score = "Очки",
+	Weather = "Погода",
+	WeatherAuto = "Смена погоды",
+	WeatherMinutes = "Менять каждые, мин",
+	Music = "Музыка, ID звука",
+	MusicVolume = "Громкость музыки",
+	WeatherClear = "Ясно",
+	WeatherRain = "Дождь",
+	WeatherSnow = "Снег",
+	WeatherFog = "Туман",
+	WeatherStorm = "Гроза",
 	DayNight = "Смена дня и ночи",
 	DayLength = "Длина суток, мин",
 	PlayersCount = "Игроков: %d",
@@ -7225,6 +7336,10 @@ function PlaySession.new(service, opts)
 	local lt = self.project.settings.lighting or {}
 	self.clockBase = lt.clockTime or 14
 	self.clockAt = workspace:GetServerTimeNow()
+	local w = self.project.settings.weather or {}
+	self.weatherBase = w.type or "Clear"
+	self.weatherAt = self.clockAt
+	self.timers = {}
 	return self
 end
 
@@ -7303,6 +7418,14 @@ function PlaySession:start()
 		self:step(dt)
 	end))
 	self.zoneTimer = 0
+	-- «Каждые N секунд»: свой счётчик на каждый интервал
+	if self.tree then
+		for _, h in self.tree.handlers do
+			if h.event == "Timer" and h.args[1] and h.args[1].kind == "num" then
+				self.timers[h.args[1].value] = 0
+			end
+		end
+	end
 	self:emit("MapStarted", {})
 end
 
@@ -7320,11 +7443,11 @@ function PlaySession:setupLogic()
 	self.tree = tree
 	local host = {
 		now = os.clock,
-		action = function(name, args, node)
-			return self:action(name, args, node)
+		action = function(name, args, node, eventArgs)
+			return self:action(name, args, node, eventArgs)
 		end,
-		condition = function(name, args)
-			return self:condition(name, args)
+		condition = function(name, args, eventArgs)
+			return self:condition(name, args, eventArgs)
 		end,
 		onError = function(e)
 			self:reportError(e)
@@ -7348,7 +7471,7 @@ function PlaySession:setupLogic()
 			if prompt then
 				table.insert(self.connections, prompt.Triggered:Connect(function(player)
 					if self.players[player] then
-						self:emit("Interacted", { { ref = id } })
+						self:emit("Interacted", { { ref = id } }, player)
 					end
 				end))
 			end
@@ -7356,10 +7479,56 @@ function PlaySession:setupLogic()
 	end
 end
 
-function PlaySession:emit(event: string, args)
+-- player — игрок, из-за которого случилось событие; действия «…игрока» применяются к нему,
+-- а если игрока нет (например, «Когда карта запущена»), то ко всем игрокам карты
+function PlaySession:emit(event: string, args, player: Player?)
 	if self.runtime and not self.destroyed then
+		args.player = player
 		self.runtime.dispatch(event, args)
 	end
+end
+
+function PlaySession:targetPlayers(eventArgs): { Player }
+	local p = eventArgs and eventArgs.player
+	if p and self.players[p] then
+		return { p }
+	end
+	local out = {}
+	for pl in self.players do
+		table.insert(out, pl)
+	end
+	return out
+end
+
+local function humanoidOf(player: Player): Humanoid?
+	local char = player.Character
+	return char and char:FindFirstChildOfClass("Humanoid")
+end
+
+function PlaySession:score(player: Player): IntValue
+	local stats = player:FindFirstChild("leaderstats")
+	if not stats then
+		stats = Instance.new("Folder")
+		stats.Name = "leaderstats"
+		stats.Parent = player
+	end
+	local v = stats:FindFirstChild(UiText.L.Score) :: IntValue?
+	if not v then
+		local nv = Instance.new("IntValue")
+		nv.Name = UiText.L.Score
+		nv.Parent = stats
+		v = nv
+	end
+	return v :: IntValue
+end
+
+function PlaySession:weatherMessage()
+	local w = self.project.settings.weather or {}
+	return { type = "weather", weather = self.weatherBase, at = self.weatherAt, auto = w.auto == true, minutes = w.minutes or 5 }
+end
+
+function PlaySession:currentWeather(): string
+	return Format.weatherAt(self.project.settings.weather, self.weatherBase, self.weatherAt, workspace:GetServerTimeNow())
 end
 
 local function refOf(v, what: string): string
@@ -7379,7 +7548,7 @@ function PlaySession:target(v, what: string)
 	return id, h
 end
 
-function PlaySession:action(name: string, args, _node)
+function PlaySession:action(name: string, args, _node, eventArgs)
 	if name == "PlayClip" then
 		local id = self:target(args[1], "PlayClip")
 		local a = self.animators[id]
@@ -7435,6 +7604,57 @@ function PlaySession:action(name: string, args, _node)
 	elseif name == "SetVisible" then
 		local _, h = self:target(args[1], "SetVisible")
 		WorldBuilder.setVisible(h, args[2] == true)
+	elseif name == "SetWeather" then
+		self.weatherBase = tostring(args[1])
+		self.weatherAt = workspace:GetServerTimeNow()
+		self:broadcast(self:weatherMessage())
+	elseif name == "PlaySound" or name == "PlayMusic" then
+		local id = string.match(tostring(args[1]), "(%d+)")
+		local part = nil
+		if name == "PlaySound" and args[3] then
+			local _, h = self:target(args[3], "PlaySound")
+			part = h.primary
+		end
+		if name == "PlayMusic" then
+			self.musicNow = { id = id, volume = args[2] or 0.6 }
+		end
+		self:broadcast({ type = if name == "PlayMusic" then "music" else "sound", id = id, volume = args[2] or 0.6, part = part })
+	elseif name == "StopMusic" then
+		self.musicNow = { id = nil }
+		self:broadcast({ type = "music", id = nil })
+	elseif name == "DamagePlayer" or name == "HealPlayer" or name == "SetPlayerSpeed" then
+		for _, p in self:targetPlayers(eventArgs) do
+			local hum = humanoidOf(p)
+			if hum and hum.Health &gt; 0 then
+				local n = tonumber(args[1]) or 0
+				if name == "DamagePlayer" then
+					hum:TakeDamage(n)
+				elseif name == "HealPlayer" then
+					hum.Health = math.min(hum.MaxHealth, hum.Health + n)
+				else
+					hum.WalkSpeed = math.clamp(n, 0, 100)
+				end
+			end
+		end
+	elseif name == "TeleportPlayer" then
+		local pointId, h = self:target(args[1], "TeleportPlayer")
+		local _ = pointId
+		local cf = WorldBuilder.objectCFrame(h.obj, self.origin) * CFrame.new(0, 3.5, 0)
+		for _, p in self:targetPlayers(eventArgs) do
+			if p.Character and not self.closetOf[p] then
+				p.Character:PivotTo(cf)
+			end
+		end
+	elseif name == "ShowMessage" then
+		local msg = { type = "message", text = tostring(args[1]), seconds = args[2] or 3 }
+		for _, p in self:targetPlayers(eventArgs) do
+			self.playEvent:FireClient(p, msg)
+		end
+	elseif name == "AddScore" then
+		for _, p in self:targetPlayers(eventArgs) do
+			local v = self:score(p)
+			v.Value += math.floor(tonumber(args[1]) or 0)
+		end
 	elseif name == "SetTime" then
 		local h = tonumber(args[1])
 		if not h then
@@ -7457,7 +7677,7 @@ function PlaySession:action(name: string, args, _node)
 	return nil
 end
 
-function PlaySession:condition(name: string, args)
+function PlaySession:condition(name: string, args, eventArgs)
 	if name == "LightIsOn" then
 		local _, h = self:target(args[1], "LightIsOn")
 		return h.obj.role and h.obj.role.on == true
@@ -7471,6 +7691,18 @@ function PlaySession:condition(name: string, args)
 		local id = self:target(args[1], "ClosetOccupied")
 		local c = self.closets[id]
 		return c ~= nil and c.state.state ~= Closet.FREE
+	elseif name == "IsWeather" then
+		return self:currentWeather() == args[1]
+	elseif name == "ScoreAtLeast" or name == "HealthBelow" then
+		local p = eventArgs and eventArgs.player
+		if not p then
+			error("условие про игрока работает только в событиях с игроком", 0)
+		end
+		if name == "ScoreAtLeast" then
+			return self:score(p).Value &gt;= (tonumber(args[1]) or 0)
+		end
+		local hum = humanoidOf(p)
+		return hum ~= nil and hum.Health &lt; (tonumber(args[1]) or 0)
 	elseif name == "IsNight" then
 		return Format.isNight(self:clock())
 	elseif name == "Chance" then
@@ -7536,8 +7768,8 @@ function PlaySession:setupDoor(id: string)
 	if prompt then
 		table.insert(self.connections, prompt.Triggered:Connect(function(player)
 			if self.players[player] and not role.locked then
-				self:setDoor(id, not door.open)
-				self:emit("Interacted", { { ref = id } })
+				self:setDoor(id, not door.open, nil, player)
+				self:emit("Interacted", { { ref = id } }, player)
 			end
 		end))
 	end
@@ -7547,7 +7779,7 @@ function PlaySession:setupDoor(id: string)
 	end
 end
 
-function PlaySession:setDoor(id: string, open: boolean, instant: boolean?)
+function PlaySession:setDoor(id: string, open: boolean, instant: boolean?, player: Player?)
 	local door = self.doors[id]
 	if not door or door.open == open then
 		return
@@ -7581,7 +7813,7 @@ function PlaySession:setDoor(id: string, open: boolean, instant: boolean?)
 		end)
 		door.tween:Play()
 	end
-	self:emit(if open then "DoorOpened" else "DoorClosed", { { ref = id } })
+	self:emit(if open then "DoorOpened" else "DoorClosed", { { ref = id } }, player)
 end
 
 -- ---------------------------------------------------------------------------
@@ -7732,10 +7964,10 @@ function PlaySession:closetComplete(id: string)
 			rootPart.CFrame = charPose(rootPart, self:closetPose(id, c.role.inside))
 		end
 		self.playEvent:FireClient(player, { type = "closet", phase = "inside", closetId = id, base = self:closetCF(id), pose = c.role.inside })
-		self:emit("ClosetEntered", { { ref = id } })
+		self:emit("ClosetEntered", { { ref = id } }, player)
 	else
 		self:closetFinishOutside(id, player)
-		self:emit("ClosetExited", { { ref = id } })
+		self:emit("ClosetExited", { { ref = id } }, player)
 	end
 end
 
@@ -7811,7 +8043,7 @@ function PlaySession:setupNpc(id: string)
 			table.insert(self.connections, prompt.Triggered:Connect(function(player)
 				if self.players[player] then
 					self:greet(id, player)
-					self:emit("Interacted", { { ref = id } })
+					self:emit("Interacted", { { ref = id } }, player)
 				end
 			end))
 		end
@@ -7899,7 +8131,7 @@ function PlaySession:stepZones()
 				end
 				if inside and not members[player] then
 					members[player] = true
-					self:emit("ZoneEntered", { { ref = id } })
+					self:emit("ZoneEntered", { { ref = id } }, player)
 					for npcId, nh in self.handles do
 						local nr = nh.obj.role
 						if nr and nr.type == "npc" and nr.trigger == "roomEnter" and nr.zone and nr.zone.ref == id then
@@ -7908,7 +8140,7 @@ function PlaySession:stepZones()
 					end
 				elseif not inside and members[player] then
 					members[player] = nil
-					self:emit("ZoneLeft", { { ref = id } })
+					self:emit("ZoneLeft", { { ref = id } }, player)
 				end
 			end
 		end
@@ -7936,6 +8168,14 @@ function PlaySession:step(dt: number)
 	if self.zoneTimer &gt;= 0.1 then
 		self.zoneTimer = 0
 		self:stepZones()
+	end
+	for interval, acc in self.timers do
+		acc += dt
+		if acc &gt;= interval then
+			acc -= interval
+			self:emit("Timer", { interval })
+		end
+		self.timers[interval] = acc
 	end
 	if self.runtime then
 		self.runtime.update()
@@ -7979,11 +8219,33 @@ function PlaySession:addPlayer(player: Player)
 		isOwner = player.UserId == self.ownerId,
 	})
 	self.playEvent:FireClient(player, self:timeMessage())
+	self.playEvent:FireClient(player, self:weatherMessage())
+	local music = self.musicNow or self.project.settings.music
+	if music and music.id then
+		self.playEvent:FireClient(player, { type = "music", id = string.match(tostring(music.id), "(%d+)"), volume = music.volume })
+	end
+	local function watchDeath()
+		local hum = humanoidOf(player)
+		if hum then
+			hum.Died:Once(function()
+				if self.players[player] then
+					self:emit("PlayerDied", {}, player)
+				end
+			end)
+		end
+	end
+	watchDeath()
 	local conn = player.CharacterAdded:Connect(function()
 		task.wait()
 		if self.players[player] then
 			self:placeCharacter(player)
 			self.playEvent:FireClient(player, { type = "respawn" })
+			watchDeath()
+		end
+	end)
+	task.defer(function()
+		if self.players[player] then
+			self:emit("PlayerJoined", {}, player)
 		end
 	end)
 	self.charConns = self.charConns or {}
@@ -10586,7 +10848,9 @@ local function defaultArg(spec)
 		return { kind = "num", value = spec.min or 1 }
 	elseif t == "bool" then
 		return { kind = "bool", value = true }
-	elseif t == "text" or t == "string" or t == "clip" then
+	elseif t == "weather" then
+		return { kind = "str", value = "Rain" }
+	elseif t == "text" or t == "string" or t == "clip" or t == "sound" then
 		return { kind = "str", value = "" }
 	end
 	return { kind = "ref", ref = "" }
@@ -10753,6 +11017,19 @@ function LogicPanel.render(editor, panel: Frame)
 					else
 						node.args[i] = nil
 					end
+					setTree(tree)
+				end)
+			end, { TextSize = 13 })
+		elseif t == "weather" then
+			local _, slot = Kit.row(parent, title, order)
+			local cur = a and a.kind == "str" and Commands.WEATHER_TITLES[a.value] or "…"
+			Kit.button(slot, cur, function()
+				local opts = {}
+				for _, id in { "Clear", "Rain", "Snow", "Fog", "Storm" } do
+					table.insert(opts, { id = id, title = Commands.WEATHER_TITLES[id] })
+				end
+				Kit.choose(editor.gui, title, opts, function(id)
+					node.args[i] = { kind = "str", value = id }
 					setTree(tree)
 				end)
 			end, { TextSize = 13 })
@@ -11675,6 +11952,44 @@ function SettingsPanel.render(editor, panel: Frame)
 		set({ "settings", "lighting", "dayMinutes" }, v)
 	end, 10)
 	Kit.label(list, H.DayNightHint, { TextColor3 = Kit.C.dim, TextSize = 13, LayoutOrder = 11, Size = UDim2.new(1, 0, 0, 40) })
+
+	-- погода
+	local w = project.settings.weather or { type = "Clear", auto = false, minutes = 5 }
+	local titles = { Clear = L.WeatherClear, Rain = L.WeatherRain, Snow = L.WeatherSnow, Fog = L.WeatherFog, Storm = L.WeatherStorm }
+	local _, wSlot = Kit.row(list, L.Weather, 12)
+	Kit.button(wSlot, titles[w.type] or L.WeatherClear, function()
+		local opts = {}
+		for _, id in { "Clear", "Rain", "Snow", "Fog", "Storm" } do
+			table.insert(opts, { id = id, title = titles[id] })
+		end
+		Kit.choose(editor.gui, L.Weather, opts, function(id)
+			set({ "settings", "weather" }, { type = id, auto = w.auto == true, minutes = w.minutes or 5 })
+			editor:renderPanel()
+		end)
+	end)
+	Kit.toggle(list, L.WeatherAuto, w.auto == true, function(v)
+		set({ "settings", "weather" }, { type = w.type or "Clear", auto = v, minutes = w.minutes or 5 })
+	end, 13)
+	Kit.stepper(list, L.WeatherMinutes, w.minutes or 5, 1, 1, 120, function(v)
+		set({ "settings", "weather" }, { type = w.type or "Clear", auto = w.auto == true, minutes = v })
+	end, 14)
+
+	-- музыка карты
+	local m = project.settings.music
+	Kit.textbox(list, if m then m.id else "", L.Music, function(text)
+		local id = string.match(text, "(%d+)")
+		if id then
+			set({ "settings", "music" }, { id = id, volume = if m then m.volume else 0.5 })
+		elseif text == "" then
+			set({ "settings", "music" }, nil)
+		end
+		editor:renderPanel()
+	end, { LayoutOrder = 15 })
+	if m then
+		Kit.slider(list, L.MusicVolume, m.volume, 0, 1, function(v)
+			set({ "settings", "music", "volume" }, v)
+		end, 16)
+	end
 	return nil
 end
 
@@ -12748,6 +13063,9 @@ local Format = require(Shared.Format)
 local Kit = require(script.Parent.Parent.UI.Kit)
 local CameraController = require(script.Parent.CameraController)
 local Bubble = require(script.Parent.Bubble)
+local WeatherFx = require(script.Parent.WeatherFx)
+local SoundService = game:GetService("SoundService")
+local TextService = game:GetService("TextService")
 
 local L = UiText.L
 
@@ -12771,6 +13089,11 @@ function PlayClient.new(app, msg)
 	gui.Parent = app.playerGui
 	self.gui = gui
 	self.camera = CameraController.new(msg.settings)
+	self.weather = WeatherFx.new()
+	local w = msg.settings.weather
+	if w then
+		self.weather:set({ weather = w.type, at = workspace:GetServerTimeNow(), auto = w.auto == true, minutes = w.minutes or 5 })
+	end
 	self.savedLighting = { ClockTime = Lighting.ClockTime, Ambient = Lighting.Ambient, Brightness = Lighting.Brightness }
 	local lt = msg.settings.lighting
 	-- смена дня и ночи считается на каждом клиенте по общему серверному времени
@@ -12928,6 +13251,39 @@ function PlayClient:onMessage(msg)
 		self:onCloset(msg)
 	elseif t == "cutscene" then
 		self.camera:playTrack(msg.base, msg.clip, if self.closetId then "inside" else "player", nil)
+	elseif t == "weather" then
+		self.weather:set({ weather = msg.weather, at = msg.at, auto = msg.auto, minutes = msg.minutes })
+	elseif t == "music" then
+		if self.music then
+			self.music:Destroy()
+			self.music = nil
+		end
+		if msg.id then
+			local s = Instance.new("Sound")
+			s.SoundId = "rbxassetid://" .. tostring(msg.id)
+			s.Volume = math.clamp(msg.volume or 0.6, 0, 1)
+			s.Looped = true
+			s.Parent = SoundService
+			s:Play()
+			self.music = s
+		end
+	elseif t == "sound" then
+		local s = Instance.new("Sound")
+		s.SoundId = "rbxassetid://" .. tostring(msg.id)
+		s.Volume = math.clamp(msg.volume or 0.6, 0, 1)
+		local part = msg.part
+		s.Parent = if typeof(part) == "Instance" then part else SoundService
+		s.Ended:Once(function()
+			s:Destroy()
+		end)
+		s:Play()
+		task.delay(60, function()
+			if s.Parent then
+				s:Destroy()
+			end
+		end)
+	elseif t == "message" then
+		self:showMessage(msg.text, msg.seconds)
 	elseif t == "time" then
 		self.time = { clock = msg.clock, at = msg.at, dayNight = msg.dayNight, dayMinutes = msg.dayMinutes }
 	elseif t == "respawn" then
@@ -12942,7 +13298,37 @@ function PlayClient:onMessage(msg)
 	end
 end
 
+-- Сообщение автора карты по центру сверху экрана
+function PlayClient:showMessage(text: string, seconds: number?)
+	if self.messageFrame then
+		self.messageFrame:Destroy()
+	end
+	local v = Kit.viewport()
+	local w = math.min(560, v.X - 40)
+	local size = TextService:GetTextSize(text, 20, Kit.FONT_BOLD, Vector2.new(w - 32, 1000))
+	local f = Kit.frame(self.gui, {
+		Size = UDim2.fromOffset(w, size.Y + 28), Position = UDim2.new(0.5, -w / 2, 0, 90),
+		BackgroundColor3 = Color3.fromRGB(15, 16, 20), BackgroundTransparency = 0.25,
+	})
+	Kit.corner(f, 12)
+	Kit.label(f, text, {
+		Size = UDim2.new(1, -32, 1, -28), Position = UDim2.fromOffset(16, 14), Font = Kit.FONT_BOLD, TextSize = 20,
+		TextXAlignment = Enum.TextXAlignment.Center,
+	})
+	self.messageFrame = f
+	task.delay(seconds or 3, function()
+		if self.messageFrame == f then
+			self.messageFrame = nil
+		end
+		f:Destroy()
+	end)
+end
+
 function PlayClient:destroy()
+	self.weather:destroy()
+	if self.music then
+		self.music:Destroy()
+	end
 	if self.timeConn then
 		self.timeConn:Disconnect()
 	end
@@ -12965,12 +13351,141 @@ return PlayClient
 </ProtectedString>
             </Properties>
           </Item>
+          <Item class="ModuleScript" referent="RBX00000046">
+            <Properties>
+              <string name="Name">WeatherFx</string>
+              <ProtectedString name="Source">--!nonstrict
+-- Погода на клиенте: дождь, снег, туман, гроза. Частицы летят вокруг камеры,
+-- а под крышей дождь и снег выключаются, чтобы в помещении было сухо
+
+local Lighting = game:GetService("Lighting")
+local RunService = game:GetService("RunService")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Workshop"):WaitForChild("Shared")
+local Format = require(Shared.Format)
+
+local WeatherFx = {}
+WeatherFx.__index = WeatherFx
+
+local PRESETS = {
+	Clear = { rate = 0, density = 0, haze = 0, dim = 0 },
+	Rain = { rate = 700, speed = NumberRange.new(70, 90), life = NumberRange.new(0.6, 0.8), size = 0.07, squash = 8, color = Color3.fromRGB(170, 190, 210), density = 0.32, haze = 1.2, dim = 0.15 },
+	Snow = { rate = 260, speed = NumberRange.new(5, 9), life = NumberRange.new(5, 7), size = 0.28, squash = 0, color = Color3.fromRGB(255, 255, 255), density = 0.3, haze = 1, dim = 0.05, spread = 35 },
+	Fog = { rate = 0, density = 0.62, haze = 2.6, dim = 0.1 },
+	Storm = { rate = 1400, speed = NumberRange.new(90, 110), life = NumberRange.new(0.5, 0.7), size = 0.08, squash = 10, color = Color3.fromRGB(160, 175, 200), density = 0.45, haze = 1.8, dim = 0.3, lightning = true },
+}
+
+function WeatherFx.new()
+	local self = setmetatable({}, WeatherFx)
+	self.state = { weather = "Clear", at = 0, auto = false, minutes = 5 }
+	self.current = nil
+	local emitterPart = Instance.new("Part")
+	emitterPart.Name = "WsWeather"
+	emitterPart.Anchored = true
+	emitterPart.CanCollide = false
+	emitterPart.CanQuery = false
+	emitterPart.CanTouch = false
+	emitterPart.Transparency = 1
+	emitterPart.Size = Vector3.new(90, 1, 90)
+	emitterPart.Parent = workspace
+	self.part = emitterPart
+	local e = Instance.new("ParticleEmitter")
+	e.EmissionDirection = Enum.NormalId.Bottom
+	e.Rate = 0
+	e.LightInfluence = 0.6
+	e.Parent = emitterPart
+	self.emitter = e
+	self.atmosphere = Instance.new("Atmosphere")
+	self.atmosphere.Density = 0
+	self.atmosphere.Parent = Lighting
+	self.flash = Instance.new("ColorCorrectionEffect")
+	self.flash.Parent = Lighting
+	self.nextFlash = 0
+	self.conn = RunService.RenderStepped:Connect(function()
+		self:update()
+	end)
+	return self
+end
+
+function WeatherFx:set(state)
+	self.state = state
+end
+
+function WeatherFx:apply(name: string)
+	local p = PRESETS[name] or PRESETS.Clear
+	self.current = name
+	self.preset = p
+	local e = self.emitter
+	if p.rate &gt; 0 then
+		e.Speed = p.speed
+		e.Lifetime = p.life
+		e.Size = NumberSequence.new(p.size)
+		e.Squash = NumberSequence.new(p.squash)
+		e.Color = ColorSequence.new(p.color)
+		e.Transparency = NumberSequence.new(0.35)
+		local spread = p.spread or 4
+		e.SpreadAngle = Vector2.new(spread, spread)
+	end
+	self.atmosphere.Density = p.density
+	self.atmosphere.Haze = p.haze
+	self.atmosphere.Color = Color3.fromRGB(190, 195, 205)
+	self.flash.Brightness = -p.dim
+	self.flash.Saturation = -p.dim
+end
+
+function WeatherFx:update()
+	local s = self.state
+	local name = Format.weatherAt({ auto = s.auto, minutes = s.minutes }, s.weather, s.at, workspace:GetServerTimeNow())
+	if name ~= self.current then
+		self:apply(name)
+	end
+	local p = self.preset
+	local cam = workspace.CurrentCamera
+	if not cam or not p then
+		return
+	end
+	local pos = cam.CFrame.Position
+	self.part.CFrame = CFrame.new(pos + Vector3.new(0, 30, 0))
+	-- под крышей осадков нет
+	local covered = false
+	if p.rate &gt; 0 then
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Exclude
+		local char = game:GetService("Players").LocalPlayer.Character
+		params.FilterDescendantsInstances = { self.part, char }
+		covered = workspace:Raycast(pos, Vector3.new(0, 80, 0), params) ~= nil
+	end
+	self.emitter.Rate = if covered then 0 else p.rate
+	-- молния в грозу
+	if p.lightning then
+		local now = os.clock()
+		if now &gt;= self.nextFlash then
+			self.nextFlash = now + 6 + math.random() * 9
+			self.flash.Brightness = 0.6
+			task.delay(0.12, function()
+				self.flash.Brightness = -p.dim
+			end)
+		end
+	end
+end
+
+function WeatherFx:destroy()
+	self.conn:Disconnect()
+	self.part:Destroy()
+	self.atmosphere:Destroy()
+	self.flash:Destroy()
+end
+
+return WeatherFx
+</ProtectedString>
+            </Properties>
+          </Item>
         </Item>
-        <Item class="Folder" referent="RBX00000046">
+        <Item class="Folder" referent="RBX00000047">
           <Properties>
             <string name="Name">UI</string>
           </Properties>
-          <Item class="ModuleScript" referent="RBX00000047">
+          <Item class="ModuleScript" referent="RBX00000048">
             <Properties>
               <string name="Name">AdminButton</string>
               <ProtectedString name="Source">--!nonstrict
@@ -13066,7 +13581,7 @@ return AdminButton
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000048">
+          <Item class="ModuleScript" referent="RBX00000049">
             <Properties>
               <string name="Name">Kit</string>
               <ProtectedString name="Source">--!nonstrict
@@ -13461,7 +13976,7 @@ return Kit
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000049">
+          <Item class="ModuleScript" referent="RBX0000004A">
             <Properties>
               <string name="Name">Menu</string>
               <ProtectedString name="Source">--!nonstrict

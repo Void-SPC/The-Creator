@@ -64,6 +64,44 @@ function SettingsPanel.render(editor, panel: Frame)
 		set({ "settings", "lighting", "dayMinutes" }, v)
 	end, 10)
 	Kit.label(list, H.DayNightHint, { TextColor3 = Kit.C.dim, TextSize = 13, LayoutOrder = 11, Size = UDim2.new(1, 0, 0, 40) })
+
+	-- погода
+	local w = project.settings.weather or { type = "Clear", auto = false, minutes = 5 }
+	local titles = { Clear = L.WeatherClear, Rain = L.WeatherRain, Snow = L.WeatherSnow, Fog = L.WeatherFog, Storm = L.WeatherStorm }
+	local _, wSlot = Kit.row(list, L.Weather, 12)
+	Kit.button(wSlot, titles[w.type] or L.WeatherClear, function()
+		local opts = {}
+		for _, id in { "Clear", "Rain", "Snow", "Fog", "Storm" } do
+			table.insert(opts, { id = id, title = titles[id] })
+		end
+		Kit.choose(editor.gui, L.Weather, opts, function(id)
+			set({ "settings", "weather" }, { type = id, auto = w.auto == true, minutes = w.minutes or 5 })
+			editor:renderPanel()
+		end)
+	end)
+	Kit.toggle(list, L.WeatherAuto, w.auto == true, function(v)
+		set({ "settings", "weather" }, { type = w.type or "Clear", auto = v, minutes = w.minutes or 5 })
+	end, 13)
+	Kit.stepper(list, L.WeatherMinutes, w.minutes or 5, 1, 1, 120, function(v)
+		set({ "settings", "weather" }, { type = w.type or "Clear", auto = w.auto == true, minutes = v })
+	end, 14)
+
+	-- музыка карты
+	local m = project.settings.music
+	Kit.textbox(list, if m then m.id else "", L.Music, function(text)
+		local id = string.match(text, "(%d+)")
+		if id then
+			set({ "settings", "music" }, { id = id, volume = if m then m.volume else 0.5 })
+		elseif text == "" then
+			set({ "settings", "music" }, nil)
+		end
+		editor:renderPanel()
+	end, { LayoutOrder = 15 })
+	if m then
+		Kit.slider(list, L.MusicVolume, m.volume, 0, 1, function(v)
+			set({ "settings", "music", "volume" }, v)
+		end, 16)
+	end
 	return nil
 end
 

@@ -17,6 +17,9 @@ local Format = require(Shared.Format)
 local Kit = require(script.Parent.Parent.UI.Kit)
 local CameraController = require(script.Parent.CameraController)
 local Bubble = require(script.Parent.Bubble)
+local WeatherFx = require(script.Parent.WeatherFx)
+local SoundService = game:GetService("SoundService")
+local TextService = game:GetService("TextService")
 
 local L = UiText.L
 
@@ -40,6 +43,11 @@ function PlayClient.new(app, msg)
 	gui.Parent = app.playerGui
 	self.gui = gui
 	self.camera = CameraController.new(msg.settings)
+	self.weather = WeatherFx.new()
+	local w = msg.settings.weather
+	if w then
+		self.weather:set({ weather = w.type, at = workspace:GetServerTimeNow(), auto = w.auto == true, minutes = w.minutes or 5 })
+	end
 	self.savedLighting = { ClockTime = Lighting.ClockTime, Ambient = Lighting.Ambient, Brightness = Lighting.Brightness }
 	local lt = msg.settings.lighting
 	-- смена дня и ночи считается на каждом клиенте по общему серверному времени
@@ -197,6 +205,39 @@ function PlayClient:onMessage(msg)
 		self:onCloset(msg)
 	elseif t == "cutscene" then
 		self.camera:playTrack(msg.base, msg.clip, if self.closetId then "inside" else "player", nil)
+	elseif t == "weather" then
+		self.weather:set({ weather = msg.weather, at = msg.at, auto = msg.auto, minutes = msg.minutes })
+	elseif t == "music" then
+		if self.music then
+			self.music:Destroy()
+			self.music = nil
+		end
+		if msg.id then
+			local s = Instance.new("Sound")
+			s.SoundId = "rbxassetid://" .. tostring(msg.id)
+			s.Volume = math.clamp(msg.volume or 0.6, 0, 1)
+			s.Looped = true
+			s.Parent = SoundService
+			s:Play()
+			self.music = s
+		end
+	elseif t == "sound" then
+		local s = Instance.new("Sound")
+		s.SoundId = "rbxassetid://" .. tostring(msg.id)
+		s.Volume = math.clamp(msg.volume or 0.6, 0, 1)
+		local part = msg.part
+		s.Parent = if typeof(part) == "Instance" then part else SoundService
+		s.Ended:Once(function()
+			s:Destroy()
+		end)
+		s:Play()
+		task.delay(60, function()
+			if s.Parent then
+				s:Destroy()
+			end
+		end)
+	elseif t == "message" then
+		self:showMessage(msg.text, msg.seconds)
 	elseif t == "time" then
 		self.time = { clock = msg.clock, at = msg.at, dayNight = msg.dayNight, dayMinutes = msg.dayMinutes }
 	elseif t == "respawn" then
@@ -211,7 +252,37 @@ function PlayClient:onMessage(msg)
 	end
 end
 
+-- Сообщение автора карты по центру сверху экрана
+function PlayClient:showMessage(text: string, seconds: number?)
+	if self.messageFrame then
+		self.messageFrame:Destroy()
+	end
+	local v = Kit.viewport()
+	local w = math.min(560, v.X - 40)
+	local size = TextService:GetTextSize(text, 20, Kit.FONT_BOLD, Vector2.new(w - 32, 1000))
+	local f = Kit.frame(self.gui, {
+		Size = UDim2.fromOffset(w, size.Y + 28), Position = UDim2.new(0.5, -w / 2, 0, 90),
+		BackgroundColor3 = Color3.fromRGB(15, 16, 20), BackgroundTransparency = 0.25,
+	})
+	Kit.corner(f, 12)
+	Kit.label(f, text, {
+		Size = UDim2.new(1, -32, 1, -28), Position = UDim2.fromOffset(16, 14), Font = Kit.FONT_BOLD, TextSize = 20,
+		TextXAlignment = Enum.TextXAlignment.Center,
+	})
+	self.messageFrame = f
+	task.delay(seconds or 3, function()
+		if self.messageFrame == f then
+			self.messageFrame = nil
+		end
+		f:Destroy()
+	end)
+end
+
 function PlayClient:destroy()
+	self.weather:destroy()
+	if self.music then
+		self.music:Destroy()
+	end
 	if self.timeConn then
 		self.timeConn:Disconnect()
 	end

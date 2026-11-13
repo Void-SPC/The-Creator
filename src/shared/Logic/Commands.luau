@@ -35,6 +35,12 @@ Commands.events = {
 	},
 	ClosetEntered = { title = "Когда игрок спрятался в шкаф", args = { arg("closet", "closet", "Шкаф") } },
 	ClosetExited = { title = "Когда игрок вышел из шкафа", args = { arg("closet", "closet", "Шкаф") } },
+	Timer = {
+		title = "Каждые N секунд",
+		args = { arg("seconds", "number", "Секунд", { min = 0.5, max = 3600 }) },
+	},
+	PlayerJoined = { title = "Когда игрок зашёл на карту", args = {} },
+	PlayerDied = { title = "Когда игрок погиб", args = {} },
 	Arrived = { title = "Когда модель дошла до точки", args = { arg("model", "model", "Модель"), arg("point", "waypoint", "Точка") } },
 }
 
@@ -44,6 +50,9 @@ Commands.conditions = {
 	ZoneHasPlayer = { title = "В зоне есть игрок", args = { arg("zone", "zone", "Зона") } },
 	ClosetOccupied = { title = "Шкаф занят", args = { arg("closet", "closet", "Шкаф") } },
 	IsNight = { title = "Сейчас ночь", args = {} },
+	IsWeather = { title = "Сейчас погода", args = { arg("weather", "weather", "Погода") } },
+	ScoreAtLeast = { title = "У игрока очков не меньше", args = { arg("score", "number", "Очки", { min = -1000000, max = 1000000 }) } },
+	HealthBelow = { title = "Здоровье игрока ниже", args = { arg("health", "number", "Здоровье", { min = 0, max = 1000 }) } },
 	Chance = { title = "Случайно с шансом", args = { arg("percent", "number", "Шанс, %", { min = 0, max = 100 }) } },
 }
 
@@ -89,6 +98,29 @@ Commands.actions = {
 		title = "Показать надпись",
 		args = { arg("target", "any", "Объект с надписью"), arg("visible", "bool", "Видна") },
 	},
+	SetWeather = { title = "Сменить погоду", args = { arg("weather", "weather", "Погода") } },
+	PlaySound = {
+		title = "Проиграть звук",
+		args = {
+			arg("sound", "sound", "ID звука"),
+			arg("volume", "number", "Громкость", { optional = true, min = 0, max = 1 }),
+			arg("target", "any", "Где звучит", { optional = true }),
+		},
+	},
+	PlayMusic = {
+		title = "Включить музыку",
+		args = { arg("sound", "sound", "ID звука"), arg("volume", "number", "Громкость", { optional = true, min = 0, max = 1 }) },
+	},
+	StopMusic = { title = "Выключить музыку", args = {} },
+	DamagePlayer = { title = "Нанести урон игроку", args = { arg("amount", "number", "Урон", { min = 0, max = 1000 }) } },
+	HealPlayer = { title = "Вылечить игрока", args = { arg("amount", "number", "Здоровье", { min = 0, max = 1000 }) } },
+	TeleportPlayer = { title = "Переместить игрока", args = { arg("point", "waypoint", "Точка") } },
+	SetPlayerSpeed = { title = "Скорость игрока", args = { arg("speed", "number", "Скорость", { min = 0, max = 100 }) } },
+	ShowMessage = {
+		title = "Сообщение на экран",
+		args = { arg("text", "text", "Текст"), arg("seconds", "number", "Секунд", { optional = true, min = 0.5, max = 60 }) },
+	},
+	AddScore = { title = "Добавить очки", args = { arg("amount", "number", "Очки", { min = -100000, max = 100000 }) } },
 	SetTime = {
 		title = "Установить время суток",
 		args = { arg("hours", "number", "Часы, 0–24", { min = 0, max = 24 }) },
@@ -127,6 +159,8 @@ Commands.TARGET_TYPES = {
 		return true
 	end,
 }
+
+Commands.WEATHER_TITLES = { Clear = "Ясно", Rain = "Дождь", Snow = "Снег", Fog = "Туман", Storm = "Гроза" }
 
 function Commands.lookup(category: string, name: string)
 	local t = (Commands :: any)[category]

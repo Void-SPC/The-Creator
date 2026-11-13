@@ -253,7 +253,7 @@ function Interpreter.new(tree, host, limits)
 							match = false
 							break
 						end
-					elseif a.kind == "str" then
+					elseif a.kind == "str" or a.kind == "num" then
 						if v ~= a.value then
 							match = false
 							break

@@ -41,6 +41,35 @@ return function(T)
 		T.ok(Format.validateSettings(p.settings) ~= nil)
 	end)
 
+	T.test("weather settings and automatic change", function()
+		local w = { type = "Rain", auto = false, minutes = 2 }
+		T.eq(Format.weatherAt(w, "Rain", 0, 10000), "Rain", "no auto change")
+		w.auto = true
+		T.eq(Format.weatherAt(w, "Rain", 0, 60), "Rain", "first period keeps the base")
+		local prev = "Rain"
+		local seen = {}
+		for k = 1, 30 do
+			local cur = Format.weatherAt(w, "Rain", 0, k * 120 + 1)
+			T.ok(Format.WEATHER_SET[cur])
+			T.ok(cur ~= prev, "weather changes every period")
+			seen[cur] = true
+			prev = cur
+		end
+		local kinds = 0
+		for _ in seen do
+			kinds += 1
+		end
+		T.ok(kinds >= 4, "all kinds of weather appear")
+		local p = Format.newProject("p", "Карта", 1)
+		p.settings.weather.type = "Hail"
+		T.ok(Format.validateSettings(p.settings) ~= nil)
+		p.settings.weather.type = "Snow"
+		p.settings.music = { id = "1837849285", volume = 0.5 }
+		T.eq(Format.validateSettings(p.settings), nil)
+		p.settings.music.id = "http://x"
+		T.ok(Format.validateSettings(p.settings) ~= nil)
+	end)
+
 	T.test("v1 data migrates", function()
 		local old = {
 			format = 1,
