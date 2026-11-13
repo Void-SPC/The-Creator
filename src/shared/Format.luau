@@ -29,10 +29,14 @@ Format.LIMITS = {
 
 Format.SHAPES = { Block = true, Ball = true, Cylinder = true, Wedge = true, CornerWedge = true, Ellipsoid = true }
 
+-- Все материалы Roblox: у каждого своя встроенная текстура поверхности
 Format.MATERIALS = {
 	"Plastic", "SmoothPlastic", "Wood", "WoodPlanks", "Brick", "Concrete", "Marble", "Granite",
 	"Slate", "Metal", "DiamondPlate", "CorrodedMetal", "Fabric", "Grass", "Sand", "Glass",
-	"Neon", "Ice", "Cobblestone", "Pebble",
+	"Neon", "Ice", "Cobblestone", "Pebble", "Basalt", "CrackedLava", "Limestone", "Pavement",
+	"Rock", "Sandstone", "Foil", "LeafyGrass", "Snow", "Mud", "Ground", "Asphalt", "Salt",
+	"Glacier", "ForceField", "Cardboard", "Carpet", "CeramicTiles", "ClayRoofTiles",
+	"RoofShingles", "Leather", "Plaster", "Rubber",
 }
 local MATERIAL_SET = {}
 for _, m in Format.MATERIALS do
@@ -196,6 +200,18 @@ local L = Format.LIMITS
 
 local function isNum(v)
 	return type(v) == "number" and v == v and v ~= math.huge and v ~= -math.huge
+end
+
+-- Текстура: из каталога или своё изображение Roblox по ID (rbxassetid://123)
+function Format.isTexture(t): boolean
+	if type(t) ~= "string" then
+		return false
+	end
+	if Catalog.TEXTURE_SET[t] ~= nil then
+		return true
+	end
+	local id = string.match(t, "^rbxassetid://(%d+)$")
+	return id ~= nil and #id <= 20
 end
 
 local function checkVec(v, lo, hi, what)
@@ -432,8 +448,11 @@ local function validatePartFields(p, what): string?
 	if not MATERIAL_SET[p.material] then
 		return what .. ".material"
 	end
-	if p.texture ~= nil and (type(p.texture) ~= "string" or Catalog.TEXTURE_SET[p.texture] == nil) then
+	if p.texture ~= nil and not Format.isTexture(p.texture) then
 		return what .. ".texture"
+	end
+	if p.textureTile ~= nil and (not isNum(p.textureTile) or p.textureTile < 0.5 or p.textureTile > 64) then
+		return what .. ".textureTile"
 	end
 	if not isNum(p.transparency) or p.transparency < 0 or p.transparency > 1 then
 		return what .. ".transparency"

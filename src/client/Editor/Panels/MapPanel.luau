@@ -120,17 +120,35 @@ local function partProps(editor, list: Instance, id: string, base: { any }, data
 	local texTitle = L.NoTexture
 	if data.texture and Catalog.TEXTURE_SET[data.texture] then
 		texTitle = Catalog.TEXTURE_SET[data.texture].title
+	elseif data.texture then
+		texTitle = data.texture
 	end
 	Kit.button(texSlot, texTitle, function()
 		local opts = { { id = false, title = L.NoTexture } }
 		for _, t in Catalog.TEXTURES do
 			table.insert(opts, { id = t.id, title = t.title })
 		end
+		table.insert(opts, { id = "custom", title = L.TextureById, hint = H.TextureIdHint })
 		Kit.choose(editor.gui, L.Texture, opts, function(t)
+			if t == "custom" then
+				Kit.prompt(editor.gui, L.TextureById, H.TextureIdHint, L.TextureIdPlaceholder, function(text)
+					local id = string.match(text, "(%d+)")
+					if id then
+						set({ "texture" }, "rbxassetid://" .. id)
+					end
+					editor:renderPanel()
+				end)
+				return
+			end
 			set({ "texture" }, if t then t else nil)
 			editor:renderPanel()
 		end)
-	end)
+	end, { TextSize = 13, TextTruncate = Enum.TextTruncate.AtEnd })
+	if data.texture then
+		Kit.stepper(list, L.TextureTile, data.textureTile or 4, 0.5, 0.5, 64, function(v)
+			set({ "textureTile" }, v)
+		end, order + 9)
+	end
 	Kit.slider(list, L.Transparency, data.transparency or 0, 0, 1, function(v)
 		set({ "transparency" }, v)
 	end, order + 10)

@@ -17,6 +17,7 @@ function FreeCamera.new(focus: Vector3)
 	self.dist = 45
 	self.enabled = true
 	self.blockDrag = false -- выставляет Gizmo, пока тянут ручку
+	self.padMove = Vector3.zero -- полёт с экранных кнопок
 	self.onTap = nil :: ((Vector2) -> ())?
 	self.touches = {} :: { [InputObject]: Vector2 }
 	self.touchStart = {} :: { [InputObject]: { pos: Vector2, t: number, moved: boolean } }
@@ -155,6 +156,7 @@ function FreeCamera.new(focus: Vector3)
 			if k:IsKeyDown(Enum.KeyCode.E) then move += Vector3.new(0, 1, 0) end
 			if k:IsKeyDown(Enum.KeyCode.Q) then move += Vector3.new(0, -1, 0) end
 		end
+		move += self.padMove
 		if move.Magnitude > 0 then
 			local rot = CFrame.Angles(0, self.yaw, 0)
 			self.focus += rot:VectorToWorldSpace(move) * dt * math.max(12, self.dist * 0.8)

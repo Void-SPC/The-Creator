@@ -97,6 +97,14 @@ function Prefabs.room(project, w: number?, d: number?, h: number?)
 	return objs
 end
 
+-- Платформа под постройки: большая плита на уровне пола, заморожена от случайного сдвига
+function Prefabs.baseplate(project)
+	local p = looseP(project, "Платформа", "Block", { 256, 1, 256 }, { 0, 0.5, 0 }, { 99, 95, 98 }, "Plastic")
+	p.latin = "Baseplate"
+	p.frozen = true
+	return { p }
+end
+
 function Prefabs.corridor(project)
 	local objs = {
 		looseP(project, "Пол коридора", "Block", { 8, 1, 24 }, { 0, 0.5, 0 }, FLOOR, "WoodPlanks"),
@@ -483,6 +491,7 @@ end
 
 local BUILDERS = {
 	room = Prefabs.room,
+	baseplate = Prefabs.baseplate,
 	corridor = Prefabs.corridor,
 	floorAbove = Prefabs.floorAbove,
 	wall = Prefabs.wall,

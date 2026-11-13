@@ -1,8 +1,8 @@
 {
   "file": "Workshop.rbxlx",
-  "version": "0.4.0",
-  "sha256": "1e4bd1c8da8943b3cd731fe0b7456b4068d0ec62cde5758e8ecb5eb5cdd54fe3",
-  "bytes": 517448,
+  "version": "0.5.0",
+  "sha256": "8a17170b747a0f1c3d4e6d4f370a0dc7d29340f5ded0d3adc98f3a05138dabf9",
+  "bytes": 538190,
   "scripts": [
     {
       "path": "src/shared/Anim.luau",
@@ -198,6 +198,11 @@
       "path": "src/client/Editor/Panels/CreaturePanel.luau",
       "class": "ModuleScript",
       "name": "CreaturePanel"
+    },
+    {
+      "path": "src/client/Editor/Panels/ExplorerPanel.luau",
+      "class": "ModuleScript",
+      "name": "ExplorerPanel"
     },
     {
       "path": "src/client/Editor/Panels/LogicPanel.luau",

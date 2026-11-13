@@ -4,6 +4,7 @@ local Ops = require(Shared.Ops)
 local Model = require(Shared.Model)
 local Prefabs = require(Shared.Prefabs)
 local MathX = require(Shared.MathX)
+local Util = require(Shared.Util)
 
 return function(T)
 	T.suite("Model")
@@ -92,6 +93,23 @@ return function(T)
 		T.ok(nJoints >= 10)
 		T.eq(nClips, 6)
 	end)
+	T.test("paste works after the original is deleted", function()
+		local p = Format.newProject("p", "Карта", 1)
+		local zone = Prefabs.build(p, "zone", { 0, 0, 0 })[1]
+		local npc = Prefabs.build(p, "npcNew", { 2, 1, 0 })[1]
+		npc.role.trigger = "roomEnter"
+		npc.role.zone = { ref = zone.id }
+		addAll(p, { zone, npc })
+		local clipboard = { Util.deepCopy(zone), Util.deepCopy(npc) }
+		T.ok(Ops.apply(p, { op = "batch", ops = { { op = "remove", id = zone.id }, { op = "remove", id = npc.id } } }))
+		local op, copies = Model.paste(p, clipboard, { 20, 0, 30 })
+		T.ok(Ops.apply(p, op))
+		T.eq(copies[1].pos[1], 20)
+		T.eq(copies[1].pos[3], 30)
+		T.eq(copies[2].pos[1], 22, "group keeps its shape")
+		T.eq(copies[2].role.zone.ref, copies[1].id, "refs inside the group follow the copies")
+	end)
+
 	T.test("cannot glue objects with roles", function()
 		local p = Format.newProject("p", "Карта", 1)
 		local lamp = Prefabs.build(p, "lamp", { 0, 0, 0 })[1]

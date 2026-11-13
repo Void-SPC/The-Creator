@@ -159,6 +159,44 @@ function Model.duplicate(project, ids: { string }, offset)
 	return { op = "batch", ops = ops }, copies, mapping
 end
 
+-- «Вставить»: копии сохранённых объектов (даже если оригиналы уже удалены) с новыми ID
+-- Группа переносится так, чтобы первый объект встал в точку anchor по горизонтали
+function Model.paste(project, clipboard, anchor)
+	if #clipboard == 0 then
+		return nil, {}
+	end
+	local first = clipboard[1]
+	local offset = { anchor[1] - first.pos[1], 0, anchor[3] - first.pos[3] }
+	local mapping = {}
+	for _, src in clipboard do
+		mapping[src.id] = Ids.alloc(project, "o")
+	end
+	local copies, reserved, ops = {}, {}, {}
+	for _, src in clipboard do
+		local c = Util.deepCopy(src)
+		c.id = mapping[src.id]
+		c.pos = MathX.add(c.pos, offset)
+		c.frozen = false
+		if c.latin then
+			local candidate = Ids.suggestLatin(project, c.latin)
+			while reserved[candidate] do
+				local n = tonumber(string.match(candidate, "(%d+)$")) or 1
+				candidate = string.gsub(candidate, "%d+$", "") .. string.format("%02d", n + 1)
+			end
+			reserved[candidate] = true
+			c.latin = candidate
+		end
+		Ids.forEachRef(c, function(holder)
+			if mapping[holder.ref] then
+				holder.ref = mapping[holder.ref]
+			end
+		end)
+		table.insert(copies, c)
+		table.insert(ops, { op = "add", obj = c })
+	end
+	return { op = "batch", ops = ops }, copies
+end
+
 -- «Мои модели»: модель без положения на карте и без ID карты
 function Model.toAsset(obj, assetName: string?)
 	local a = Util.deepCopy(obj)

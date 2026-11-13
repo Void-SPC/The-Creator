@@ -34,6 +34,29 @@ Catalog.MATERIAL_TITLES = {
 	Ice = "Лёд",
 	Cobblestone = "Брусчатка",
 	Pebble = "Галька",
+	Basalt = "Базальт",
+	CrackedLava = "Застывшая лава",
+	Limestone = "Известняк",
+	Pavement = "Тротуар",
+	Rock = "Скала",
+	Sandstone = "Песчаник",
+	Foil = "Фольга",
+	LeafyGrass = "Густая трава",
+	Snow = "Снег",
+	Mud = "Грязь",
+	Ground = "Земля",
+	Asphalt = "Асфальт",
+	Salt = "Соль",
+	Glacier = "Ледник",
+	ForceField = "Силовое поле",
+	Cardboard = "Картон",
+	Carpet = "Ковёр",
+	CeramicTiles = "Кафель",
+	ClayRoofTiles = "Черепица",
+	RoofShingles = "Кровельная плитка",
+	Leather = "Кожа",
+	Plaster = "Штукатурка",
+	Rubber = "Резина",
 }
 
 -- image — изображение для Texture на всех гранях детали
@@ -57,6 +80,7 @@ Catalog.PALETTE = {
 
 -- Готовые модели в каталоге (строятся в Prefabs)
 Catalog.PREFABS = {
+	{ id = "baseplate", title = "Платформа", group = "Строения" },
 	{ id = "room", title = "Комната", group = "Строения" },
 	{ id = "corridor", title = "Коридор", group = "Строения" },
 	{ id = "floorAbove", title = "Этаж выше", group = "Строения" },

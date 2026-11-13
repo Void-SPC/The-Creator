@@ -39,7 +39,11 @@ end
 function WorldBuilder.applyLook(inst: BasePart, data)
 	inst.Size = Convert.v3(data.size)
 	inst.Color = Convert.color(data.color)
-	inst.Material = (Enum.Material :: any)[data.material] or Enum.Material.SmoothPlastic
+	-- старые клиенты могут не знать новых материалов: тогда гладкий пластик
+	local okM, mat = pcall(function()
+		return (Enum.Material :: any)[data.material]
+	end)
+	inst.Material = if okM and mat then mat else Enum.Material.SmoothPlastic
 	inst.Transparency = data.transparency or 0
 	inst.TopSurface = Enum.SurfaceType.Smooth
 	inst.BottomSurface = Enum.SurfaceType.Smooth
@@ -49,6 +53,12 @@ function WorldBuilder.applyLook(inst: BasePart, data)
 		end
 	end
 	local tex = data.texture and Catalog.TEXTURE_SET[data.texture]
+	if not tex and type(data.texture) == "string" and string.match(data.texture, "^rbxassetid://%d+$") then
+		-- своё изображение автора, плиткой на всех гранях
+		tex = { image = data.texture, tile = data.textureTile or 4 }
+	elseif tex and data.textureTile and tex.tile and tex.tile > 0 then
+		tex = { image = tex.image, tile = data.textureTile }
+	end
 	if tex then
 		if tex.tile and tex.tile > 0 then
 			for _, face in FACES do

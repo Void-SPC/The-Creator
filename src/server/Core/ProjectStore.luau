@@ -14,6 +14,7 @@ local Shared = game:GetService("ReplicatedStorage").Workshop.Shared
 local Util = require(Shared.Util)
 local Format = require(Shared.Format)
 local Demo = require(Shared.Demo)
+local Prefabs = require(Shared.Prefabs)
 
 local ProjectStore = {}
 ProjectStore.__index = ProjectStore
@@ -108,6 +109,10 @@ function ProjectStore:createProject(userId: number, name: string, template: stri
 		project.meta.name = name
 	else
 		project = Format.newProject(pid, name, userId)
+		-- новая карта сразу с платформой: на неё удобно ставить блоки, в игре это пол
+		for _, o in Prefabs.baseplate(project) do
+			project.map.objects[o.id] = o
+		end
 	end
 	local e = Format.validateProject(project)
 	if e then

@@ -6,6 +6,7 @@ local UserInputService = game:GetService("UserInputService")
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Workshop"):WaitForChild("Shared")
 local UiText = require(Shared.UiText)
 local Model = require(Shared.Model)
+local Util = require(Shared.Util)
 local Closet = require(Shared.Closet)
 local Prefabs = require(Shared.Prefabs)
 local Remotes = require(Shared.Roblox.Remotes)
@@ -26,6 +27,7 @@ Editor.__index = Editor
 
 local TABS = {
 	{ id = "map", title = L.TabMap },
+	{ id = "objects", title = L.TabObjects },
 	{ id = "models", title = L.TabModels },
 	{ id = "creatures", title = L.TabCreatures },
 	{ id = "anim", title = L.TabAnimation },
@@ -97,6 +99,14 @@ function Editor.new(app, project, readOnly: boolean)
 			self.state:undo()
 		elseif ctrl and input.KeyCode == Enum.KeyCode.Y then
 			self.state:redo()
+		elseif ctrl and input.KeyCode == Enum.KeyCode.C then
+			self:copySelection()
+		elseif ctrl and input.KeyCode == Enum.KeyCode.V then
+			self:paste()
+		elseif ctrl and input.KeyCode == Enum.KeyCode.D then
+			self:duplicate()
+		elseif input.KeyCode == Enum.KeyCode.F then
+			self:focusSelection()
 		elseif input.KeyCode == Enum.KeyCode.Delete then
 			self:deleteSelection()
 		elseif input.KeyCode == Enum.KeyCode.One then
@@ -135,52 +145,69 @@ function Editor:buildUi()
 	self.gui = gui
 	local compact = Kit.compact()
 	self.compact = compact
+	-- размеры раскладки: на телефоне всё тоньше, чтобы карта занимала большую часть экрана
+	local TOP = if compact then 44 else 52
+	local TABH = if compact then 40 else 44
+	local RAIL = if compact then 64 else 80
+	self.L = { top = TOP, tabs = TABH, rail = RAIL, head = TOP + TABH }
+	self.panelOpen = not compact
+	self.uiHidden = false
+	self.chrome = {} -- всё, что прячет кнопка «Скрыть интерфейс»
 
-	local top = Kit.frame(gui, { Size = UDim2.new(1, 0, 0, 52), BackgroundColor3 = Kit.C.bg })
+	-- верхняя строка
+	local top = Kit.frame(gui, { Size = UDim2.new(1, 0, 0, TOP), BackgroundColor3 = Kit.C.bg })
 	Kit.pad(top, 4)
-	Kit.button(top, L.Back, function()
+	table.insert(self.chrome, top)
+	Kit.button(top, "←", function()
 		self.app:closeEditor()
-	end, { Size = UDim2.new(0, 84, 1, 0) })
+	end, { Size = UDim2.new(0, TOP, 1, 0), TextSize = 20 })
 	self.nameLabel = Kit.label(top, self.state.project.meta.name, {
-		Position = UDim2.fromOffset(92, 0), Size = UDim2.new(0.3, -92, 1, 0), Font = Kit.FONT_BOLD, TextSize = 16,
+		Position = UDim2.fromOffset(TOP + 6, 0), Size = UDim2.new(0.35, -TOP - 6, 1, 0), Font = Kit.FONT_BOLD, TextSize = if compact then 14 else 16,
 		TextTruncate = Enum.TextTruncate.AtEnd, TextWrapped = false,
 	})
-	local right = Kit.frame(top, { BackgroundTransparency = 1, Size = UDim2.new(0.7, 0, 1, 0), Position = UDim2.new(0.3, 0, 0, 0) })
-	local rl = Kit.list(right, 6, true)
+	local right = Kit.frame(top, { BackgroundTransparency = 1, Size = UDim2.new(0.65, 0, 1, 0), Position = UDim2.new(0.35, 0, 0, 0) })
+	local rl = Kit.list(right, 4, true)
 	rl.HorizontalAlignment = Enum.HorizontalAlignment.Right
-	self.statusLabel = Kit.label(right, "", { Size = UDim2.new(0, 120, 1, 0), TextXAlignment = Enum.TextXAlignment.Right, TextSize = 14, LayoutOrder = 1 })
-	Kit.button(right, L.Test, function()
+	self.statusLabel = Kit.label(right, "", { Size = UDim2.new(0, if compact then 86 else 120, 1, 0), TextXAlignment = Enum.TextXAlignment.Right, TextSize = 13, LayoutOrder = 1 })
+	Kit.button(right, if compact then "▶" else L.Test, function()
 		self:startTest()
-	end, { Size = UDim2.new(0, 130, 1, 0), LayoutOrder = 2, BackgroundColor3 = Kit.C.accentDim })
-	Kit.button(right, L.Publish, function()
+	end, { Size = UDim2.new(0, if compact then TOP else 130, 1, 0), LayoutOrder = 2, BackgroundColor3 = Kit.C.accentDim, TextSize = if compact then 18 else 15 })
+	Kit.button(right, if compact then "⬆" else L.Publish, function()
 		self:publish()
-	end, { Size = UDim2.new(0, 130, 1, 0), LayoutOrder = 3, BackgroundColor3 = Kit.C.accent })
+	end, { Size = UDim2.new(0, if compact then TOP else 130, 1, 0), LayoutOrder = 3, BackgroundColor3 = Kit.C.accent, TextSize = if compact then 18 else 15 })
+	Kit.button(right, L.HideUi, function()
+		self:setUiHidden(true)
+	end, { Size = UDim2.new(0, TOP, 1, 0), LayoutOrder = 4, TextSize = 18 })
 
+	-- вкладки
 	local tabs = Kit.scroll(gui, {
-		Size = UDim2.new(1, 0, 0, 48), Position = UDim2.fromOffset(0, 52), BackgroundTransparency = 0,
+		Size = UDim2.new(1, 0, 0, TABH), Position = UDim2.fromOffset(0, TOP), BackgroundTransparency = 0,
 		BackgroundColor3 = Kit.C.panel, ScrollingDirection = Enum.ScrollingDirection.X,
 		AutomaticCanvasSize = Enum.AutomaticSize.X, ScrollBarThickness = 0,
 	})
+	table.insert(self.chrome, tabs)
 	Kit.pad(tabs, 2)
 	Kit.list(tabs, 4, true)
 	self.tabButtons = {}
 	for i, t in TABS do
 		self.tabButtons[t.id] = Kit.button(tabs, t.title, function()
 			self:selectTab(t.id)
-		end, { Size = UDim2.new(0, 112, 1, 0), LayoutOrder = i })
+			self:setPanelOpen(true)
+		end, { Size = UDim2.new(0, if compact then 96 else 112, 1, 0), LayoutOrder = i, TextSize = if compact then 13 else 15 })
 	end
 
 	-- инструменты слева
 	local rail = Kit.scroll(gui, {
-		Size = UDim2.new(0, 84, 1, -100), Position = UDim2.fromOffset(0, 100), BackgroundTransparency = 0,
-		BackgroundColor3 = Kit.C.bg,
+		Size = UDim2.new(0, RAIL, 1, -(TOP + TABH)), Position = UDim2.fromOffset(0, TOP + TABH), BackgroundTransparency = 0.15,
+		BackgroundColor3 = Kit.C.bg, ScrollBarThickness = 3,
 	})
-	Kit.pad(rail, 4)
+	table.insert(self.chrome, rail)
+	Kit.pad(rail, 3)
 	Kit.list(rail, 4)
 	self.rail = rail
 	self.toolButtons = {}
 	local function railButton(text: string, fn: () -> (), order: number)
-		return Kit.button(rail, text, fn, { Size = UDim2.new(1, 0, 0, Kit.TAP + 4), TextSize = 13, LayoutOrder = order })
+		return Kit.button(rail, text, fn, { Size = UDim2.new(1, 0, 0, Kit.TAP), TextSize = if compact then 11 else 13, LayoutOrder = order })
 	end
 	local tools = { { "select", L.IconSelect }, { "move", L.IconMove }, { "rotate", L.IconRotate }, { "scale", L.IconScale } }
 	for i, t in tools do
@@ -196,10 +223,10 @@ function Editor:buildUi()
 		self.multi = not self.multi
 		Kit.setActive(self.multiButton, self.multi)
 	end, 11)
-	railButton(L.Undo, function()
+	railButton("↶\n" .. L.Undo, function()
 		self.state:undo()
 	end, 20)
-	railButton(L.Redo, function()
+	railButton("↷\n" .. L.Redo, function()
 		self.state:redo()
 	end, 21)
 	self.freezeButton = railButton(L.Freeze, function()
@@ -208,70 +235,335 @@ function Editor:buildUi()
 	railButton(L.Glue, function()
 		self:glue()
 	end, 31)
-	railButton(L.Duplicate, function()
-		self:duplicate()
-	end, 32)
-	railButton(L.Delete, function()
-		self:deleteSelection()
-	end, 33)
 	self:updateGridButton()
 
-	-- боковая панель (на телефоне — нижняя)
-	local panel
+	-- панель вкладки: справа на планшете, снизу на телефоне; на телефоне закрыта, пока не нужна
+	local panelFrame = Kit.frame(gui, { BackgroundTransparency = 0.04 })
+	Kit.corner(panelFrame, 12)
+	table.insert(self.chrome, panelFrame)
+	self.panelFrame = panelFrame
+	local closeH = if compact then 36 else 0
 	if compact then
-		panel = Kit.frame(gui, { Size = UDim2.new(1, -88, 0.46, 0), Position = UDim2.new(0, 88, 0.54, 0), BackgroundTransparency = 0.05 })
-	else
-		panel = Kit.frame(gui, { Size = UDim2.new(0, 340, 1, -104), Position = UDim2.new(1, -344, 0, 102), BackgroundTransparency = 0.05 })
+		local grip = Kit.button(panelFrame, "▾  " .. L.Close, function()
+			self:setPanelOpen(false)
+		end, { Size = UDim2.new(1, 0, 0, closeH), BackgroundTransparency = 1, TextSize = 13, TextColor3 = Kit.C.dim })
+		grip.ZIndex = 3
 	end
-	Kit.corner(panel, 10)
-	Kit.pad(panel, 8)
+	local panel = Kit.frame(panelFrame, { BackgroundTransparency = 1, Position = UDim2.fromOffset(8, closeH + 4), Size = UDim2.new(1, -16, 1, -closeH - 12) })
 	self.panel = panel
-	self.panelToggle = Kit.button(gui, "▾", function()
-		panel.Visible = not panel.Visible
-		self.panelToggle.Text = if panel.Visible then "▾" else "▴"
-	end, { Size = UDim2.fromOffset(48, 40), Position = if compact then UDim2.new(1, -52, 0.54, -44) else UDim2.new(1, -52, 0, 104) - UDim2.fromOffset(0, 0), ZIndex = 5 })
-	self.panelToggle.Visible = compact
 
 	-- нижняя полоса (шкала анимации)
-	local bottom = Kit.frame(gui, {
-		Size = if compact then UDim2.new(1, -88, 0.46, 0) else UDim2.new(1, -436, 0, 210),
-		Position = if compact then UDim2.new(0, 88, 0.54, 0) else UDim2.new(0, 88, 1, -214),
-		Visible = false, BackgroundTransparency = 0.05,
-	})
+	local bottom = Kit.frame(gui, { Visible = false, BackgroundTransparency = 0.05 })
 	Kit.corner(bottom, 10)
 	Kit.pad(bottom, 6)
+	table.insert(self.chrome, bottom)
 	self.bottom = bottom
 
 	self.hint = Kit.label(gui, "", {
-		Position = UDim2.new(0, 96, 0, 106), Size = UDim2.new(0.5, 0, 0, 40), TextColor3 = Kit.C.text,
-		TextStrokeTransparency = 0.5, TextSize = 14, Visible = false,
+		Position = UDim2.new(0, RAIL + 8, 0, TOP + TABH + 4), Size = UDim2.new(0.6, 0, 0, 40), TextColor3 = Kit.C.text,
+		TextStrokeTransparency = 0.4, TextSize = 14, Visible = false,
 	})
 
-	-- крупная кнопка «+ Добавить» над картой: главный первый шаг автора
-	local bottomY = if compact then UDim2.new(0, 96, 0.54, -Kit.TAP - 12) else UDim2.new(0, 96, 1, -Kit.TAP - 16)
+	-- кнопки поверх карты: небольшие и полупрозрачные
 	self.addButton = Kit.button(gui, L.AddBig, function()
 		self:openAddMenu()
-	end, {
-		Size = UDim2.fromOffset(160, Kit.TAP + 4), Position = bottomY, BackgroundColor3 = Kit.C.accent,
-		Font = Kit.FONT_BOLD, TextSize = 18, ZIndex = 4,
-	})
-	-- кнопки камеры для пальца: приблизить, отдалить, показать выбранный объект
-	local camBar = Kit.frame(gui, {
-		BackgroundTransparency = 1, ZIndex = 4,
-		Size = UDim2.fromOffset(3 * (Kit.TAP + 6), Kit.TAP),
-		Position = if compact then UDim2.new(1, -3 * (Kit.TAP + 6) - 60, 0.54, -Kit.TAP - 12) else UDim2.new(1, -3 * (Kit.TAP + 6) - 352, 1, -Kit.TAP - 16),
-	})
-	Kit.list(camBar, 6, true)
-	Kit.button(camBar, L.ZoomIn, function()
+	end, { Size = UDim2.fromOffset(if compact then 130 else 160, Kit.TAP), BackgroundColor3 = Kit.C.accent, Font = Kit.FONT_BOLD, TextSize = 17, ZIndex = 4 })
+	table.insert(self.chrome, self.addButton)
+
+	local camBar = Kit.frame(gui, { BackgroundTransparency = 1, ZIndex = 4, Size = UDim2.fromOffset(4 * (Kit.TAP + 4), Kit.TAP) })
+	Kit.list(camBar, 4, true)
+	table.insert(self.chrome, camBar)
+	local function camButton(text: string, fn: () -> (), order: number)
+		return Kit.button(camBar, text, fn, { Size = UDim2.fromOffset(Kit.TAP, Kit.TAP), TextSize = 20, LayoutOrder = order, BackgroundTransparency = 0.3 })
+	end
+	camButton(L.ZoomIn, function()
 		self.camera.dist = math.max(4, self.camera.dist * 0.75)
-	end, { Size = UDim2.fromOffset(Kit.TAP, Kit.TAP), TextSize = 24, LayoutOrder = 1, BackgroundTransparency = 0.15 })
-	Kit.button(camBar, L.ZoomOut, function()
+	end, 1)
+	camButton(L.ZoomOut, function()
 		self.camera.dist = math.min(400, self.camera.dist * 1.33)
-	end, { Size = UDim2.fromOffset(Kit.TAP, Kit.TAP), TextSize = 24, LayoutOrder = 2, BackgroundTransparency = 0.15 })
-	Kit.button(camBar, "◎", function()
+	end, 2)
+	camButton("◎", function()
 		self:focusSelection()
-	end, { Size = UDim2.fromOffset(Kit.TAP, Kit.TAP), TextSize = 22, LayoutOrder = 3, BackgroundTransparency = 0.15 })
+	end, 3)
+	self.flyButton = camButton("✈", function()
+		self:setFly(not self.flyOn)
+	end, 4)
 	self.camBar = camBar
+
+	-- полёт пальцем: держите стрелки, ⇧ и ⇩ поднимают и опускают камеру
+	local pad = Kit.frame(gui, { BackgroundTransparency = 1, Visible = false, ZIndex = 4, Size = UDim2.fromOffset(3 * (Kit.TAP + 4) + Kit.TAP + 8, 2 * (Kit.TAP + 4)) })
+	table.insert(self.chrome, pad)
+	self.flyPad = pad
+	local function hold(text: string, dir: Vector3, x: number, y: number)
+		local b = Kit.button(pad, text, nil, { Size = UDim2.fromOffset(Kit.TAP, Kit.TAP), Position = UDim2.fromOffset(x, y), BackgroundTransparency = 0.3, TextSize = 20 })
+		b.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+				self.camera.padMove += dir
+				self.camera.blockDrag = true
+			end
+		end)
+		b.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+				self.camera.padMove -= dir
+				if self.camera.padMove.Magnitude < 0.01 then
+					self.camera.padMove = Vector3.zero
+				end
+				self.camera.blockDrag = false
+			end
+		end)
+	end
+	local s = Kit.TAP + 4
+	hold("▲", Vector3.new(0, 0, -1), s, 0)
+	hold("◀", Vector3.new(-1, 0, 0), 0, s)
+	hold("▼", Vector3.new(0, 0, 1), s, s)
+	hold("▶", Vector3.new(1, 0, 0), 2 * s, s)
+	hold("⇧", Vector3.new(0, 1, 0), 3 * s + 8, 0)
+	hold("⇩", Vector3.new(0, -1, 0), 3 * s + 8, s)
+
+	-- полоса действий для выбранного объекта (как контекстное меню Studio)
+	local selBar = Kit.scroll(gui, {
+		BackgroundTransparency = 0.2, BackgroundColor3 = Kit.C.bg, Visible = false, ZIndex = 4,
+		ScrollingDirection = Enum.ScrollingDirection.X, AutomaticCanvasSize = Enum.AutomaticSize.X, ScrollBarThickness = 0,
+	})
+	Kit.corner(selBar, 10)
+	Kit.pad(selBar, 4)
+	Kit.list(selBar, 4, true)
+	table.insert(self.chrome, selBar)
+	self.selBar = selBar
+	local function selButton(text: string, fn: () -> (), order: number, color: Color3?)
+		return Kit.button(selBar, text, fn, { Size = UDim2.new(0, if compact then 84 else 100, 1, 0), TextSize = 13, LayoutOrder = order, BackgroundColor3 = color or Kit.C.panel2, ZIndex = 5 })
+	end
+	selButton(L.PropertiesShort, function()
+		self:setPanelOpen(true)
+		if self.tab ~= "map" and self.tab ~= "models" and self.tab ~= "texts" then
+			self:selectTab("map")
+		end
+	end, 1, Kit.C.accentDim)
+	selButton(L.Copy, function()
+		self:copySelection()
+	end, 2)
+	selButton(L.Paste, function()
+		self:paste()
+	end, 3)
+	selButton(L.Duplicate, function()
+		self:duplicate()
+	end, 4)
+	selButton(L.Rotate90, function()
+		self:rotate90()
+	end, 5)
+	selButton(L.DropToFloor, function()
+		self:dropToFloor()
+	end, 6)
+	selButton(L.SnapToGrid, function()
+		self:snapToGrid()
+	end, 7)
+	selButton(L.Delete, function()
+		self:deleteSelection()
+	end, 8, Kit.C.bad)
+
+	-- вернуть интерфейс
+	self.showUiButton = Kit.button(gui, L.HideUi, function()
+		self:setUiHidden(false)
+	end, { Size = UDim2.fromOffset(Kit.TAP, Kit.TAP), Position = UDim2.new(1, -Kit.TAP - 8, 0, 8), Visible = false, BackgroundTransparency = 0.3, TextSize = 18, ZIndex = 9 })
+
+	-- платформа редактора: видна только автору, нужна для прицела и ориентира на пустой карте
+	local ground = Instance.new("Part")
+	ground.Name = "WsGround"
+	ground.Anchored = true
+	ground.CanCollide = false
+	ground.Size = Vector3.new(2048, 0.2, 2048)
+	ground.CFrame = CFrame.new(Preview.ORIGIN + Vector3.new(0, -0.15, 0))
+	ground.Color = Color3.fromRGB(70, 74, 82)
+	ground.Material = Enum.Material.SmoothPlastic
+	ground.Transparency = 0.55
+	ground.Parent = self.preview.folder
+	local grid = Instance.new("Texture")
+	grid.Texture = "rbxasset://textures/SpawnLocation.png"
+	grid.Face = Enum.NormalId.Top
+	grid.StudsPerTileU = 4
+	grid.StudsPerTileV = 4
+	grid.Transparency = 0.85
+	grid.Parent = ground
+	self.ground = ground
+
+	self:layout()
+	self.layoutConn = workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+		self:layout()
+	end)
+end
+
+-- Раскладка: панель, шкала анимации и кнопки над картой не перекрывают друг друга
+function Editor:layout()
+	local L0 = self.L
+	local compact = self.compact
+	local wide = self.tab == "logic"
+	local panelOpen = self.panelOpen and self.tab ~= "anim"
+	local panelFrame = self.panelFrame
+	local sheet = 0 -- доля экрана снизу, занятая панелью или шкалой
+	if compact then
+		local h = if wide then 0.62 else 0.48
+		panelFrame.Size = UDim2.new(1, -L0.rail - 8, h, -4)
+		panelFrame.Position = UDim2.new(0, L0.rail + 4, 1 - h, 0)
+		panelFrame.Visible = panelOpen and not self.uiHidden
+		if panelOpen then
+			sheet = h
+		end
+		self.bottom.Size = UDim2.new(1, -L0.rail - 8, 0.46, -4)
+		self.bottom.Position = UDim2.new(0, L0.rail + 4, 0.54, 0)
+		if self.tab == "anim" then
+			sheet = 0.46
+		end
+	else
+		local w = if wide then 560 else 340
+		panelFrame.Size = UDim2.new(0, w, 1, -L0.head - 4)
+		panelFrame.Position = UDim2.new(1, -w - 4, 0, L0.head + 2)
+		panelFrame.Visible = panelOpen and not self.uiHidden
+		self.bottom.Size = UDim2.new(1, -L0.rail - 352, 0, 210)
+		self.bottom.Position = UDim2.new(0, L0.rail + 4, 1, -214)
+	end
+	self.bottom.Visible = self.tab == "anim" and not self.uiHidden
+	local rightInset = if not compact and panelOpen then (if wide then 568 else 348) else 8
+	local bottomPx = if not compact and self.tab == "anim" then 220 else 0
+	local y = UDim2.new(0, 0, 1 - sheet, -bottomPx - Kit.TAP - 10)
+	self.addButton.Position = UDim2.new(0, L0.rail + 8, y.Y.Scale, y.Y.Offset)
+	self.camBar.Position = UDim2.new(1, -rightInset - self.camBar.Size.X.Offset, y.Y.Scale, y.Y.Offset)
+	self.flyPad.Position = UDim2.new(0, L0.rail + 8, y.Y.Scale, y.Y.Offset - self.flyPad.Size.Y.Offset - 8)
+	local barW = math.min(8 * 104, Kit.viewport().X - L0.rail - rightInset - 24)
+	self.selBar.Size = UDim2.new(0, barW, 0, Kit.TAP + 8)
+	self.selBar.Position = UDim2.new(0, L0.rail + 8, y.Y.Scale, y.Y.Offset - Kit.TAP - 16)
+	local hasSel = (#self.selection > 0 or self.selPart ~= nil) and not self.uiHidden and self.tab ~= "anim"
+	self.selBar.Visible = hasSel
+	if hasSel and self.flyOn then
+		self.flyPad.Position = UDim2.new(0, L0.rail + 8, y.Y.Scale, y.Y.Offset - Kit.TAP - 24 - self.flyPad.Size.Y.Offset)
+	end
+	self.flyPad.Visible = self.flyOn == true and not self.uiHidden
+end
+
+function Editor:setPanelOpen(open: boolean)
+	self.panelOpen = open
+	self:layout()
+end
+
+function Editor:setUiHidden(hidden: boolean)
+	self.uiHidden = hidden
+	for _, g in self.chrome do
+		if g ~= self.panelFrame and g ~= self.bottom and g ~= self.selBar and g ~= self.flyPad then
+			g.Visible = not hidden
+		end
+	end
+	self.showUiButton.Visible = hidden
+	self:layout()
+end
+
+function Editor:setFly(on: boolean)
+	self.flyOn = on
+	Kit.setActive(self.flyButton, on)
+	if on then
+		Kit.toast(self.gui, H.FlyHint, nil, 3)
+	else
+		self.camera.padMove = Vector3.zero
+	end
+	self:layout()
+end
+
+-- Studio-подобные действия над выбором
+function Editor:copySelection()
+	local list = {}
+	for _, id in self.selection do
+		local o = self.state:obj(id)
+		if o then
+			table.insert(list, Util.deepCopy(o))
+		end
+	end
+	if #list > 0 then
+		self.app.clipboard = list
+		Kit.toast(self.gui, L.Copied, nil, 1.5)
+	end
+end
+
+function Editor:paste()
+	local clip = self.app.clipboard
+	if not clip or #clip == 0 then
+		return
+	end
+	local op, copies = Model.paste(self.state.project, clip, self.preview:placementPoint(self.grid))
+	if op and self.state:apply(op) then
+		local ids = {}
+		for _, c in copies do
+			table.insert(ids, c.id)
+		end
+		self:select(ids)
+	end
+end
+
+function Editor:rotate90()
+	local ops = {}
+	for _, id in self.selection do
+		local o = self.state:obj(id)
+		if o and not o.frozen then
+			table.insert(ops, { op = "set", id = id, path = { "rot" }, value = { o.rot[1], (o.rot[2] + 90) % 360, o.rot[3] } })
+		end
+	end
+	if #ops > 0 then
+		self.state:apply({ op = "batch", ops = ops })
+	else
+		Kit.toast(self.gui, H.FrozenHint)
+	end
+end
+
+function Editor:snapToGrid()
+	local step = if self.grid > 0 then self.grid else 1
+	local ops = {}
+	for _, id in self.selection do
+		local o = self.state:obj(id)
+		if o and not o.frozen then
+			local p = {}
+			for i = 1, 3 do
+				p[i] = math.floor(o.pos[i] / step + 0.5) * step
+			end
+			-- высота у детали: низ на сетке
+			if o.size then
+				p[2] = math.floor((o.pos[2] - o.size[2] / 2) / step + 0.5) * step + o.size[2] / 2
+			end
+			table.insert(ops, { op = "set", id = id, path = { "pos" }, value = p })
+		end
+	end
+	if #ops > 0 then
+		self.state:apply({ op = "batch", ops = ops })
+	end
+end
+
+-- «На пол»: опустить объект на ближайшую поверхность под ним
+function Editor:dropToFloor()
+	for _, id in self.selection do
+		local o = self.state:obj(id)
+		local h = self.preview.handles[id]
+		if o and h and not o.frozen then
+			local cf, size
+			if h.root:IsA("Model") then
+				cf, size = (h.root :: Model):GetBoundingBox()
+			else
+				local part = h.root :: BasePart
+				cf = part.CFrame
+				local x, y, z, r00, r01, r02, r10, r11, r12 = cf:GetComponents()
+				local _ = x + y + z + r00 + r01 + r02
+				local half = 0.5 * (math.abs(r10) * part.Size.X + math.abs(r11) * part.Size.Y + math.abs(r12) * part.Size.Z)
+				size = Vector3.new(0, half * 2, 0)
+			end
+			local bottom = cf.Position.Y - size.Y / 2
+			local params = RaycastParams.new()
+			params.FilterType = Enum.RaycastFilterType.Exclude
+			params.FilterDescendantsInstances = { h.root }
+			local hit = workspace:Raycast(Vector3.new(cf.Position.X, bottom + 0.05, cf.Position.Z), Vector3.new(0, -500, 0), params)
+			local floorY = if hit then hit.Position.Y else Preview.ORIGIN.Y
+			local dy = floorY - bottom
+			if math.abs(dy) > 0.01 then
+				local p = table.clone(o.pos)
+				p[2] = math.floor((p[2] + dy) * 1000 + 0.5) / 1000
+				self.state:apply({ op = "set", id = id, path = { "pos" }, value = p })
+			end
+		end
+	end
 end
 
 function Editor:openAddMenu()
@@ -393,18 +685,10 @@ function Editor:selectTab(id: string)
 	for tid, b in self.tabButtons do
 		Kit.setActive(b, tid == id)
 	end
-	self.bottom.Visible = id == "anim"
-	self.panel.Visible = not (self.compact and id == "anim")
 	if id ~= "anim" and self.animController then
 		self.animController:stop()
 	end
-	if id == "logic" then
-		self.panel.Size = if self.compact then UDim2.new(1, -88, 0.62, 0) else UDim2.new(0, 560, 1, -104)
-		self.panel.Position = if self.compact then UDim2.new(0, 88, 0.38, 0) else UDim2.new(1, -564, 0, 102)
-	else
-		self.panel.Size = if self.compact then UDim2.new(1, -88, 0.46, 0) else UDim2.new(0, 340, 1, -104)
-		self.panel.Position = if self.compact then UDim2.new(0, 88, 0.54, 0) else UDim2.new(1, -344, 0, 102)
-	end
+	self:layout()
 	self:renderPanel()
 	self:updateGizmo()
 end
@@ -426,7 +710,7 @@ function Editor:renderPanel()
 	end
 	local moduleName = ({
 		map = "MapPanel", models = "MapPanel", creatures = "CreaturePanel", anim = "AnimPanel",
-		logic = "LogicPanel", camera = "SettingsPanel", texts = "TextsPanel",
+		logic = "LogicPanel", camera = "SettingsPanel", texts = "TextsPanel", objects = "ExplorerPanel",
 	})[self.tab]
 	local mod = require(Panels:WaitForChild(moduleName) :: ModuleScript) :: any
 	self.panelCleanup = mod.render(self, self.panel, self.bottom)
@@ -487,6 +771,7 @@ function Editor:afterSelection()
 		ids = { self.modelEdit }
 	end
 	self.preview:setHighlight(ids)
+	self:layout()
 	self:updateGizmo()
 	self:updateFreezeButton()
 	self.selectionChanged.fire()
@@ -936,6 +1221,7 @@ function Editor:destroy()
 		self.panelCleanup()
 	end
 	self.keyConn:Disconnect()
+	self.layoutConn:Disconnect()
 	self.gizmo:destroy()
 	self.camera:destroy()
 	self.preview:destroy()

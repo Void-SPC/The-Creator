@@ -411,6 +411,29 @@ Catalog.MATERIAL_TITLES = {
 	Ice = "Лёд",
 	Cobblestone = "Брусчатка",
 	Pebble = "Галька",
+	Basalt = "Базальт",
+	CrackedLava = "Застывшая лава",
+	Limestone = "Известняк",
+	Pavement = "Тротуар",
+	Rock = "Скала",
+	Sandstone = "Песчаник",
+	Foil = "Фольга",
+	LeafyGrass = "Густая трава",
+	Snow = "Снег",
+	Mud = "Грязь",
+	Ground = "Земля",
+	Asphalt = "Асфальт",
+	Salt = "Соль",
+	Glacier = "Ледник",
+	ForceField = "Силовое поле",
+	Cardboard = "Картон",
+	Carpet = "Ковёр",
+	CeramicTiles = "Кафель",
+	ClayRoofTiles = "Черепица",
+	RoofShingles = "Кровельная плитка",
+	Leather = "Кожа",
+	Plaster = "Штукатурка",
+	Rubber = "Резина",
 }
 
 -- image — изображение для Texture на всех гранях детали
@@ -434,6 +457,7 @@ Catalog.PALETTE = {
 
 -- Готовые модели в каталоге (строятся в Prefabs)
 Catalog.PREFABS = {
+	{ id = "baseplate", title = "Платформа", group = "Строения" },
 	{ id = "room", title = "Комната", group = "Строения" },
 	{ id = "corridor", title = "Коридор", group = "Строения" },
 	{ id = "floorAbove", title = "Этаж выше", group = "Строения" },
@@ -778,10 +802,14 @@ Format.LIMITS = {
 
 Format.SHAPES = { Block = true, Ball = true, Cylinder = true, Wedge = true, CornerWedge = true, Ellipsoid = true }
 
+-- Все материалы Roblox: у каждого своя встроенная текстура поверхности
 Format.MATERIALS = {
 	"Plastic", "SmoothPlastic", "Wood", "WoodPlanks", "Brick", "Concrete", "Marble", "Granite",
 	"Slate", "Metal", "DiamondPlate", "CorrodedMetal", "Fabric", "Grass", "Sand", "Glass",
-	"Neon", "Ice", "Cobblestone", "Pebble",
+	"Neon", "Ice", "Cobblestone", "Pebble", "Basalt", "CrackedLava", "Limestone", "Pavement",
+	"Rock", "Sandstone", "Foil", "LeafyGrass", "Snow", "Mud", "Ground", "Asphalt", "Salt",
+	"Glacier", "ForceField", "Cardboard", "Carpet", "CeramicTiles", "ClayRoofTiles",
+	"RoofShingles", "Leather", "Plaster", "Rubber",
 }
 local MATERIAL_SET = {}
 for _, m in Format.MATERIALS do
@@ -945,6 +973,18 @@ local L = Format.LIMITS
 
 local function isNum(v)
 	return type(v) == "number" and v == v and v ~= math.huge and v ~= -math.huge
+end
+
+-- Текстура: из каталога или своё изображение Roblox по ID (rbxassetid://123)
+function Format.isTexture(t): boolean
+	if type(t) ~= "string" then
+		return false
+	end
+	if Catalog.TEXTURE_SET[t] ~= nil then
+		return true
+	end
+	local id = string.match(t, "^rbxassetid://(%d+)$")
+	return id ~= nil and #id &lt;= 20
 end
 
 local function checkVec(v, lo, hi, what)
@@ -1181,8 +1221,11 @@ local function validatePartFields(p, what): string?
 	if not MATERIAL_SET[p.material] then
 		return what .. ".material"
 	end
-	if p.texture ~= nil and (type(p.texture) ~= "string" or Catalog.TEXTURE_SET[p.texture] == nil) then
+	if p.texture ~= nil and not Format.isTexture(p.texture) then
 		return what .. ".texture"
+	end
+	if p.textureTile ~= nil and (not isNum(p.textureTile) or p.textureTile &lt; 0.5 or p.textureTile &gt; 64) then
+		return what .. ".textureTile"
 	end
 	if not isNum(p.transparency) or p.transparency &lt; 0 or p.transparency &gt; 1 then
 		return what .. ".transparency"
@@ -3140,6 +3183,44 @@ function Model.duplicate(project, ids: { string }, offset)
 	return { op = "batch", ops = ops }, copies, mapping
 end
 
+-- «Вставить»: копии сохранённых объектов (даже если оригиналы уже удалены) с новыми ID
+-- Группа переносится так, чтобы первый объект встал в точку anchor по горизонтали
+function Model.paste(project, clipboard, anchor)
+	if #clipboard == 0 then
+		return nil, {}
+	end
+	local first = clipboard[1]
+	local offset = { anchor[1] - first.pos[1], 0, anchor[3] - first.pos[3] }
+	local mapping = {}
+	for _, src in clipboard do
+		mapping[src.id] = Ids.alloc(project, "o")
+	end
+	local copies, reserved, ops = {}, {}, {}
+	for _, src in clipboard do
+		local c = Util.deepCopy(src)
+		c.id = mapping[src.id]
+		c.pos = MathX.add(c.pos, offset)
+		c.frozen = false
+		if c.latin then
+			local candidate = Ids.suggestLatin(project, c.latin)
+			while reserved[candidate] do
+				local n = tonumber(string.match(candidate, "(%d+)$")) or 1
+				candidate = string.gsub(candidate, "%d+$", "") .. string.format("%02d", n + 1)
+			end
+			reserved[candidate] = true
+			c.latin = candidate
+		end
+		Ids.forEachRef(c, function(holder)
+			if mapping[holder.ref] then
+				holder.ref = mapping[holder.ref]
+			end
+		end)
+		table.insert(copies, c)
+		table.insert(ops, { op = "add", obj = c })
+	end
+	return { op = "batch", ops = ops }, copies
+end
+
 -- «Мои модели»: модель без положения на карте и без ID карты
 function Model.toAsset(obj, assetName: string?)
 	local a = Util.deepCopy(obj)
@@ -3439,7 +3520,7 @@ local Ops = {}
 local OBJECT_ROOTS = {
 	name = true, latin = true, pos = true, rot = true, size = true, shape = true,
 	color = true, material = true, texture = true, transparency = true, frozen = true,
-	physics = true, role = true, label = true, model = true, hidden = true,
+	physics = true, role = true, label = true, model = true, hidden = true, textureTile = true,
 }
 
 local PROJECT_ROOTS = { settings = true, logic = true, meta = true }
@@ -3762,6 +3843,14 @@ function Prefabs.room(project, w: number?, d: number?, h: number?)
 	}
 	latin(project, objs, "Wall")
 	return objs
+end
+
+-- Платформа под постройки: большая плита на уровне пола, заморожена от случайного сдвига
+function Prefabs.baseplate(project)
+	local p = looseP(project, "Платформа", "Block", { 256, 1, 256 }, { 0, 0.5, 0 }, { 99, 95, 98 }, "Plastic")
+	p.latin = "Baseplate"
+	p.frozen = true
+	return { p }
 end
 
 function Prefabs.corridor(project)
@@ -4150,6 +4239,7 @@ end
 
 local BUILDERS = {
 	room = Prefabs.room,
+	baseplate = Prefabs.baseplate,
 	corridor = Prefabs.corridor,
 	floorAbove = Prefabs.floorAbove,
 	wall = Prefabs.wall,
@@ -4599,7 +4689,11 @@ end
 function WorldBuilder.applyLook(inst: BasePart, data)
 	inst.Size = Convert.v3(data.size)
 	inst.Color = Convert.color(data.color)
-	inst.Material = (Enum.Material :: any)[data.material] or Enum.Material.SmoothPlastic
+	-- старые клиенты могут не знать новых материалов: тогда гладкий пластик
+	local okM, mat = pcall(function()
+		return (Enum.Material :: any)[data.material]
+	end)
+	inst.Material = if okM and mat then mat else Enum.Material.SmoothPlastic
 	inst.Transparency = data.transparency or 0
 	inst.TopSurface = Enum.SurfaceType.Smooth
 	inst.BottomSurface = Enum.SurfaceType.Smooth
@@ -4609,6 +4703,12 @@ function WorldBuilder.applyLook(inst: BasePart, data)
 		end
 	end
 	local tex = data.texture and Catalog.TEXTURE_SET[data.texture]
+	if not tex and type(data.texture) == "string" and string.match(data.texture, "^rbxassetid://%d+$") then
+		-- своё изображение автора, плиткой на всех гранях
+		tex = { image = data.texture, tile = data.textureTile or 4 }
+	elseif tex and data.textureTile and tex.tile and tex.tile &gt; 0 then
+		tex = { image = tex.image, tile = data.textureTile }
+	end
 	if tex then
 		if tex.tile and tex.tile &gt; 0 then
 			for _, face in FACES do
@@ -4991,6 +5091,20 @@ UiText.L = {
 	IconMove = "✥\nДвигать",
 	IconRotate = "🔄\nВращать",
 	IconScale = "📐\nРазмер",
+	TabObjects = "Объекты",
+	Copy = "Копировать",
+	Paste = "Вставить",
+	Copied = "Скопировано",
+	Rotate90 = "⟳ 90°",
+	DropToFloor = "На пол",
+	SnapToGrid = "По сетке",
+	PropertiesShort = "Свойства",
+	HideUi = "👁",
+	Search = "Поиск",
+	TextureById = "Своя текстура по ID",
+	TextureTile = "Размер плитки",
+	TextureIdPlaceholder = "Число или rbxassetid://",
+	ObjectsCount = "Объектов: %d",
 	PlayersCount = "Игроков: %d",
 
 	AssignCloset = "Назначить как шкаф",
@@ -5154,6 +5268,9 @@ UiText.H = {
 	StartStep3 = "Во вкладке «Логика» задайте, что происходит в игре, и нажмите «Тестировать».",
 	ShowcaseHint = "Все игроки сразу попадают в эту карту и не видят меню создателя. Выключить витрину могут только создатели.",
 	ShowcaseOnlyCreators = "Включать витрину могут только создатели игры.",
+	FlyHint = "Держите стрелки, чтобы лететь, а кнопки ⇧ и ⇩ поднимают и опускают камеру.",
+	TextureIdHint = "Вставьте ID изображения Roblox, например 6372755229.",
+	HideUiHint = "Интерфейс скрыт, кнопка в углу возвращает его.",
 }
 
 -- Проверка правила точек. Возвращает список нарушений
@@ -5500,6 +5617,7 @@ local Shared = game:GetService("ReplicatedStorage").Workshop.Shared
 local Util = require(Shared.Util)
 local Format = require(Shared.Format)
 local Demo = require(Shared.Demo)
+local Prefabs = require(Shared.Prefabs)
 
 local ProjectStore = {}
 ProjectStore.__index = ProjectStore
@@ -5594,6 +5712,10 @@ function ProjectStore:createProject(userId: number, name: string, template: stri
 		project.meta.name = name
 	else
 		project = Format.newProject(pid, name, userId)
+		-- новая карта сразу с платформой: на неё удобно ставить блоки, в игре это пол
+		for _, o in Prefabs.baseplate(project) do
+			project.map.objects[o.id] = o
+		end
 	end
 	local e = Format.validateProject(project)
 	if e then
@@ -7901,6 +8023,7 @@ local UserInputService = game:GetService("UserInputService")
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Workshop"):WaitForChild("Shared")
 local UiText = require(Shared.UiText)
 local Model = require(Shared.Model)
+local Util = require(Shared.Util)
 local Closet = require(Shared.Closet)
 local Prefabs = require(Shared.Prefabs)
 local Remotes = require(Shared.Roblox.Remotes)
@@ -7921,6 +8044,7 @@ Editor.__index = Editor
 
 local TABS = {
 	{ id = "map", title = L.TabMap },
+	{ id = "objects", title = L.TabObjects },
 	{ id = "models", title = L.TabModels },
 	{ id = "creatures", title = L.TabCreatures },
 	{ id = "anim", title = L.TabAnimation },
@@ -7992,6 +8116,14 @@ function Editor.new(app, project, readOnly: boolean)
 			self.state:undo()
 		elseif ctrl and input.KeyCode == Enum.KeyCode.Y then
 			self.state:redo()
+		elseif ctrl and input.KeyCode == Enum.KeyCode.C then
+			self:copySelection()
+		elseif ctrl and input.KeyCode == Enum.KeyCode.V then
+			self:paste()
+		elseif ctrl and input.KeyCode == Enum.KeyCode.D then
+			self:duplicate()
+		elseif input.KeyCode == Enum.KeyCode.F then
+			self:focusSelection()
 		elseif input.KeyCode == Enum.KeyCode.Delete then
 			self:deleteSelection()
 		elseif input.KeyCode == Enum.KeyCode.One then
@@ -8030,52 +8162,69 @@ function Editor:buildUi()
 	self.gui = gui
 	local compact = Kit.compact()
 	self.compact = compact
+	-- размеры раскладки: на телефоне всё тоньше, чтобы карта занимала большую часть экрана
+	local TOP = if compact then 44 else 52
+	local TABH = if compact then 40 else 44
+	local RAIL = if compact then 64 else 80
+	self.L = { top = TOP, tabs = TABH, rail = RAIL, head = TOP + TABH }
+	self.panelOpen = not compact
+	self.uiHidden = false
+	self.chrome = {} -- всё, что прячет кнопка «Скрыть интерфейс»
 
-	local top = Kit.frame(gui, { Size = UDim2.new(1, 0, 0, 52), BackgroundColor3 = Kit.C.bg })
+	-- верхняя строка
+	local top = Kit.frame(gui, { Size = UDim2.new(1, 0, 0, TOP), BackgroundColor3 = Kit.C.bg })
 	Kit.pad(top, 4)
-	Kit.button(top, L.Back, function()
+	table.insert(self.chrome, top)
+	Kit.button(top, "←", function()
 		self.app:closeEditor()
-	end, { Size = UDim2.new(0, 84, 1, 0) })
+	end, { Size = UDim2.new(0, TOP, 1, 0), TextSize = 20 })
 	self.nameLabel = Kit.label(top, self.state.project.meta.name, {
-		Position = UDim2.fromOffset(92, 0), Size = UDim2.new(0.3, -92, 1, 0), Font = Kit.FONT_BOLD, TextSize = 16,
+		Position = UDim2.fromOffset(TOP + 6, 0), Size = UDim2.new(0.35, -TOP - 6, 1, 0), Font = Kit.FONT_BOLD, TextSize = if compact then 14 else 16,
 		TextTruncate = Enum.TextTruncate.AtEnd, TextWrapped = false,
 	})
-	local right = Kit.frame(top, { BackgroundTransparency = 1, Size = UDim2.new(0.7, 0, 1, 0), Position = UDim2.new(0.3, 0, 0, 0) })
-	local rl = Kit.list(right, 6, true)
+	local right = Kit.frame(top, { BackgroundTransparency = 1, Size = UDim2.new(0.65, 0, 1, 0), Position = UDim2.new(0.35, 0, 0, 0) })
+	local rl = Kit.list(right, 4, true)
 	rl.HorizontalAlignment = Enum.HorizontalAlignment.Right
-	self.statusLabel = Kit.label(right, "", { Size = UDim2.new(0, 120, 1, 0), TextXAlignment = Enum.TextXAlignment.Right, TextSize = 14, LayoutOrder = 1 })
-	Kit.button(right, L.Test, function()
+	self.statusLabel = Kit.label(right, "", { Size = UDim2.new(0, if compact then 86 else 120, 1, 0), TextXAlignment = Enum.TextXAlignment.Right, TextSize = 13, LayoutOrder = 1 })
+	Kit.button(right, if compact then "▶" else L.Test, function()
 		self:startTest()
-	end, { Size = UDim2.new(0, 130, 1, 0), LayoutOrder = 2, BackgroundColor3 = Kit.C.accentDim })
-	Kit.button(right, L.Publish, function()
+	end, { Size = UDim2.new(0, if compact then TOP else 130, 1, 0), LayoutOrder = 2, BackgroundColor3 = Kit.C.accentDim, TextSize = if compact then 18 else 15 })
+	Kit.button(right, if compact then "⬆" else L.Publish, function()
 		self:publish()
-	end, { Size = UDim2.new(0, 130, 1, 0), LayoutOrder = 3, BackgroundColor3 = Kit.C.accent })
+	end, { Size = UDim2.new(0, if compact then TOP else 130, 1, 0), LayoutOrder = 3, BackgroundColor3 = Kit.C.accent, TextSize = if compact then 18 else 15 })
+	Kit.button(right, L.HideUi, function()
+		self:setUiHidden(true)
+	end, { Size = UDim2.new(0, TOP, 1, 0), LayoutOrder = 4, TextSize = 18 })
 
+	-- вкладки
 	local tabs = Kit.scroll(gui, {
-		Size = UDim2.new(1, 0, 0, 48), Position = UDim2.fromOffset(0, 52), BackgroundTransparency = 0,
+		Size = UDim2.new(1, 0, 0, TABH), Position = UDim2.fromOffset(0, TOP), BackgroundTransparency = 0,
 		BackgroundColor3 = Kit.C.panel, ScrollingDirection = Enum.ScrollingDirection.X,
 		AutomaticCanvasSize = Enum.AutomaticSize.X, ScrollBarThickness = 0,
 	})
+	table.insert(self.chrome, tabs)
 	Kit.pad(tabs, 2)
 	Kit.list(tabs, 4, true)
 	self.tabButtons = {}
 	for i, t in TABS do
 		self.tabButtons[t.id] = Kit.button(tabs, t.title, function()
 			self:selectTab(t.id)
-		end, { Size = UDim2.new(0, 112, 1, 0), LayoutOrder = i })
+			self:setPanelOpen(true)
+		end, { Size = UDim2.new(0, if compact then 96 else 112, 1, 0), LayoutOrder = i, TextSize = if compact then 13 else 15 })
 	end
 
 	-- инструменты слева
 	local rail = Kit.scroll(gui, {
-		Size = UDim2.new(0, 84, 1, -100), Position = UDim2.fromOffset(0, 100), BackgroundTransparency = 0,
-		BackgroundColor3 = Kit.C.bg,
+		Size = UDim2.new(0, RAIL, 1, -(TOP + TABH)), Position = UDim2.fromOffset(0, TOP + TABH), BackgroundTransparency = 0.15,
+		BackgroundColor3 = Kit.C.bg, ScrollBarThickness = 3,
 	})
-	Kit.pad(rail, 4)
+	table.insert(self.chrome, rail)
+	Kit.pad(rail, 3)
 	Kit.list(rail, 4)
 	self.rail = rail
 	self.toolButtons = {}
 	local function railButton(text: string, fn: () -&gt; (), order: number)
-		return Kit.button(rail, text, fn, { Size = UDim2.new(1, 0, 0, Kit.TAP + 4), TextSize = 13, LayoutOrder = order })
+		return Kit.button(rail, text, fn, { Size = UDim2.new(1, 0, 0, Kit.TAP), TextSize = if compact then 11 else 13, LayoutOrder = order })
 	end
 	local tools = { { "select", L.IconSelect }, { "move", L.IconMove }, { "rotate", L.IconRotate }, { "scale", L.IconScale } }
 	for i, t in tools do
@@ -8091,10 +8240,10 @@ function Editor:buildUi()
 		self.multi = not self.multi
 		Kit.setActive(self.multiButton, self.multi)
 	end, 11)
-	railButton(L.Undo, function()
+	railButton("↶\n" .. L.Undo, function()
 		self.state:undo()
 	end, 20)
-	railButton(L.Redo, function()
+	railButton("↷\n" .. L.Redo, function()
 		self.state:redo()
 	end, 21)
 	self.freezeButton = railButton(L.Freeze, function()
@@ -8103,70 +8252,335 @@ function Editor:buildUi()
 	railButton(L.Glue, function()
 		self:glue()
 	end, 31)
-	railButton(L.Duplicate, function()
-		self:duplicate()
-	end, 32)
-	railButton(L.Delete, function()
-		self:deleteSelection()
-	end, 33)
 	self:updateGridButton()
 
-	-- боковая панель (на телефоне — нижняя)
-	local panel
+	-- панель вкладки: справа на планшете, снизу на телефоне; на телефоне закрыта, пока не нужна
+	local panelFrame = Kit.frame(gui, { BackgroundTransparency = 0.04 })
+	Kit.corner(panelFrame, 12)
+	table.insert(self.chrome, panelFrame)
+	self.panelFrame = panelFrame
+	local closeH = if compact then 36 else 0
 	if compact then
-		panel = Kit.frame(gui, { Size = UDim2.new(1, -88, 0.46, 0), Position = UDim2.new(0, 88, 0.54, 0), BackgroundTransparency = 0.05 })
-	else
-		panel = Kit.frame(gui, { Size = UDim2.new(0, 340, 1, -104), Position = UDim2.new(1, -344, 0, 102), BackgroundTransparency = 0.05 })
+		local grip = Kit.button(panelFrame, "▾  " .. L.Close, function()
+			self:setPanelOpen(false)
+		end, { Size = UDim2.new(1, 0, 0, closeH), BackgroundTransparency = 1, TextSize = 13, TextColor3 = Kit.C.dim })
+		grip.ZIndex = 3
 	end
-	Kit.corner(panel, 10)
-	Kit.pad(panel, 8)
+	local panel = Kit.frame(panelFrame, { BackgroundTransparency = 1, Position = UDim2.fromOffset(8, closeH + 4), Size = UDim2.new(1, -16, 1, -closeH - 12) })
 	self.panel = panel
-	self.panelToggle = Kit.button(gui, "▾", function()
-		panel.Visible = not panel.Visible
-		self.panelToggle.Text = if panel.Visible then "▾" else "▴"
-	end, { Size = UDim2.fromOffset(48, 40), Position = if compact then UDim2.new(1, -52, 0.54, -44) else UDim2.new(1, -52, 0, 104) - UDim2.fromOffset(0, 0), ZIndex = 5 })
-	self.panelToggle.Visible = compact
 
 	-- нижняя полоса (шкала анимации)
-	local bottom = Kit.frame(gui, {
-		Size = if compact then UDim2.new(1, -88, 0.46, 0) else UDim2.new(1, -436, 0, 210),
-		Position = if compact then UDim2.new(0, 88, 0.54, 0) else UDim2.new(0, 88, 1, -214),
-		Visible = false, BackgroundTransparency = 0.05,
-	})
+	local bottom = Kit.frame(gui, { Visible = false, BackgroundTransparency = 0.05 })
 	Kit.corner(bottom, 10)
 	Kit.pad(bottom, 6)
+	table.insert(self.chrome, bottom)
 	self.bottom = bottom
 
 	self.hint = Kit.label(gui, "", {
-		Position = UDim2.new(0, 96, 0, 106), Size = UDim2.new(0.5, 0, 0, 40), TextColor3 = Kit.C.text,
-		TextStrokeTransparency = 0.5, TextSize = 14, Visible = false,
+		Position = UDim2.new(0, RAIL + 8, 0, TOP + TABH + 4), Size = UDim2.new(0.6, 0, 0, 40), TextColor3 = Kit.C.text,
+		TextStrokeTransparency = 0.4, TextSize = 14, Visible = false,
 	})
 
-	-- крупная кнопка «+ Добавить» над картой: главный первый шаг автора
-	local bottomY = if compact then UDim2.new(0, 96, 0.54, -Kit.TAP - 12) else UDim2.new(0, 96, 1, -Kit.TAP - 16)
+	-- кнопки поверх карты: небольшие и полупрозрачные
 	self.addButton = Kit.button(gui, L.AddBig, function()
 		self:openAddMenu()
-	end, {
-		Size = UDim2.fromOffset(160, Kit.TAP + 4), Position = bottomY, BackgroundColor3 = Kit.C.accent,
-		Font = Kit.FONT_BOLD, TextSize = 18, ZIndex = 4,
-	})
-	-- кнопки камеры для пальца: приблизить, отдалить, показать выбранный объект
-	local camBar = Kit.frame(gui, {
-		BackgroundTransparency = 1, ZIndex = 4,
-		Size = UDim2.fromOffset(3 * (Kit.TAP + 6), Kit.TAP),
-		Position = if compact then UDim2.new(1, -3 * (Kit.TAP + 6) - 60, 0.54, -Kit.TAP - 12) else UDim2.new(1, -3 * (Kit.TAP + 6) - 352, 1, -Kit.TAP - 16),
-	})
-	Kit.list(camBar, 6, true)
-	Kit.button(camBar, L.ZoomIn, function()
+	end, { Size = UDim2.fromOffset(if compact then 130 else 160, Kit.TAP), BackgroundColor3 = Kit.C.accent, Font = Kit.FONT_BOLD, TextSize = 17, ZIndex = 4 })
+	table.insert(self.chrome, self.addButton)
+
+	local camBar = Kit.frame(gui, { BackgroundTransparency = 1, ZIndex = 4, Size = UDim2.fromOffset(4 * (Kit.TAP + 4), Kit.TAP) })
+	Kit.list(camBar, 4, true)
+	table.insert(self.chrome, camBar)
+	local function camButton(text: string, fn: () -&gt; (), order: number)
+		return Kit.button(camBar, text, fn, { Size = UDim2.fromOffset(Kit.TAP, Kit.TAP), TextSize = 20, LayoutOrder = order, BackgroundTransparency = 0.3 })
+	end
+	camButton(L.ZoomIn, function()
 		self.camera.dist = math.max(4, self.camera.dist * 0.75)
-	end, { Size = UDim2.fromOffset(Kit.TAP, Kit.TAP), TextSize = 24, LayoutOrder = 1, BackgroundTransparency = 0.15 })
-	Kit.button(camBar, L.ZoomOut, function()
+	end, 1)
+	camButton(L.ZoomOut, function()
 		self.camera.dist = math.min(400, self.camera.dist * 1.33)
-	end, { Size = UDim2.fromOffset(Kit.TAP, Kit.TAP), TextSize = 24, LayoutOrder = 2, BackgroundTransparency = 0.15 })
-	Kit.button(camBar, "◎", function()
+	end, 2)
+	camButton("◎", function()
 		self:focusSelection()
-	end, { Size = UDim2.fromOffset(Kit.TAP, Kit.TAP), TextSize = 22, LayoutOrder = 3, BackgroundTransparency = 0.15 })
+	end, 3)
+	self.flyButton = camButton("✈", function()
+		self:setFly(not self.flyOn)
+	end, 4)
 	self.camBar = camBar
+
+	-- полёт пальцем: держите стрелки, ⇧ и ⇩ поднимают и опускают камеру
+	local pad = Kit.frame(gui, { BackgroundTransparency = 1, Visible = false, ZIndex = 4, Size = UDim2.fromOffset(3 * (Kit.TAP + 4) + Kit.TAP + 8, 2 * (Kit.TAP + 4)) })
+	table.insert(self.chrome, pad)
+	self.flyPad = pad
+	local function hold(text: string, dir: Vector3, x: number, y: number)
+		local b = Kit.button(pad, text, nil, { Size = UDim2.fromOffset(Kit.TAP, Kit.TAP), Position = UDim2.fromOffset(x, y), BackgroundTransparency = 0.3, TextSize = 20 })
+		b.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+				self.camera.padMove += dir
+				self.camera.blockDrag = true
+			end
+		end)
+		b.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+				self.camera.padMove -= dir
+				if self.camera.padMove.Magnitude &lt; 0.01 then
+					self.camera.padMove = Vector3.zero
+				end
+				self.camera.blockDrag = false
+			end
+		end)
+	end
+	local s = Kit.TAP + 4
+	hold("▲", Vector3.new(0, 0, -1), s, 0)
+	hold("◀", Vector3.new(-1, 0, 0), 0, s)
+	hold("▼", Vector3.new(0, 0, 1), s, s)
+	hold("▶", Vector3.new(1, 0, 0), 2 * s, s)
+	hold("⇧", Vector3.new(0, 1, 0), 3 * s + 8, 0)
+	hold("⇩", Vector3.new(0, -1, 0), 3 * s + 8, s)
+
+	-- полоса действий для выбранного объекта (как контекстное меню Studio)
+	local selBar = Kit.scroll(gui, {
+		BackgroundTransparency = 0.2, BackgroundColor3 = Kit.C.bg, Visible = false, ZIndex = 4,
+		ScrollingDirection = Enum.ScrollingDirection.X, AutomaticCanvasSize = Enum.AutomaticSize.X, ScrollBarThickness = 0,
+	})
+	Kit.corner(selBar, 10)
+	Kit.pad(selBar, 4)
+	Kit.list(selBar, 4, true)
+	table.insert(self.chrome, selBar)
+	self.selBar = selBar
+	local function selButton(text: string, fn: () -&gt; (), order: number, color: Color3?)
+		return Kit.button(selBar, text, fn, { Size = UDim2.new(0, if compact then 84 else 100, 1, 0), TextSize = 13, LayoutOrder = order, BackgroundColor3 = color or Kit.C.panel2, ZIndex = 5 })
+	end
+	selButton(L.PropertiesShort, function()
+		self:setPanelOpen(true)
+		if self.tab ~= "map" and self.tab ~= "models" and self.tab ~= "texts" then
+			self:selectTab("map")
+		end
+	end, 1, Kit.C.accentDim)
+	selButton(L.Copy, function()
+		self:copySelection()
+	end, 2)
+	selButton(L.Paste, function()
+		self:paste()
+	end, 3)
+	selButton(L.Duplicate, function()
+		self:duplicate()
+	end, 4)
+	selButton(L.Rotate90, function()
+		self:rotate90()
+	end, 5)
+	selButton(L.DropToFloor, function()
+		self:dropToFloor()
+	end, 6)
+	selButton(L.SnapToGrid, function()
+		self:snapToGrid()
+	end, 7)
+	selButton(L.Delete, function()
+		self:deleteSelection()
+	end, 8, Kit.C.bad)
+
+	-- вернуть интерфейс
+	self.showUiButton = Kit.button(gui, L.HideUi, function()
+		self:setUiHidden(false)
+	end, { Size = UDim2.fromOffset(Kit.TAP, Kit.TAP), Position = UDim2.new(1, -Kit.TAP - 8, 0, 8), Visible = false, BackgroundTransparency = 0.3, TextSize = 18, ZIndex = 9 })
+
+	-- платформа редактора: видна только автору, нужна для прицела и ориентира на пустой карте
+	local ground = Instance.new("Part")
+	ground.Name = "WsGround"
+	ground.Anchored = true
+	ground.CanCollide = false
+	ground.Size = Vector3.new(2048, 0.2, 2048)
+	ground.CFrame = CFrame.new(Preview.ORIGIN + Vector3.new(0, -0.15, 0))
+	ground.Color = Color3.fromRGB(70, 74, 82)
+	ground.Material = Enum.Material.SmoothPlastic
+	ground.Transparency = 0.55
+	ground.Parent = self.preview.folder
+	local grid = Instance.new("Texture")
+	grid.Texture = "rbxasset://textures/SpawnLocation.png"
+	grid.Face = Enum.NormalId.Top
+	grid.StudsPerTileU = 4
+	grid.StudsPerTileV = 4
+	grid.Transparency = 0.85
+	grid.Parent = ground
+	self.ground = ground
+
+	self:layout()
+	self.layoutConn = workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+		self:layout()
+	end)
+end
+
+-- Раскладка: панель, шкала анимации и кнопки над картой не перекрывают друг друга
+function Editor:layout()
+	local L0 = self.L
+	local compact = self.compact
+	local wide = self.tab == "logic"
+	local panelOpen = self.panelOpen and self.tab ~= "anim"
+	local panelFrame = self.panelFrame
+	local sheet = 0 -- доля экрана снизу, занятая панелью или шкалой
+	if compact then
+		local h = if wide then 0.62 else 0.48
+		panelFrame.Size = UDim2.new(1, -L0.rail - 8, h, -4)
+		panelFrame.Position = UDim2.new(0, L0.rail + 4, 1 - h, 0)
+		panelFrame.Visible = panelOpen and not self.uiHidden
+		if panelOpen then
+			sheet = h
+		end
+		self.bottom.Size = UDim2.new(1, -L0.rail - 8, 0.46, -4)
+		self.bottom.Position = UDim2.new(0, L0.rail + 4, 0.54, 0)
+		if self.tab == "anim" then
+			sheet = 0.46
+		end
+	else
+		local w = if wide then 560 else 340
+		panelFrame.Size = UDim2.new(0, w, 1, -L0.head - 4)
+		panelFrame.Position = UDim2.new(1, -w - 4, 0, L0.head + 2)
+		panelFrame.Visible = panelOpen and not self.uiHidden
+		self.bottom.Size = UDim2.new(1, -L0.rail - 352, 0, 210)
+		self.bottom.Position = UDim2.new(0, L0.rail + 4, 1, -214)
+	end
+	self.bottom.Visible = self.tab == "anim" and not self.uiHidden
+	local rightInset = if not compact and panelOpen then (if wide then 568 else 348) else 8
+	local bottomPx = if not compact and self.tab == "anim" then 220 else 0
+	local y = UDim2.new(0, 0, 1 - sheet, -bottomPx - Kit.TAP - 10)
+	self.addButton.Position = UDim2.new(0, L0.rail + 8, y.Y.Scale, y.Y.Offset)
+	self.camBar.Position = UDim2.new(1, -rightInset - self.camBar.Size.X.Offset, y.Y.Scale, y.Y.Offset)
+	self.flyPad.Position = UDim2.new(0, L0.rail + 8, y.Y.Scale, y.Y.Offset - self.flyPad.Size.Y.Offset - 8)
+	local barW = math.min(8 * 104, Kit.viewport().X - L0.rail - rightInset - 24)
+	self.selBar.Size = UDim2.new(0, barW, 0, Kit.TAP + 8)
+	self.selBar.Position = UDim2.new(0, L0.rail + 8, y.Y.Scale, y.Y.Offset - Kit.TAP - 16)
+	local hasSel = (#self.selection &gt; 0 or self.selPart ~= nil) and not self.uiHidden and self.tab ~= "anim"
+	self.selBar.Visible = hasSel
+	if hasSel and self.flyOn then
+		self.flyPad.Position = UDim2.new(0, L0.rail + 8, y.Y.Scale, y.Y.Offset - Kit.TAP - 24 - self.flyPad.Size.Y.Offset)
+	end
+	self.flyPad.Visible = self.flyOn == true and not self.uiHidden
+end
+
+function Editor:setPanelOpen(open: boolean)
+	self.panelOpen = open
+	self:layout()
+end
+
+function Editor:setUiHidden(hidden: boolean)
+	self.uiHidden = hidden
+	for _, g in self.chrome do
+		if g ~= self.panelFrame and g ~= self.bottom and g ~= self.selBar and g ~= self.flyPad then
+			g.Visible = not hidden
+		end
+	end
+	self.showUiButton.Visible = hidden
+	self:layout()
+end
+
+function Editor:setFly(on: boolean)
+	self.flyOn = on
+	Kit.setActive(self.flyButton, on)
+	if on then
+		Kit.toast(self.gui, H.FlyHint, nil, 3)
+	else
+		self.camera.padMove = Vector3.zero
+	end
+	self:layout()
+end
+
+-- Studio-подобные действия над выбором
+function Editor:copySelection()
+	local list = {}
+	for _, id in self.selection do
+		local o = self.state:obj(id)
+		if o then
+			table.insert(list, Util.deepCopy(o))
+		end
+	end
+	if #list &gt; 0 then
+		self.app.clipboard = list
+		Kit.toast(self.gui, L.Copied, nil, 1.5)
+	end
+end
+
+function Editor:paste()
+	local clip = self.app.clipboard
+	if not clip or #clip == 0 then
+		return
+	end
+	local op, copies = Model.paste(self.state.project, clip, self.preview:placementPoint(self.grid))
+	if op and self.state:apply(op) then
+		local ids = {}
+		for _, c in copies do
+			table.insert(ids, c.id)
+		end
+		self:select(ids)
+	end
+end
+
+function Editor:rotate90()
+	local ops = {}
+	for _, id in self.selection do
+		local o = self.state:obj(id)
+		if o and not o.frozen then
+			table.insert(ops, { op = "set", id = id, path = { "rot" }, value = { o.rot[1], (o.rot[2] + 90) % 360, o.rot[3] } })
+		end
+	end
+	if #ops &gt; 0 then
+		self.state:apply({ op = "batch", ops = ops })
+	else
+		Kit.toast(self.gui, H.FrozenHint)
+	end
+end
+
+function Editor:snapToGrid()
+	local step = if self.grid &gt; 0 then self.grid else 1
+	local ops = {}
+	for _, id in self.selection do
+		local o = self.state:obj(id)
+		if o and not o.frozen then
+			local p = {}
+			for i = 1, 3 do
+				p[i] = math.floor(o.pos[i] / step + 0.5) * step
+			end
+			-- высота у детали: низ на сетке
+			if o.size then
+				p[2] = math.floor((o.pos[2] - o.size[2] / 2) / step + 0.5) * step + o.size[2] / 2
+			end
+			table.insert(ops, { op = "set", id = id, path = { "pos" }, value = p })
+		end
+	end
+	if #ops &gt; 0 then
+		self.state:apply({ op = "batch", ops = ops })
+	end
+end
+
+-- «На пол»: опустить объект на ближайшую поверхность под ним
+function Editor:dropToFloor()
+	for _, id in self.selection do
+		local o = self.state:obj(id)
+		local h = self.preview.handles[id]
+		if o and h and not o.frozen then
+			local cf, size
+			if h.root:IsA("Model") then
+				cf, size = (h.root :: Model):GetBoundingBox()
+			else
+				local part = h.root :: BasePart
+				cf = part.CFrame
+				local x, y, z, r00, r01, r02, r10, r11, r12 = cf:GetComponents()
+				local _ = x + y + z + r00 + r01 + r02
+				local half = 0.5 * (math.abs(r10) * part.Size.X + math.abs(r11) * part.Size.Y + math.abs(r12) * part.Size.Z)
+				size = Vector3.new(0, half * 2, 0)
+			end
+			local bottom = cf.Position.Y - size.Y / 2
+			local params = RaycastParams.new()
+			params.FilterType = Enum.RaycastFilterType.Exclude
+			params.FilterDescendantsInstances = { h.root }
+			local hit = workspace:Raycast(Vector3.new(cf.Position.X, bottom + 0.05, cf.Position.Z), Vector3.new(0, -500, 0), params)
+			local floorY = if hit then hit.Position.Y else Preview.ORIGIN.Y
+			local dy = floorY - bottom
+			if math.abs(dy) &gt; 0.01 then
+				local p = table.clone(o.pos)
+				p[2] = math.floor((p[2] + dy) * 1000 + 0.5) / 1000
+				self.state:apply({ op = "set", id = id, path = { "pos" }, value = p })
+			end
+		end
+	end
 end
 
 function Editor:openAddMenu()
@@ -8288,18 +8702,10 @@ function Editor:selectTab(id: string)
 	for tid, b in self.tabButtons do
 		Kit.setActive(b, tid == id)
 	end
-	self.bottom.Visible = id == "anim"
-	self.panel.Visible = not (self.compact and id == "anim")
 	if id ~= "anim" and self.animController then
 		self.animController:stop()
 	end
-	if id == "logic" then
-		self.panel.Size = if self.compact then UDim2.new(1, -88, 0.62, 0) else UDim2.new(0, 560, 1, -104)
-		self.panel.Position = if self.compact then UDim2.new(0, 88, 0.38, 0) else UDim2.new(1, -564, 0, 102)
-	else
-		self.panel.Size = if self.compact then UDim2.new(1, -88, 0.46, 0) else UDim2.new(0, 340, 1, -104)
-		self.panel.Position = if self.compact then UDim2.new(0, 88, 0.54, 0) else UDim2.new(1, -344, 0, 102)
-	end
+	self:layout()
 	self:renderPanel()
 	self:updateGizmo()
 end
@@ -8321,7 +8727,7 @@ function Editor:renderPanel()
 	end
 	local moduleName = ({
 		map = "MapPanel", models = "MapPanel", creatures = "CreaturePanel", anim = "AnimPanel",
-		logic = "LogicPanel", camera = "SettingsPanel", texts = "TextsPanel",
+		logic = "LogicPanel", camera = "SettingsPanel", texts = "TextsPanel", objects = "ExplorerPanel",
 	})[self.tab]
 	local mod = require(Panels:WaitForChild(moduleName) :: ModuleScript) :: any
 	self.panelCleanup = mod.render(self, self.panel, self.bottom)
@@ -8382,6 +8788,7 @@ function Editor:afterSelection()
 		ids = { self.modelEdit }
 	end
 	self.preview:setHighlight(ids)
+	self:layout()
 	self:updateGizmo()
 	self:updateFreezeButton()
 	self.selectionChanged.fire()
@@ -8831,6 +9238,7 @@ function Editor:destroy()
 		self.panelCleanup()
 	end
 	self.keyConn:Disconnect()
+	self.layoutConn:Disconnect()
 	self.gizmo:destroy()
 	self.camera:destroy()
 	self.preview:destroy()
@@ -8864,6 +9272,7 @@ function FreeCamera.new(focus: Vector3)
 	self.dist = 45
 	self.enabled = true
 	self.blockDrag = false -- выставляет Gizmo, пока тянут ручку
+	self.padMove = Vector3.zero -- полёт с экранных кнопок
 	self.onTap = nil :: ((Vector2) -&gt; ())?
 	self.touches = {} :: { [InputObject]: Vector2 }
 	self.touchStart = {} :: { [InputObject]: { pos: Vector2, t: number, moved: boolean } }
@@ -9002,6 +9411,7 @@ function FreeCamera.new(focus: Vector3)
 			if k:IsKeyDown(Enum.KeyCode.E) then move += Vector3.new(0, 1, 0) end
 			if k:IsKeyDown(Enum.KeyCode.Q) then move += Vector3.new(0, -1, 0) end
 		end
+		move += self.padMove
 		if move.Magnitude &gt; 0 then
 			local rot = CFrame.Angles(0, self.yaw, 0)
 			self.focus += rot:VectorToWorldSpace(move) * dt * math.max(12, self.dist * 0.8)
@@ -9997,6 +10407,83 @@ return CreaturePanel
             </Item>
             <Item class="ModuleScript" referent="RBX00000039">
               <Properties>
+                <string name="Name">ExplorerPanel</string>
+                <ProtectedString name="Source">--!nonstrict
+-- Вкладка «Объекты»: список всего, что есть на карте (как Explorer в Studio)
+-- Касание строки выбирает объект и показывает его камерой
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Workshop"):WaitForChild("Shared")
+local UiText = require(Shared.UiText)
+local Kit = require(script.Parent.Parent.Parent.UI.Kit)
+
+local L = UiText.L
+
+local ExplorerPanel = {}
+
+local ROLE_ICON = {
+	closet = "🚪", door = "🚪", light = "💡", npc = "🙂", creature = "🦊",
+	zone = "▢", waypoint = "•", spawn = "⚑",
+}
+
+function ExplorerPanel.render(editor, panel: Frame)
+	local search = Kit.textbox(panel, editor.explorerQuery or "", L.Search, nil, { Size = UDim2.new(1, 0, 0, Kit.TAP) })
+	local count = Kit.label(panel, "", { Position = UDim2.fromOffset(0, Kit.TAP + 4), TextColor3 = Kit.C.dim, TextSize = 13 })
+	local list = Kit.scroll(panel, { Position = UDim2.fromOffset(0, Kit.TAP + 30), Size = UDim2.new(1, 0, 1, -Kit.TAP - 30) })
+	Kit.list(list, 4)
+
+	local function fill()
+		for _, c in list:GetChildren() do
+			if c:IsA("GuiObject") then
+				c:Destroy()
+			end
+		end
+		local q = string.lower(search.Text)
+		local rows = {}
+		for id, obj in editor.state.project.map.objects do
+			local hay = string.lower(obj.name .. " " .. (obj.latin or ""))
+			if q == "" or string.find(hay, q, 1, true) then
+				table.insert(rows, { id = id, obj = obj })
+			end
+		end
+		table.sort(rows, function(a, b)
+			return a.obj.name &lt; b.obj.name
+		end)
+		count.Text = string.format(L.ObjectsCount, #rows)
+		for i, r in rows do
+			local o = r.obj
+			local icon = if o.role then ROLE_ICON[o.role.type] or "◆" elseif o.kind == "model" then "▣" else "■"
+			local marks = (if o.frozen then "  ❄" else "") .. (if o.hidden then "  ◌" else "")
+			local b = Kit.button(list, icon .. "  " .. o.name .. marks .. "\n" .. (o.latin or ""), function()
+				editor:select({ r.id })
+				editor:focusSelection()
+			end, { LayoutOrder = i, Size = UDim2.new(1, -6, 0, Kit.TAP + 4), TextXAlignment = Enum.TextXAlignment.Left, TextSize = 14 })
+			Kit.pad(b, 8)
+			Kit.setActive(b, table.find(editor.selection, r.id) ~= nil)
+		end
+	end
+	search:GetPropertyChangedSignal("Text"):Connect(function()
+		editor.explorerQuery = search.Text
+		fill()
+	end)
+	fill()
+	local prev = editor.onProjectChanged
+	editor.onProjectChanged = function()
+		fill()
+		if prev then
+			prev()
+		end
+	end
+	return function()
+		editor.onProjectChanged = prev
+	end
+end
+
+return ExplorerPanel
+</ProtectedString>
+              </Properties>
+            </Item>
+            <Item class="ModuleScript" referent="RBX0000003A">
+              <Properties>
                 <string name="Name">LogicPanel</string>
                 <ProtectedString name="Source">--!nonstrict
 -- Логика карты: блоки в духе Scratch и текстовый режим с командами, похожими на Luau
@@ -10512,7 +10999,7 @@ return LogicPanel
 </ProtectedString>
               </Properties>
             </Item>
-            <Item class="ModuleScript" referent="RBX0000003A">
+            <Item class="ModuleScript" referent="RBX0000003B">
               <Properties>
                 <string name="Name">MapPanel</string>
                 <ProtectedString name="Source">--!nonstrict
@@ -10637,17 +11124,35 @@ local function partProps(editor, list: Instance, id: string, base: { any }, data
 	local texTitle = L.NoTexture
 	if data.texture and Catalog.TEXTURE_SET[data.texture] then
 		texTitle = Catalog.TEXTURE_SET[data.texture].title
+	elseif data.texture then
+		texTitle = data.texture
 	end
 	Kit.button(texSlot, texTitle, function()
 		local opts = { { id = false, title = L.NoTexture } }
 		for _, t in Catalog.TEXTURES do
 			table.insert(opts, { id = t.id, title = t.title })
 		end
+		table.insert(opts, { id = "custom", title = L.TextureById, hint = H.TextureIdHint })
 		Kit.choose(editor.gui, L.Texture, opts, function(t)
+			if t == "custom" then
+				Kit.prompt(editor.gui, L.TextureById, H.TextureIdHint, L.TextureIdPlaceholder, function(text)
+					local id = string.match(text, "(%d+)")
+					if id then
+						set({ "texture" }, "rbxassetid://" .. id)
+					end
+					editor:renderPanel()
+				end)
+				return
+			end
 			set({ "texture" }, if t then t else nil)
 			editor:renderPanel()
 		end)
-	end)
+	end, { TextSize = 13, TextTruncate = Enum.TextTruncate.AtEnd })
+	if data.texture then
+		Kit.stepper(list, L.TextureTile, data.textureTile or 4, 0.5, 0.5, 64, function(v)
+			set({ "textureTile" }, v)
+		end, order + 9)
+	end
 	Kit.slider(list, L.Transparency, data.transparency or 0, 0, 1, function(v)
 		set({ "transparency" }, v)
 	end, order + 10)
@@ -11034,7 +11539,7 @@ return MapPanel
 </ProtectedString>
               </Properties>
             </Item>
-            <Item class="ModuleScript" referent="RBX0000003B">
+            <Item class="ModuleScript" referent="RBX0000003C">
               <Properties>
                 <string name="Name">SettingsPanel</string>
                 <ProtectedString name="Source">--!nonstrict
@@ -11097,7 +11602,7 @@ return SettingsPanel
 </ProtectedString>
               </Properties>
             </Item>
-            <Item class="ModuleScript" referent="RBX0000003C">
+            <Item class="ModuleScript" referent="RBX0000003D">
               <Properties>
                 <string name="Name">TextsPanel</string>
                 <ProtectedString name="Source">--!nonstrict
@@ -11265,7 +11770,7 @@ return TextsPanel
               </Properties>
             </Item>
           </Item>
-          <Item class="ModuleScript" referent="RBX0000003D">
+          <Item class="ModuleScript" referent="RBX0000003E">
             <Properties>
               <string name="Name">Picker</string>
               <ProtectedString name="Source">--!nonstrict
@@ -11356,7 +11861,7 @@ return Picker
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX0000003E">
+          <Item class="ModuleScript" referent="RBX0000003F">
             <Properties>
               <string name="Name">Preview</string>
               <ProtectedString name="Source">--!nonstrict
@@ -11512,7 +12017,7 @@ return Preview
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX0000003F">
+          <Item class="ModuleScript" referent="RBX00000040">
             <Properties>
               <string name="Name">State</string>
               <ProtectedString name="Source">--!nonstrict
@@ -11650,7 +12155,7 @@ return State
             </Properties>
           </Item>
         </Item>
-        <Item class="LocalScript" referent="RBX00000040">
+        <Item class="LocalScript" referent="RBX00000041">
           <Properties>
             <string name="Name">Main</string>
             <ProtectedString name="Source">--!nonstrict
@@ -11839,11 +12344,11 @@ end)
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="Folder" referent="RBX00000041">
+        <Item class="Folder" referent="RBX00000042">
           <Properties>
             <string name="Name">Play</string>
           </Properties>
-          <Item class="ModuleScript" referent="RBX00000042">
+          <Item class="ModuleScript" referent="RBX00000043">
             <Properties>
               <string name="Name">Bubble</string>
               <ProtectedString name="Source">--!nonstrict
@@ -11904,7 +12409,7 @@ return Bubble
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000043">
+          <Item class="ModuleScript" referent="RBX00000044">
             <Properties>
               <string name="Name">CameraController</string>
               <ProtectedString name="Source">--!nonstrict
@@ -12141,7 +12646,7 @@ return CameraController
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000044">
+          <Item class="ModuleScript" referent="RBX00000045">
             <Properties>
               <string name="Name">PlayClient</string>
               <ProtectedString name="Source">--!nonstrict
@@ -12369,11 +12874,11 @@ return PlayClient
             </Properties>
           </Item>
         </Item>
-        <Item class="Folder" referent="RBX00000045">
+        <Item class="Folder" referent="RBX00000046">
           <Properties>
             <string name="Name">UI</string>
           </Properties>
-          <Item class="ModuleScript" referent="RBX00000046">
+          <Item class="ModuleScript" referent="RBX00000047">
             <Properties>
               <string name="Name">AdminButton</string>
               <ProtectedString name="Source">--!nonstrict
@@ -12469,7 +12974,7 @@ return AdminButton
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000047">
+          <Item class="ModuleScript" referent="RBX00000048">
             <Properties>
               <string name="Name">Kit</string>
               <ProtectedString name="Source">--!nonstrict
@@ -12500,6 +13005,8 @@ local UIS = game:GetService("UserInputService")
 Kit.TAP = if UIS.TouchEnabled then 52 else 44
 local UiText = require(game:GetService("ReplicatedStorage"):WaitForChild("Workshop"):WaitForChild("Shared"):WaitForChild("UiText"))
 Kit.YES = UiText.L.Yes
+local L_CANCEL = UiText.L.Cancel
+local L_APPLY = UiText.L.Apply
 Kit.NO = UiText.L.No
 Kit.FONT = Enum.Font.GothamMedium
 Kit.FONT_BOLD = Enum.Font.GothamBold
@@ -12814,6 +13321,31 @@ function Kit.choose(root: Instance, title: string, options: { { id: any, title: 
 	return shade
 end
 
+-- Окно с одним полем ввода (например, ID своей текстуры)
+function Kit.prompt(root: Instance, title: string, hint: string?, placeholder: string, onDone: (string) -&gt; ())
+	local shade = Kit.frame(root, { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, ZIndex = 50 })
+	local w = math.min(400, Kit.viewport().X - 32)
+	local box = Kit.frame(shade, { Size = UDim2.fromOffset(w, 0), AutomaticSize = Enum.AutomaticSize.Y, Position = UDim2.new(0.5, -w / 2, 0.2, 0), ZIndex = 51 })
+	corner(box, 12)
+	Kit.pad(box, 12)
+	Kit.list(box, 8)
+	Kit.label(box, title, { Font = Kit.FONT_BOLD, TextSize = 17, ZIndex = 52, LayoutOrder = 1 })
+	if hint then
+		Kit.label(box, hint, { TextColor3 = Kit.C.dim, TextSize = 13, ZIndex = 52, LayoutOrder = 2, Size = UDim2.new(1, 0, 0, 36) })
+	end
+	local t = Kit.textbox(box, "", placeholder, nil, { ZIndex = 52, LayoutOrder = 3 })
+	local row = Kit.frame(box, { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, Kit.TAP), LayoutOrder = 4, ZIndex = 52 })
+	Kit.button(row, L_CANCEL, function()
+		shade:Destroy()
+	end, { Size = UDim2.new(0.5, -4, 1, 0), ZIndex = 53 })
+	Kit.button(row, L_APPLY, function()
+		local v = t.Text
+		shade:Destroy()
+		onDone(v)
+	end, { Size = UDim2.new(0.5, -4, 1, 0), Position = UDim2.new(0.5, 4, 0, 0), ZIndex = 53, BackgroundColor3 = Kit.C.accent })
+	return shade
+end
+
 -- Короткое уведомление внизу экрана (только в редакторе и меню)
 function Kit.toast(root: Instance, text: string, color: Color3?, seconds: number?)
 	local v = Kit.viewport()
@@ -12837,7 +13369,7 @@ return Kit
 </ProtectedString>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="RBX00000048">
+          <Item class="ModuleScript" referent="RBX00000049">
             <Properties>
               <string name="Name">Menu</string>
               <ProtectedString name="Source">--!nonstrict

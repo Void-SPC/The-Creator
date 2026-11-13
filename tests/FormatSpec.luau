@@ -57,9 +57,17 @@ return function(T)
 		o.latin = "Шкаф"
 		T.ok(Format.validateObject(o) ~= nil, "latin must be latin")
 		o = Format.newPart("o_1")
-		o.texture = "rbxassetid://123"
-		T.ok(Format.validateObject(o) ~= nil, "texture only from catalog")
+		o.texture = "rbxassetid://12a"
+		T.ok(Format.validateObject(o) ~= nil, "bad texture id")
 		o.texture = "spawn"
 		T.eq(Format.validateObject(o), nil)
+		o.texture = "rbxassetid://6372755229"
+		o.textureTile = 8
+		T.eq(Format.validateObject(o), nil, "own image by id")
+		o.texture = "http://evil.example/x.png"
+		T.ok(Format.validateObject(o) ~= nil, "only roblox asset ids")
+		o.texture = nil
+		o.material = "Asphalt"
+		T.eq(Format.validateObject(o), nil, "all roblox materials")
 	end)
 end

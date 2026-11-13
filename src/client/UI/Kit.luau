@@ -26,6 +26,8 @@ local UIS = game:GetService("UserInputService")
 Kit.TAP = if UIS.TouchEnabled then 52 else 44
 local UiText = require(game:GetService("ReplicatedStorage"):WaitForChild("Workshop"):WaitForChild("Shared"):WaitForChild("UiText"))
 Kit.YES = UiText.L.Yes
+local L_CANCEL = UiText.L.Cancel
+local L_APPLY = UiText.L.Apply
 Kit.NO = UiText.L.No
 Kit.FONT = Enum.Font.GothamMedium
 Kit.FONT_BOLD = Enum.Font.GothamBold
@@ -337,6 +339,31 @@ function Kit.choose(root: Instance, title: string, options: { { id: any, title: 
 	shade.Activated:Connect(function()
 		shade:Destroy()
 	end)
+	return shade
+end
+
+-- Окно с одним полем ввода (например, ID своей текстуры)
+function Kit.prompt(root: Instance, title: string, hint: string?, placeholder: string, onDone: (string) -> ())
+	local shade = Kit.frame(root, { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, ZIndex = 50 })
+	local w = math.min(400, Kit.viewport().X - 32)
+	local box = Kit.frame(shade, { Size = UDim2.fromOffset(w, 0), AutomaticSize = Enum.AutomaticSize.Y, Position = UDim2.new(0.5, -w / 2, 0.2, 0), ZIndex = 51 })
+	corner(box, 12)
+	Kit.pad(box, 12)
+	Kit.list(box, 8)
+	Kit.label(box, title, { Font = Kit.FONT_BOLD, TextSize = 17, ZIndex = 52, LayoutOrder = 1 })
+	if hint then
+		Kit.label(box, hint, { TextColor3 = Kit.C.dim, TextSize = 13, ZIndex = 52, LayoutOrder = 2, Size = UDim2.new(1, 0, 0, 36) })
+	end
+	local t = Kit.textbox(box, "", placeholder, nil, { ZIndex = 52, LayoutOrder = 3 })
+	local row = Kit.frame(box, { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, Kit.TAP), LayoutOrder = 4, ZIndex = 52 })
+	Kit.button(row, L_CANCEL, function()
+		shade:Destroy()
+	end, { Size = UDim2.new(0.5, -4, 1, 0), ZIndex = 53 })
+	Kit.button(row, L_APPLY, function()
+		local v = t.Text
+		shade:Destroy()
+		onDone(v)
+	end, { Size = UDim2.new(0.5, -4, 1, 0), Position = UDim2.new(0.5, 4, 0, 0), ZIndex = 53, BackgroundColor3 = Kit.C.accent })
 	return shade
 end
 

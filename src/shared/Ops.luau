@@ -12,7 +12,7 @@ local Ops = {}
 local OBJECT_ROOTS = {
 	name = true, latin = true, pos = true, rot = true, size = true, shape = true,
 	color = true, material = true, texture = true, transparency = true, frozen = true,
-	physics = true, role = true, label = true, model = true, hidden = true,
+	physics = true, role = true, label = true, model = true, hidden = true, textureTile = true,
 }
 
 local PROJECT_ROOTS = { settings = true, logic = true, meta = true }
