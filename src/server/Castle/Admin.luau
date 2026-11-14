@@ -17,6 +17,7 @@ local Builder = require(script.Parent.CastleBuilder)
 local Npc = require(script.Parent.Npc)
 local Seasons = require(script.Parent.Seasons)
 local G = require(script.Parent.CastleGame)
+local ManiacGame = require(script.Parent.Parent.Maniac.ManiacGame)
 
 local Admin = {}
 
@@ -201,6 +202,23 @@ local WORLD = {
 		G.state.minionTarget = nil
 		G.syncWorld()
 		return true
+	end,
+	bot_survivor = function(_admin, arg)
+		local ok = false
+		for _ = 1, num(arg, 1, 6, 1) do
+			ok = ManiacGame.addBot("survivor") or ok
+		end
+		return ok
+	end,
+	bot_maniac = function()
+		return ManiacGame.addBot("maniac")
+	end,
+	clear_bots = function()
+		ManiacGame.clearBots()
+		return true
+	end,
+	maniac_start = function()
+		return ManiacGame.startNow()
 	end,
 	pvp_on = function()
 		G.setPvp(true)

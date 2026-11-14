@@ -55,7 +55,7 @@ local function humOf(p: Player): Humanoid?
 end
 
 local function send(p: Player, msg)
-	if p.Parent then
+	if p.Parent and not (p :: any).isBot then
 		event:FireClient(p, msg)
 	end
 end
@@ -168,6 +168,9 @@ local function channel(): TextChannel
 end
 
 local function setChat(p: Player, on: boolean)
+	if (p :: any).isBot then
+		return
+	end
 	local c = channel()
 	local src = nil
 	for _, s in c:GetChildren() do
@@ -346,8 +349,8 @@ local function down(p: Player)
 	exec.MaxActivationDistance = 9
 	exec.RequiresLineOfSight = false
 	exec.Parent = r
-	exec.Triggered:Connect(function(killer)
-		if killer == state.maniac and info.st == "downed" then
+	local function execute(killer)
+		if killer == state.maniac and info.st == "downed" and state.players[p] == info then
 			clearPrompts(p)
 			send(killer, { type = "anim", kind = "execute" })
 			-- казнь: жертву поднимает, кровь, крик
@@ -371,7 +374,9 @@ local function down(p: Player)
 				makeGhost(p)
 			end)
 		end
-	end)
+	end
+	info.execute = execute
+	exec.Triggered:Connect(execute)
 	sync()
 end
 
@@ -482,8 +487,57 @@ local function openExit()
 	sync()
 end
 
+-- один ремонт генератора (удержание кнопки или ход бота)
+local function repairGen(p, g)
+	local info = state.players[p]
+	if state.phase ~= "playing" or not g or g.done or not info or info.role ~= "survivor" or info.st == "downed" or not Rules.isAlive(info.st) then
+		return
+	end
+	local body = g.body
+	local helpers = 0
+	for q, qi in state.players do
+		local r = rootOf(q)
+		if qi.role == "survivor" and r and (r.Position - body.Position).Magnitude < 9 then
+			helpers += 1
+		end
+	end
+	g.progress = Rules.repair(g.progress, helpers)
+	body:SetAttribute("Progress", g.progress)
+	local sp = body:FindFirstChild("Sparks")
+	if sp then
+		sp:Emit(20)
+	end
+	if g.progress >= 100 then
+		g.done = true
+		g.lamp.Color = Color3.fromRGB(60, 230, 90)
+		local l = g.lamp:FindFirstChildOfClass("PointLight")
+		if l then
+			l.Color = Color3.fromRGB(90, 255, 120)
+		end
+		sound(body, SOUND.fixed, 1, 0.8)
+		announce("GeneratorFixed")
+		local done = 0
+		for _, gg in gens do
+			if gg.done then
+				done += 1
+			end
+		end
+		if done >= state.gensTotal and not state.exitOpen then
+			openExit()
+		end
+	end
+	sync()
+end
+
 local function wireMap()
 	local reg = map.prompts
+	for _, pr in reg.door or {} do
+		pr.Triggered:Connect(function(p)
+			if state.players[p] then
+				Builder.toggleDoor(pr.Parent)
+			end
+		end)
+	end
 	for _, pr in reg.repair or {} do
 		local body = pr.Parent
 		local g
@@ -493,43 +547,7 @@ local function wireMap()
 			end
 		end
 		pr.Triggered:Connect(function(p)
-			local info = state.players[p]
-			if state.phase ~= "playing" or not g or g.done or not info or info.role ~= "survivor" or info.st == "downed" or not Rules.isAlive(info.st) then
-				return
-			end
-			local helpers = 0
-			for q, qi in state.players do
-				local r = rootOf(q)
-				if qi.role == "survivor" and r and (r.Position - body.Position).Magnitude < 9 then
-					helpers += 1
-				end
-			end
-			g.progress = Rules.repair(g.progress, helpers)
-			body:SetAttribute("Progress", g.progress)
-			local sp = body:FindFirstChild("Sparks")
-			if sp then
-				sp:Emit(20)
-			end
-			if g.progress >= 100 then
-				g.done = true
-				g.lamp.Color = Color3.fromRGB(60, 230, 90)
-				local l = g.lamp:FindFirstChildOfClass("PointLight")
-				if l then
-					l.Color = Color3.fromRGB(90, 255, 120)
-				end
-				sound(body, SOUND.fixed, 1, 0.8)
-				announce("GeneratorFixed")
-				local done = 0
-				for _, gg in gens do
-					if gg.done then
-						done += 1
-					end
-				end
-				if done >= state.gensTotal and not state.exitOpen then
-					openExit()
-				end
-			end
-			sync()
+			repairGen(p, g)
 		end)
 	end
 	for _, pr in reg.barricade or {} do
@@ -611,9 +629,22 @@ local function startRound()
 		sync()
 		return
 	end
-	local maniac = Rules.pickManiac(list, function(a, b)
-		return math.random(a, b)
-	end)
+	-- бот, созданный «маньяком», всегда маньяк; боты-выжившие маньяком не становятся
+	local maniac = nil
+	local candidates = {}
+	for _, p in list do
+		local b = p :: any
+		if b.isBot and b.prefer == "maniac" and not maniac then
+			maniac = p
+		elseif not (b.isBot and b.prefer == "survivor") then
+			table.insert(candidates, p)
+		end
+	end
+	if not maniac then
+		maniac = Rules.pickManiac(if #candidates > 0 then candidates else list, function(a, b)
+			return math.random(a, b)
+		end)
+	end
 	state.maniac = maniac
 	state.winner = nil
 	table.clear(state.lastAbility)
@@ -757,15 +788,303 @@ local function ability(p: Player, name: string)
 			end)
 		end
 	elseif name == "sense" then
-		local ids = {}
+		local ids, chars = {}, {}
 		for _, q in survivors() do
 			if Rules.isAlive(state.players[q].st) then
 				table.insert(ids, q.UserId)
+				if q.Character then
+					table.insert(chars, q.Character)
+				end
 			end
 		end
-		send(p, { type = "sense", ids = ids, duration = a.duration })
+		send(p, { type = "sense", ids = ids, chars = chars, duration = a.duration })
 	end
 	return { ok = true }
+end
+
+-- ---------------------------------------------------------------------------
+-- Боты для проверки режима одним игроком (создаёт админ). Бот притворяется игроком:
+-- у него есть Character, DisplayName, UserId (отрицательный) и LoadCharacter
+
+local bots = {}
+local botSerial = 0
+local Bot = {}
+Bot.__index = Bot
+
+function Bot:SetAttribute(k, v)
+	self.attrs[k] = v
+end
+function Bot:GetAttribute(k)
+	return self.attrs[k]
+end
+function Bot:RequestStreamAroundAsync() end
+
+local function botDied(bot)
+	local i = state.players[bot]
+	if i and state.phase == "playing" and i.role == "survivor" and Rules.isAlive(i.st) then
+		i.st = "dead"
+		i.ghost = true
+		unhide(bot)
+		sync()
+	end
+	task.delay(3, function()
+		if state.players[bot] and bot.Parent then
+			bot:LoadCharacter()
+			teleport(bot, map.lobby)
+			if state.phase == "playing" then
+				local r = rootOf(bot)
+				if r then
+					r.Anchored = true
+				end
+			end
+		end
+	end)
+end
+
+function Bot:LoadCharacter()
+	if self.Character then
+		self.Character:Destroy()
+		self.Character = nil
+	end
+	local desc = Instance.new("HumanoidDescription")
+	local skin = ({ Color3.fromRGB(234, 184, 146), Color3.fromRGB(204, 142, 105), Color3.fromRGB(160, 110, 80) })[(self.serial % 3) + 1]
+	desc.HeadColor = skin
+	desc.LeftArmColor = skin
+	desc.RightArmColor = skin
+	desc.TorsoColor = ({ Color3.fromRGB(70, 90, 130), Color3.fromRGB(120, 60, 50), Color3.fromRGB(70, 110, 70), Color3.fromRGB(110, 100, 60) })[(self.serial % 4) + 1]
+	desc.LeftLegColor = Color3.fromRGB(50, 46, 44)
+	desc.RightLegColor = Color3.fromRGB(50, 46, 44)
+	local ok, model = pcall(function()
+		return Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R15)
+	end)
+	if not ok or not model then
+		return
+	end
+	model.Name = self.Name
+	for _, d in model:GetDescendants() do
+		if d:IsA("Script") or d:IsA("LocalScript") then
+			d:Destroy()
+		end
+	end
+	local hum = model:FindFirstChildOfClass("Humanoid") :: Humanoid
+	hum.DisplayName = self.DisplayName
+	hum.WalkSpeed = Rules.SPEED.survivor
+	model:PivotTo(map.lobby)
+	model.Parent = map.map
+	local r = model:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if r then
+		pcall(function()
+			r:SetNetworkOwner(nil)
+		end)
+	end
+	self.Character = model
+	self.nav = Npc.animate(hum)
+	self.nav.model = model
+	self.nav.pathAt = 0
+	self.nav.wp = 1
+	self.lastPos = nil
+	self.stuckAt = os.clock()
+	hum.Died:Connect(function()
+		if self.Character == model then
+			botDied(self)
+		end
+	end)
+end
+
+function M.addBot(prefer: string): boolean
+	if #bots >= 8 then
+		return false
+	end
+	botSerial += 1
+	local bot = setmetatable({
+		isBot = true,
+		prefer = prefer,
+		serial = botSerial,
+		Name = "Bot" .. botSerial,
+		DisplayName = (if prefer == "maniac" then "Bot-Maniac " else "Bot ") .. botSerial,
+		UserId = -botSerial,
+		Parent = workspace,
+		attrs = {},
+	}, Bot)
+	table.insert(bots, bot)
+	state.players[bot :: any] = { role = nil, st = nil, ghost = state.phase == "playing" }
+	bot:LoadCharacter()
+	teleport(bot :: any, map.lobby)
+	if state.phase == "playing" then
+		state.players[bot :: any].role = "spectator"
+		local r = rootOf(bot :: any)
+		if r then
+			r.Anchored = true
+		end
+	end
+	sync()
+	return true
+end
+
+function M.clearBots()
+	for _, bot in table.clone(bots) do
+		bot.Parent = nil
+		M.leave(bot :: any)
+		if bot.Character then
+			bot.Character:Destroy()
+			bot.Character = nil
+		end
+	end
+	table.clear(bots)
+	sync()
+end
+
+-- админ: начать раунд сразу, без ожидания
+function M.startNow(): boolean
+	local n = 0
+	for _ in state.players do
+		n += 1
+	end
+	if n < Rules.MIN_PLAYERS or (state.phase ~= "lobby" and state.phase ~= "countdown") then
+		return false
+	end
+	state.phase = "countdown"
+	state.endsAt = workspace:GetServerTimeNow()
+	return true
+end
+
+local function flat(v: Vector3): Vector3
+	return Vector3.new(v.X, 0, v.Z)
+end
+
+local function botGo(bot, goal: Vector3)
+	Npc.goTo(bot.nav, goal)
+end
+
+local function botStop(bot, root: BasePart)
+	bot.nav.path = nil
+	bot.nav.hum:MoveTo(root.Position)
+end
+
+local function survivorBot(bot, info, root: BasePart, hum: Humanoid)
+	if info.st == "downed" or hiddenIn[bot] then
+		botStop(bot, root)
+		return
+	end
+	-- бегство от маньяка
+	local mr = state.maniac and rootOf(state.maniac)
+	if mr and (mr.Position - map.lobby.Position).Magnitude > 40 then
+		local off = flat(root.Position - mr.Position)
+		if off.Magnitude < 26 then
+			local away = if off.Magnitude > 0.1 then off.Unit else Vector3.xAxis
+			botGo(bot, root.Position + away * 24)
+			return
+		end
+	end
+	-- выход открыт: к воротам
+	if state.exitOpen then
+		botGo(bot, Vector3.new(map.exitX, root.Position.Y, map.exitZ - 8))
+		return
+	end
+	-- ближайший неисправный генератор
+	local best, bestD = nil, math.huge
+	for _, g in gens do
+		if not g.done then
+			local d = (g.body.Position - root.Position).Magnitude
+			if d < bestD then
+				best, bestD = g, d
+			end
+		end
+	end
+	if not best then
+		botStop(bot, root)
+		return
+	end
+	if bestD > 6.5 then
+		botGo(bot, best.body.Position)
+	else
+		botStop(bot, root)
+		root.CFrame = CFrame.lookAt(root.Position, Vector3.new(best.body.Position.X, root.Position.Y, best.body.Position.Z))
+		if os.clock() - (bot.lastRepair or 0) > 3 then
+			bot.lastRepair = os.clock()
+			repairGen(bot, best)
+		end
+	end
+	local _ = hum
+end
+
+local function maniacBot(bot, info, root: BasePart, hum: Humanoid)
+	-- ждёт в комнате ожидания, пока его не выпустят
+	if (root.Position - map.lobby.Position).Magnitude < 40 then
+		return
+	end
+	local target, targetD = nil, math.huge
+	for _, q in survivors() do
+		local qi = state.players[q]
+		local r = rootOf(q)
+		if r and Rules.isAlive(qi.st) and not hiddenIn[q] then
+			local d = (r.Position - root.Position).Magnitude
+			-- лежачего добивает
+			if qi.st == "downed" then
+				if d < 7 and qi.execute then
+					botStop(bot, root)
+					qi.execute(bot)
+					return
+				end
+				d += 30
+			end
+			if d < targetD then
+				target, targetD = q, d
+			end
+		end
+	end
+	if target then
+		local tr = rootOf(target) :: BasePart
+		if targetD < 6 then
+			root.CFrame = CFrame.lookAt(root.Position, Vector3.new(tr.Position.X, root.Position.Y, tr.Position.Z))
+			ability(bot, "attack")
+		elseif targetD < 40 and math.random() < 0.05 then
+			ability(bot, "dash")
+		elseif targetD < 22 and math.random() < 0.03 then
+			ability(bot, "scream")
+		end
+		botGo(bot, tr.Position)
+	else
+		-- бродит между генераторами
+		if not bot.wander or os.clock() - (bot.wanderAt or 0) > 12 then
+			bot.wanderAt = os.clock()
+			local g = gens[math.random(1, math.max(1, #gens))]
+			bot.wander = g and g.body.Position or map.maniacSpawn.Position
+		end
+		botGo(bot, bot.wander)
+	end
+	local _ = info
+	local __ = hum
+end
+
+local function botStep(bot)
+	local info = state.players[bot]
+	local char = bot.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not info or not hum or not root or hum.Health <= 0 or root.Anchored then
+		return
+	end
+	if state.phase ~= "playing" or info.ghost or not Rules.isAlive(info.st or "healthy") and info.role == "survivor" then
+		return
+	end
+	Builder.openDoorsNear(root.Position, 7)
+	-- застрял: прыжок и новый путь
+	if bot.lastPos and (bot.lastPos - root.Position).Magnitude < 0.6 and hum.MoveDirection.Magnitude > 0 then
+		if os.clock() - bot.stuckAt > 1.5 then
+			hum.Jump = true
+			bot.nav.path = nil
+			bot.stuckAt = os.clock()
+		end
+	else
+		bot.stuckAt = os.clock()
+	end
+	bot.lastPos = root.Position
+	if info.role == "maniac" then
+		maniacBot(bot, info, root, hum)
+	elseif info.role == "survivor" then
+		survivorBot(bot, info, root, hum)
+	end
 end
 
 -- ---------------------------------------------------------------------------
@@ -859,6 +1178,19 @@ function M.init(h)
 	end
 
 	Players.PlayerRemoving:Connect(M.leave)
+
+	-- поведение ботов
+	task.spawn(function()
+		while true do
+			task.wait(0.25)
+			for _, bot in table.clone(bots) do
+				local ok, err = pcall(botStep, bot)
+				if not ok then
+					warn("[Maniac] bot: " .. tostring(err))
+				end
+			end
+		end
+	end)
 
 	-- смерть и новое появление участника режима
 	local function onCharacter(p: Player, char: Model)

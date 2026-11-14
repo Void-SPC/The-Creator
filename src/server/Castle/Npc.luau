@@ -86,6 +86,41 @@ local function dressMinion(model: Model)
 	end
 end
 
+-- Анимации ходьбы и покоя для NPC (стража, боты режима «Маньяк»)
+function Npc.animate(hum: Humanoid)
+	local animator = hum:FindFirstChildOfClass("Animator") or Instance.new("Animator", hum)
+	local function load(id)
+		local a = Instance.new("Animation")
+		a.AnimationId = id
+		local ok2, track = pcall(function()
+			return animator:LoadAnimation(a)
+		end)
+		return if ok2 then track else nil
+	end
+	local m = { hum = hum, walk = load(WALK_ANIM), idle = load(IDLE_ANIM), slash = load(SLASH_ANIM) }
+	if m.idle then
+		m.idle.Looped = true
+		m.idle:Play()
+	end
+	if m.walk then
+		m.walk.Looped = true
+	end
+	hum.Running:Connect(function(speed)
+		if not m.walk then
+			return
+		end
+		if speed > 0.5 then
+			if not m.walk.IsPlaying then
+				m.walk:Play(0.15)
+			end
+			m.walk:AdjustSpeed(speed / 14)
+		elseif m.walk.IsPlaying then
+			m.walk:Stop(0.2)
+		end
+	end)
+	return m
+end
+
 function Npc.spawnMinion(at: CFrame, parent: Instance)
 	local desc = Instance.new("HumanoidDescription")
 	local skin = ({ rgb(234, 184, 146), rgb(204, 142, 105), rgb(160, 110, 80), rgb(110, 75, 55) })[math.random(1, 4)]
@@ -123,36 +158,12 @@ function Npc.spawnMinion(at: CFrame, parent: Instance)
 			root:SetNetworkOwner(nil)
 		end)
 	end
-	local animator = hum:FindFirstChildOfClass("Animator") or Instance.new("Animator", hum)
-	local function load(id)
-		local a = Instance.new("Animation")
-		a.AnimationId = id
-		local ok2, track = pcall(function()
-			return animator:LoadAnimation(a)
-		end)
-		return if ok2 then track else nil
-	end
-	local m = { model = model, hum = hum, walk = load(WALK_ANIM), idle = load(IDLE_ANIM), slash = load(SLASH_ANIM), lastHit = 0, path = nil, pathAt = 0, wp = 1 }
-	if m.idle then
-		m.idle.Looped = true
-		m.idle:Play()
-	end
-	if m.walk then
-		m.walk.Looped = true
-	end
-	hum.Running:Connect(function(speed)
-		if not m.walk then
-			return
-		end
-		if speed > 0.5 then
-			if not m.walk.IsPlaying then
-				m.walk:Play(0.15)
-			end
-			m.walk:AdjustSpeed(speed / 14)
-		elseif m.walk.IsPlaying then
-			m.walk:Stop(0.2)
-		end
-	end)
+	local m = Npc.animate(hum)
+	m.model = model
+	m.lastHit = 0
+	m.path = nil
+	m.pathAt = 0
+	m.wp = 1
 	hum.Died:Connect(function()
 		task.delay(4, function()
 			model:Destroy()
@@ -176,6 +187,9 @@ local function goTo(m, goal: Vector3)
 	local root = rootOf(m.model)
 	if not root then
 		return
+	end
+	if Npc.doorHook then
+		Npc.doorHook(root.Position, 7)
 	end
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
@@ -216,6 +230,8 @@ local function goTo(m, goal: Vector3)
 		m.hum:MoveTo(w.Position)
 	end
 end
+
+Npc.goTo = goTo
 
 -- Один шаг поведения всех стражников. leader — король (или nil), target — цель атаки
 function Npc.stepMinions(leader: Player?, target: Model?, onHit: (Model, Humanoid) -> ())

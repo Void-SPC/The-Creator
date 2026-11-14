@@ -167,6 +167,9 @@ function Client:localizePrompts()
 			if kind then
 				d.ActionText = self:T("p_" .. kind)
 			end
+		elseif d:IsA("TextLabel") and d:GetAttribute("RoomSign") then
+			-- таблички над дверями
+			d.Text = self:T("room_" .. d:GetAttribute("RoomSign"))
 		end
 	end
 	for _, d in castle:GetDescendants() do
@@ -697,57 +700,7 @@ function Client:fx(kind: string)
 	end
 end
 
--- Двери: створки поворачиваются на петлях, когда игрок рядом (только у себя на экране)
-function Client:watchDoors()
-	local CollectionService = game:GetService("CollectionService")
-	local doors = {}
-	local function add(m)
-		local leaves = {}
-		for _, l in m:GetChildren() do
-			if l:IsA("Model") and l.Name == "Leaf" then
-				table.insert(leaves, { model = l, base = l:GetPivot(), dir = l:GetAttribute("Dir") or 1, angle = 0 })
-			end
-		end
-		local jamb = m:FindFirstChild("Head")
-		if jamb then
-			doors[m] = { leaves = leaves, pos = jamb.Position }
-		end
-	end
-	for _, m in CollectionService:GetTagged("CastleDoor") do
-		add(m)
-	end
-	table.insert(self.conns, CollectionService:GetInstanceAddedSignal("CastleDoor"):Connect(function(m)
-		task.defer(add, m)
-	end))
-	table.insert(self.conns, CollectionService:GetInstanceRemovedSignal("CastleDoor"):Connect(function(m)
-		doors[m] = nil
-	end))
-	table.insert(self.conns, RunService.RenderStepped:Connect(function(dt)
-		local char = player.Character
-		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
-		if not root then
-			return
-		end
-		for _, d in doors do
-			local dist = (d.pos - root.Position).Magnitude
-			if dist < 60 then
-				local want = if dist < 13 then math.rad(85) else 0
-				for _, lf in d.leaves do
-					if math.abs(lf.angle - want) > 0.001 then
-						lf.angle += (want - lf.angle) * math.min(1, dt * 7)
-						if math.abs(lf.angle - want) < 0.01 then
-							lf.angle = want
-						end
-						lf.model:PivotTo(lf.base * CFrame.Angles(0, lf.angle * lf.dir, 0))
-					end
-				end
-			end
-		end
-	end))
-end
-
 function Client:watch()
-	self:watchDoors()
 	-- спрятался в шкафу: камера смотрит сквозь щель
 	local function hidden()
 		local eye = player:GetAttribute("HiddenEye")

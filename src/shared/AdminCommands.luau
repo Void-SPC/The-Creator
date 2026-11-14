@@ -100,9 +100,14 @@ C.LIST = {
 	{ id = "bring_all", cat = "god", target = "none", en = "Gather everyone", ru = "Собрать всех ко мне" },
 	{ id = "shield_all", cat = "god", target = "none", en = "Shield everyone", ru = "Щит всем" },
 	{ id = "rainbow", cat = "god", target = "none", en = "Rainbow sky", ru = "Радужное небо" },
+	-- проверка режима «Маньяк» одному: боты считаются игроками
+	{ id = "bot_survivor", cat = "test", target = "none", arg = "number", en = "Maniac: add survivor bots", ru = "Маньяк: добавить ботов-выживших" },
+	{ id = "bot_maniac", cat = "test", target = "none", en = "Maniac: add maniac bot", ru = "Маньяк: добавить бота-маньяка" },
+	{ id = "clear_bots", cat = "test", target = "none", en = "Maniac: remove bots", ru = "Маньяк: убрать ботов" },
+	{ id = "maniac_start", cat = "test", target = "none", en = "Maniac: start round now", ru = "Маньяк: начать раунд сейчас" },
 }
 
-C.CATEGORIES = { "world", "players", "moderation", "fun", "god" }
+C.CATEGORIES = { "world", "players", "moderation", "fun", "god", "test" }
 
 C.BY_ID = {}
 for _, c in C.LIST do

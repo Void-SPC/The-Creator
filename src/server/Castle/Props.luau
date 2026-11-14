@@ -102,6 +102,13 @@ local function seat(parent: Instance, name: string, size: Vector3, cf: CFrame, c
 end
 Props.seat = seat
 
+-- Деталь-стержень между двумя точками (ножки, цепи, балки)
+local function rod(parent, name: string, a: Vector3, b: Vector3, thick: number, color: Color3, mat, extra)
+	local len = (b - a).Magnitude
+	return P(parent, name, Vector3.new(thick, thick, len), CFrame.lookAt((a + b) / 2, b), color, mat, extra)
+end
+Props.rod = rod
+
 local function model(parent: Instance, name: string): Model
 	local m = Instance.new("Model")
 	m.Name = name
@@ -133,57 +140,39 @@ end
 -- ---------------------------------------------------------------------------
 -- двери, окна, свет
 
-local doorNumber = 0
 
--- Дверной проём с рамой и одной или двумя створками. cf — центр проёма на полу,
--- LookVector перпендикулярен стене. Створки не мешают проходу: открываются у игрока
+-- Дверь замка: каменный проём, створки из досок с железными полосами и кольцом.
+-- Открывается удержанием кнопки (сервер поворачивает створки на петлях)
 function Props.door(parent, cf: CFrame, w: number, h: number, color: Color3?, double: boolean?)
 	local m = model(parent, "Door")
 	local wood = color or Props.WOOD
-	local frame = Props.WOOD_DARK
-	P(m, "Jamb", Vector3.new(0.7, h + 0.7, 1.6), cf * CFrame.new(-w / 2 - 0.35, (h + 0.7) / 2, 0), frame, M.Wood)
-	P(m, "Jamb", Vector3.new(0.7, h + 0.7, 1.6), cf * CFrame.new(w / 2 + 0.35, (h + 0.7) / 2, 0), frame, M.Wood)
-	P(m, "Head", Vector3.new(w + 2.2, 0.8, 1.7), cf * CFrame.new(0, h + 0.4, 0), frame, M.Wood)
-	P(m, "Cap", Vector3.new(w + 2.8, 0.3, 1.9), cf * CFrame.new(0, h + 0.95, 0), frame, M.Wood)
+	local stone = rgb(150, 142, 128)
+	P(m, "Jamb", Vector3.new(0.9, h + 1, 1.8), cf * CFrame.new(-w / 2 - 0.45, (h + 1) / 2, 0), stone, M.Limestone)
+	P(m, "Jamb", Vector3.new(0.9, h + 1, 1.8), cf * CFrame.new(w / 2 + 0.45, (h + 1) / 2, 0), stone, M.Limestone)
+	P(m, "Head", Vector3.new(w + 1.8, 1, 1.8), cf * CFrame.new(0, h + 0.5, 0), stone, M.Limestone)
+	P(m, "Keystone", Vector3.new(1.2, 1.4, 1.9), cf * CFrame.new(0, h + 0.8, 0), stone:Lerp(rgb(0, 0, 0), 0.1), M.Limestone)
 	local leaves = if double then { { -w / 2, w / 2, 1 }, { w / 2, w / 2, -1 } } else { { -w / 2, w, 1 } }
 	for _, lf in leaves do
 		local hingeX, lw, dir = lf[1], lf[2], lf[3]
 		local leaf = model(m, "Leaf")
 		local base = cf * CFrame.new(hingeX + dir * lw / 2, 0, 0)
-		P(leaf, "Slab", Vector3.new(lw - 0.1, h - 0.1, 0.32), base * CFrame.new(0, h / 2, 0), wood, M.Wood, nc())
-		-- филёнки с обеих сторон: две высокие и две низкие
+		local slabPart = P(leaf, "Slab", Vector3.new(lw - 0.1, h - 0.1, 0.34), base * CFrame.new(0, h / 2, 0), wood, M.WoodPlanks)
+		-- стража и боты строят путь сквозь закрытые двери и открывают их по дороге
+		local pm = Instance.new("PathfindingModifier")
+		pm.PassThrough = true
+		pm.Parent = slabPart
 		for _, side in { -1, 1 } do
-			for _, pz in { { 0.62, 0.42 }, { 0.2, 0.3 } } do
-				for _, px in { -0.22, 0.22 } do
-					local pw = lw * 0.36
-					local ph = h * pz[2]
-					P(leaf, "Panel", Vector3.new(pw, ph, 0.08), base * CFrame.new(px * lw, h * pz[1] + (if pz[1] > 0.5 then 0 else 0.4), side * 0.19), wood:Lerp(Props.WOOD_DARK, 0.3), M.Wood, nc())
-				end
+			for _, y in { 0.22, 0.78 } do
+				P(leaf, "Strap", Vector3.new(lw - 0.3, 0.35, 0.06), base * CFrame.new(0, h * y, side * 0.2), Props.IRON, M.Metal, nc())
 			end
-			S(leaf, "Knob", 0.36, base * CFrame.new(-dir * (lw / 2 - 0.5), h * 0.45, side * 0.3), Props.GOLD, M.Metal, nc())
-		end
-		for _, hy in { 0.2, 0.8 } do
-			P(leaf, "Hinge", Vector3.new(0.15, 0.6, 0.4), base * CFrame.new(-dir * lw / 2, h * hy, 0), Props.IRON, M.Metal, nc())
+			C(leaf, "Ring", 0.08, 0.6, base * CFrame.new(-dir * (lw / 2 - 0.6), h * 0.48, side * 0.26) * CFrame.Angles(math.pi / 2, 0, 0), Props.IRON, M.Metal, nc())
 		end
 		leaf.WorldPivot = cf * CFrame.new(hingeX, 0, 0)
 		leaf:SetAttribute("Dir", dir)
 	end
-	-- табличка с номером, как в старом отеле
-	doorNumber += 1
-	local plate = P(m, "Plate", Vector3.new(1.6, 0.6, 0.06), cf * CFrame.new(0, h + 0.4, -0.88), Props.GOLD, M.Metal, nc())
-	local gui = Instance.new("SurfaceGui")
-	gui.Face = Enum.NormalId.Front
-	gui.CanvasSize = Vector2.new(160, 60)
-	gui.LightInfluence = 1
-	local t = Instance.new("TextLabel")
-	t.Size = UDim2.fromScale(1, 1)
-	t.BackgroundTransparency = 1
-	t.Text = string.format("%04d", doorNumber)
-	t.Font = Enum.Font.Garamond
-	t.TextScaled = true
-	t.TextColor3 = rgb(40, 28, 16)
-	t.Parent = gui
-	gui.Parent = plate
+	-- невидимая область с кнопкой «Открыть» по центру проёма
+	local trig = P(m, "DoorTrigger", Vector3.new(1, 1, 1), cf * CFrame.new(0, h * 0.45, 0), rgb(0, 0, 0), M.SmoothPlastic, nc({ Transparency = 1, CanQuery = true }))
+	mark(trig, "door", 0.6, 8)
 	pcall(function()
 		m.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 	end)
@@ -203,7 +192,7 @@ function Props.window(parent, cf: CFrame, w: number, h: number, thick: number)
 		local ww = w * (1 - k * 0.22)
 		P(m, "Arch", Vector3.new(ww, 0.5, thick + 0.2), cf * CFrame.new(0, h / 2 - 0.25 - (3 - k) * 0, 0) * CFrame.new(0, -0.5 * k + 0.5, 0), stone, M.Slate, nc())
 	end
-	P(m, "Glass", Vector3.new(w, h, 0.15), cf, rgb(150, 182, 206), M.Glass, nc({ Transparency = 0.55 }))
+	P(m, "Glass", Vector3.new(w, h, 0.15), cf, rgb(150, 182, 206), M.Glass, { Transparency = 0.55, CastShadow = false })
 	P(m, "FrameL", Vector3.new(0.35, h, 0.5), cf * CFrame.new(-w / 2, 0, 0), Props.WOOD_DARK, M.Wood)
 	P(m, "FrameR", Vector3.new(0.35, h, 0.5), cf * CFrame.new(w / 2, 0, 0), Props.WOOD_DARK, M.Wood)
 	P(m, "Mullion", Vector3.new(0.2, h, 0.35), cf, Props.WOOD_DARK, M.Wood, nc())
@@ -218,8 +207,8 @@ function Props.curtains(parent, cf: CFrame, w: number, h: number, color: Color3)
 	local m = model(parent, "Curtains")
 	P(m, "Rod", Vector3.new(w + 3, 0.2, 0.2), cf * CFrame.new(0, h / 2 + 1, -0.4), Props.GOLD, M.Metal, nc())
 	for _, s in { -1, 1 } do
-		for k = 0, 2 do
-			P(m, "Drape", Vector3.new(0.7, h + 1.6, 0.25), cf * CFrame.new(s * (w / 2 + 0.3 + k * 0.45), -0.2, -0.45 - (k % 2) * 0.12), color:Lerp(rgb(0, 0, 0), k * 0.08), M.SmoothPlastic, nc())
+		for k = 0, 1 do
+			P(m, "Drape", Vector3.new(0.9, h + 1.6, 0.25), cf * CFrame.new(s * (w / 2 + 0.4 + k * 0.6), -0.2, -0.45 - k * 0.12), color:Lerp(rgb(0, 0, 0), k * 0.1), M.SmoothPlastic, nc())
 		end
 		P(m, "Tie", Vector3.new(1.6, 0.25, 0.4), cf * CFrame.new(s * (w / 2 + 0.75), -h * 0.15, -0.6), Props.GOLD, M.Metal, nc())
 	end
@@ -242,17 +231,21 @@ function Props.sconce(parent, cf: CFrame, withLight: boolean?)
 end
 
 -- Подвесной светильник в духе старого отеля: штанга, абажур-колокол, лампа
+-- Подвесной железный фонарь со свечой. pos — центр фонаря, drop — длина цепи до потолка
 function Props.ceilingLamp(parent, pos: Vector3, drop: number?)
-	local m = model(parent, "CeilingLamp")
+	local m = model(parent, "Lantern")
 	local d = drop or 3
-	P(m, "Rod", Vector3.new(0.15, d, 0.15), CFrame.new(pos + Vector3.new(0, d / 2, 0)), Props.IRON, M.Metal, nc())
-	C(m, "Canopy", 0.3, 1, CFrame.new(pos + Vector3.new(0, d - 0.15, 0)), Props.GOLD, M.Metal, nc())
-	for k = 0, 2 do
-		C(m, "Shade", 0.45, 1.6 + k * 0.7, CFrame.new(pos - Vector3.new(0, k * 0.4, 0)), rgb(70, 40, 30), M.Metal, nc())
+	P(m, "Chain", Vector3.new(0.14, d, 0.14), CFrame.new(pos + Vector3.new(0, 0.9 + d / 2, 0)), Props.IRON, M.Metal, nc())
+	C(m, "Cap", 0.3, 1.5, CFrame.new(pos + Vector3.new(0, 0.95, 0)), Props.IRON, M.Metal, nc())
+	C(m, "Base", 0.25, 1.4, CFrame.new(pos - Vector3.new(0, 0.95, 0)), Props.IRON, M.Metal, nc())
+	for k = 0, 3 do
+		local a = k / 4 * math.pi * 2 + math.pi / 4
+		P(m, "Bar", Vector3.new(0.1, 1.9, 0.1), CFrame.new(pos + Vector3.new(math.cos(a) * 0.6, 0, math.sin(a) * 0.6)), Props.IRON, M.Metal, nc())
 	end
-local bulb = S(m, "Bulb", 0.7, CFrame.new(pos - Vector3.new(0, 1, 0)), rgb(255, 220, 170), M.Neon, nc({ CanQuery = true }))
+	P(m, "Glass", Vector3.new(1.05, 1.6, 1.05), CFrame.new(pos), rgb(255, 214, 150), M.Glass, nc({ Transparency = 0.5 }))
+	local bulb = S(m, "Bulb", 0.5, CFrame.new(pos), rgb(255, 210, 140), M.Neon, nc({ CanQuery = true }))
 	mark(bulb, "lamp", 0, 16)
-	light(bulb, 26, 1.4)
+	light(bulb, 24, 1.3)
 	return m
 end
 
@@ -267,12 +260,11 @@ function Props.chandelier(parent, pos: Vector3, size: number?, drop: number?)
 	for ring = 1, (if r > 4 then 2 else 1) do
 		local rr = r * ring / (if r > 4 then 2 else 1)
 		local y = -0.2 - (ring - 1) * 1.2
-		local n = math.max(6, math.floor(rr * 2.5))
+		local n = 6
 		P(m, "Ring", Vector3.new(0.25, rr * 2, rr * 2), CFrame.new(pos + Vector3.new(0, y, 0)) * CFrame.Angles(0, 0, math.pi / 2), Props.GOLD, M.Metal, nc({ Shape = CYL }))
 		for k = 0, n - 1 do
 			local a = k / n * math.pi * 2
 			local cp = pos + Vector3.new(math.cos(a) * rr, y + 0.35, math.sin(a) * rr)
-			C(m, "Cup", 0.2, 0.45, CFrame.new(cp), Props.GOLD, M.Metal, nc())
 			C(m, "Candle", 0.6, 0.22, CFrame.new(cp + Vector3.new(0, 0.4, 0)), rgb(245, 238, 220), M.SmoothPlastic, nc())
 			S(m, "Flame", 0.22, CFrame.new(cp + Vector3.new(0, 0.82, 0)), rgb(255, 190, 90), M.Neon, nc())
 		end
@@ -409,7 +401,7 @@ function Props.bookshelf(parent, cf: CFrame, w: number, h: number, seed: number,
 		P(m, "Board", Vector3.new(w - 0.7, 0.18, d - 0.2), cf * CFrame.new(0, y, 0), Props.WOOD, M.Wood)
 		local x = -w / 2 + 0.45
 		while x < w / 2 - 0.9 do
-			local bw = if coarse then rnd:NextNumber(1, 1.9) else rnd:NextNumber(0.25, 0.55)
+			local bw = if coarse then rnd:NextNumber(2, 3.2) else rnd:NextNumber(0.9, 1.5)
 			local bh = rnd:NextNumber(1.3, 2)
 			if rnd:NextNumber() < 0.08 then
 				x += 0.8 -- пустое место на полке
@@ -491,8 +483,7 @@ mark(P(m, "Body", Vector3.new(1.8, 2.2, 1.6), cf * CFrame.new(0, 1.3, 0), Props.
 	-- лампа с абажуром
 	C(m, "LampBase", 0.2, 0.7, cf * CFrame.new(0, 2.63, 0.1), Props.GOLD, M.Metal, nc())
 	C(m, "LampStem", 1, 0.15, cf * CFrame.new(0, 3.2, 0.1), Props.GOLD, M.Metal, nc())
-	local shade = C(m, "LampShade", 0.8, 1, cf * CFrame.new(0, 3.9, 0.1), rgb(240, 214, 170), M.Neon, nc({ Transparency = 0.35 }))
-	light(shade, 9, 0.6)
+	C(m, "LampShade", 0.8, 1, cf * CFrame.new(0, 3.9, 0.1), rgb(240, 214, 170), M.Neon, nc({ Transparency = 0.35 }))
 	return m
 end
 
@@ -779,12 +770,15 @@ end
 -- Глобус на подставке
 function Props.globe(parent, cf: CFrame)
 	local m = model(parent, "Globe")
+	local hub = (cf * CFrame.new(0, 2.3, 0)).Position
 	for k = 0, 2 do
 		local a = k / 3 * math.pi * 2
-		P(m, "Leg", Vector3.new(0.2, 2.6, 0.2), cf * CFrame.new(math.cos(a) * 0.6, 1.3, math.sin(a) * 0.6) * CFrame.Angles(math.cos(a) * 0.2, 0, -math.sin(a) * 0.2), Props.WOOD_DARK, M.Wood)
+		local foot = (cf * CFrame.new(math.cos(a) * 1.1, 0.05, math.sin(a) * 1.1)).Position
+		rod(m, "Leg", foot, hub, 0.22, Props.WOOD_DARK, M.Wood)
 	end
-	P(m, "Meridian", Vector3.new(0.12, 2.6, 2.6), cf * CFrame.new(0, 3.6, 0) * CFrame.Angles(0, 0, math.rad(23)), Props.GOLD, M.Metal, { Shape = CYL, CanCollide = false })
-mark(S(m, "Sphere", 2.2, cf * CFrame.new(0, 3.6, 0), rgb(70, 110, 150), M.SmoothPlastic), "spin")
+	C(m, "Stem", 0.6, 0.3, CFrame.new(hub + Vector3.new(0, 0.3, 0)), Props.WOOD_DARK, M.Wood)
+	P(m, "Meridian", Vector3.new(0.12, 2.7, 2.7), cf * CFrame.new(0, 3.6, 0) * CFrame.Angles(0, math.pi / 2, math.rad(23)), Props.GOLD, M.Metal, { Shape = CYL, CanCollide = false })
+	mark(S(m, "Sphere", 2.2, cf * CFrame.new(0, 3.6, 0), rgb(70, 110, 150), M.SmoothPlastic), "spin")
 	for k = 0, 3 do
 		S(m, "Land", 0.9, cf * CFrame.new(0, 3.6, 0) * CFrame.Angles(k, k * 1.7, 0) * CFrame.new(0, 0, -0.75), rgb(120, 150, 80), M.SmoothPlastic, nc())
 	end
@@ -969,18 +963,19 @@ function Props.prepTable(parent, cf: CFrame)
 end
 
 -- Полка с банками и посудой (на стене)
+-- Полка с банками на стене (cf — на стене, LookVector в комнату, полки уходят в комнату)
 function Props.shelfJars(parent, cf: CFrame, w: number)
 	local m = model(parent, "Shelves")
 	for k = 0, 2 do
 		local y = 5 + k * 2
-		P(m, "Board", Vector3.new(w, 0.2, 1.2), cf * CFrame.new(0, y, 0.6), Props.WOOD, M.Wood)
+		P(m, "Board", Vector3.new(w, 0.2, 1.2), cf * CFrame.new(0, y, -0.6), Props.WOOD, M.Wood)
 		for x = -w / 2 + 0.6, w / 2 - 0.6, 0.9 do
 			local h = 0.6 + ((x * 3 + k) % 3) * 0.25
-			C(m, "Jar", h, 0.55, cf * CFrame.new(x, y + 0.1 + h / 2, 0.6), Color3.fromHSV(((x + k) * 0.13) % 1, 0.4, 0.7), M.Glass, nc({ Transparency = 0.2 }))
+			C(m, "Jar", h, 0.55, cf * CFrame.new(x, y + 0.1 + h / 2, -0.6), Color3.fromHSV(((x + k) * 0.13) % 1, 0.4, 0.7), M.Glass, nc({ Transparency = 0.2 }))
 		end
 	end
 	for _, x in { -w / 2 + 0.3, w / 2 - 0.3 } do
-		P(m, "Bracket", Vector3.new(0.2, 4.4, 1.2), cf * CFrame.new(x, 7, 0.6), Props.WOOD_DARK, M.Wood)
+		P(m, "Bracket", Vector3.new(0.2, 4.4, 1.2), cf * CFrame.new(x, 7, -0.6), Props.WOOD_DARK, M.Wood)
 	end
 	return m
 end
@@ -988,11 +983,14 @@ end
 -- Вешалка с медной посудой
 function Props.panRack(parent, cf: CFrame)
 	local m = model(parent, "PanRack")
-	P(m, "Bar", Vector3.new(5, 0.3, 0.3), cf * CFrame.new(0, 7.5, 0.4), Props.IRON, M.Metal, nc())
+	P(m, "Bar", Vector3.new(5, 0.3, 0.3), cf * CFrame.new(0, 7.5, -0.5), Props.IRON, M.Metal, nc())
+	for _, x in { -2.4, 2.4 } do
+		P(m, "Holder", Vector3.new(0.2, 0.2, 0.6), cf * CFrame.new(x, 7.5, -0.25), Props.IRON, M.Metal, nc())
+	end
 	for k = 0, 4 do
 		local x = -2 + k
-		P(m, "Hook", Vector3.new(0.08, 0.6, 0.08), cf * CFrame.new(x, 7.1, 0.4), Props.IRON, M.Metal, nc())
-		C(m, "Pan", 0.15, 0.9 + (k % 2) * 0.3, cf * CFrame.new(x, 6.3, 0.3) * CFrame.Angles(math.pi / 2, 0, 0), rgb(184, 115, 70), M.Metal, nc())
+		P(m, "Hook", Vector3.new(0.08, 0.6, 0.08), cf * CFrame.new(x, 7.1, -0.5), Props.IRON, M.Metal, nc())
+		C(m, "Pan", 0.15, 0.9 + (k % 2) * 0.3, cf * CFrame.new(x, 6.3, -0.55) * CFrame.Angles(math.pi / 2, 0, 0), rgb(184, 115, 70), M.Metal, nc())
 	end
 	return m
 end
@@ -1174,12 +1172,25 @@ end
 -- Телескоп на треноге
 function Props.telescope(parent, cf: CFrame)
 	local m = model(parent, "Telescope")
+	local head = (cf * CFrame.new(0, 4.2, 0)).Position
 	for k = 0, 2 do
 		local a = k / 3 * math.pi * 2
-		P(m, "Leg", Vector3.new(0.2, 4, 0.2), cf * CFrame.new(math.cos(a) * 0.9, 2, math.sin(a) * 0.9) * CFrame.Angles(math.cos(a) * 0.25, 0, -math.sin(a) * 0.25), Props.WOOD_DARK, M.Wood)
+		local foot = (cf * CFrame.new(math.cos(a) * 1.4, 0.05, math.sin(a) * 1.4)).Position
+		rod(m, "Leg", foot, head, 0.22, Props.WOOD_DARK, M.Wood)
 	end
-	mark(C(m, "Tube", 5, 0.8, cf * CFrame.new(0, 4.6, 0) * CFrame.Angles(math.rad(-50), 0, 0) * CFrame.Angles(math.pi / 2, 0, 0), Props.GOLD, M.Metal), "telescope")
-	C(m, "Lens", 0.2, 1.1, cf * CFrame.new(0, 6.5, -1.6) * CFrame.Angles(math.rad(-50), 0, 0) * CFrame.Angles(math.pi / 2, 0, 0), Props.IRON, M.Metal, nc())
+	S(m, "Mount", 0.6, CFrame.new(head), Props.IRON, M.Metal)
+	-- труба лежит на креплении и смотрит вверх, вперёд
+	local dir = (cf.LookVector * math.cos(math.rad(40)) + Vector3.new(0, math.sin(math.rad(40)), 0)).Unit
+	local a, b = head - dir * 1.4, head + dir * 3.6
+	local tube = rod(m, "Tube", a, b, 0.7, Props.GOLD, M.Metal)
+	tube.Shape = CYL
+	tube.Size = Vector3.new(5, 0.7, 0.7)
+	tube.CFrame = CFrame.lookAt((a + b) / 2, b) * CFrame.Angles(0, math.pi / 2, 0)
+	mark(tube, "telescope")
+	local lens = P(m, "Lens", Vector3.new(0.25, 0.95, 0.95), CFrame.lookAt(b, b + dir) * CFrame.Angles(0, math.pi / 2, 0), Props.IRON, M.Metal, nc())
+	lens.Shape = CYL
+	local eye = P(m, "Eyepiece", Vector3.new(0.6, 0.35, 0.35), CFrame.lookAt(a, a - dir) * CFrame.Angles(0, math.pi / 2, 0), Props.IRON, M.Metal, nc())
+	eye.Shape = CYL
 	return m
 end
 
@@ -1208,7 +1219,7 @@ function Props.feastTable(parent, cf: CFrame, len: number, chairs: boolean)
 			C(m, "Goblet", 0.6, 0.35, cf * CFrame.new(s * 1.1, top + 0.35, z + 0.9), Props.GOLD, M.Metal, nc())
 			P(m, "Fork", Vector3.new(0.1, 0.04, 0.9), cf * CFrame.new(s * 1.5 - 0.9, top + 0.05, z), rgb(200, 202, 210), M.Metal, nc())
 			if chairs then
-				Props.chair(m, cf * CFrame.new(s * 3.6, 0, z) * CFrame.Angles(0, if s > 0 then -math.pi / 2 else math.pi / 2, 0))
+				Props.chair(m, cf * CFrame.new(s * 3.6, 0, z) * CFrame.Angles(0, if s > 0 then math.pi / 2 else -math.pi / 2, 0))
 			end
 		end
 		if k % 2 == 1 then

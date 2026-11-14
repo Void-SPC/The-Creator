@@ -1,8 +1,8 @@
 {
   "file": "Workshop.rbxlx",
-  "version": "3.0.0",
-  "sha256": "230f503c7b11cd03e91894406411d1d6314e520b06b41a94c208562d451c22bc",
-  "bytes": 822013,
+  "version": "3.1.0",
+  "sha256": "79769806fea0122eb5247e47835425be494f8dc428c16b1e59d63b191dc930b4",
+  "bytes": 848661,
   "scripts": [
     {
       "path": "src/shared/AdminCommands.luau",

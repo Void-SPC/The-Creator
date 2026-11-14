@@ -48,11 +48,11 @@ end
 local function mantle(f, torso, color)
 	weld(f, torso, { Name = "Mantle", Size = Vector3.new(2.3, 4.6, 0.14), Color = color, Material = MAT.SmoothPlastic, Reflectance = 0.05 }, CFrame.new(0, -1.5, 0.66) * CFrame.Angles(math.rad(7), 0, 0))
 	weld(f, torso, { Name = "MantleLining", Size = Vector3.new(2.2, 4.5, 0.05), Color = GOLD:Lerp(color, 0.3), Material = MAT.SmoothPlastic }, CFrame.new(0, -1.45, 0.58) * CFrame.Angles(math.rad(7), 0, 0))
-	weld(f, torso, { Name = "Ermine", Size = Vector3.new(2.4, 0.5, 1.4), Color = rgb(246, 244, 238), Material = MAT.SmoothPlastic }, CFrame.new(0, torso.Size.Y / 2 + 0.05, 0.05))
-	for k = 0, 5 do
-		weld(f, torso, { Name = "ErmineSpot", Size = Vector3.new(0.12, 0.22, 0.05), Color = rgb(20, 20, 20), Material = MAT.SmoothPlastic }, CFrame.new(-0.9 + k * 0.36, torso.Size.Y / 2 + 0.05, -0.68))
+	-- горностаевый воротник лежит только на плечах сзади: спереди мантии нет совсем
+	weld(f, torso, { Name = "Ermine", Size = Vector3.new(2.3, 0.45, 0.55), Color = rgb(246, 244, 238), Material = MAT.SmoothPlastic }, CFrame.new(0, torso.Size.Y / 2 - 0.05, 0.62))
+	for k = 0, 4 do
+		weld(f, torso, { Name = "ErmineSpot", Size = Vector3.new(0.12, 0.2, 0.05), Color = rgb(20, 20, 20), Material = MAT.SmoothPlastic }, CFrame.new(-0.8 + k * 0.4, torso.Size.Y / 2 - 0.1, 0.91))
 	end
-	weld(f, torso, { Name = "Clasp", Shape = Enum.PartType.Ball, Size = Vector3.new(0.4, 0.4, 0.4), Color = GOLD, Material = MAT.Metal }, CFrame.new(0, torso.Size.Y / 2 - 0.2, -torso.Size.Z / 2 - 0.15))
 end
 
 -- Причёска и шляпы аватара под короной скрыты, чтобы корона была видна всем

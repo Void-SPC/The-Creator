@@ -18,7 +18,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "3.0.0"
+VERSION = "3.1.0"
 
 
 class Builder:
@@ -95,8 +95,8 @@ def build(dest: Path):
     # чтобы клиент получал нужные модели целиком
     # замок огромный: на телефоне подгружается только то, что рядом
     b.prop(wp, "bool", "StreamingEnabled", True)
-    b.prop(wp, "int", "StreamingMinRadius", 96)
-    b.prop(wp, "int", "StreamingTargetRadius", 320)
+    b.prop(wp, "int", "StreamingMinRadius", 80)
+    b.prop(wp, "int", "StreamingTargetRadius", 256)
     # лобби лежит в файле, чтобы игрок появился на полу ещё до запуска скриптов
     lobby, _ = b.item(ws, "Model", "WsLobby")
     _, fp = b.item(lobby, "Part", "Floor")

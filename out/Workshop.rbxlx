@@ -7,8 +7,8 @@
       <float name="Gravity">196.2</float>
       <float name="FallenPartsDestroyHeight">-500</float>
       <bool name="StreamingEnabled">true</bool>
-      <int name="StreamingMinRadius">96</int>
-      <int name="StreamingTargetRadius">320</int>
+      <int name="StreamingMinRadius">80</int>
+      <int name="StreamingTargetRadius">256</int>
     </Properties>
     <Item class="Model" referent="RBX00000002">
       <Properties>
@@ -203,9 +203,14 @@ C.LIST = {
 	{ id = "bring_all", cat = "god", target = "none", en = "Gather everyone", ru = "Собрать всех ко мне" },
 	{ id = "shield_all", cat = "god", target = "none", en = "Shield everyone", ru = "Щит всем" },
 	{ id = "rainbow", cat = "god", target = "none", en = "Rainbow sky", ru = "Радужное небо" },
+	-- проверка режима «Маньяк» одному: боты считаются игроками
+	{ id = "bot_survivor", cat = "test", target = "none", arg = "number", en = "Maniac: add survivor bots", ru = "Маньяк: добавить ботов-выживших" },
+	{ id = "bot_maniac", cat = "test", target = "none", en = "Maniac: add maniac bot", ru = "Маньяк: добавить бота-маньяка" },
+	{ id = "clear_bots", cat = "test", target = "none", en = "Maniac: remove bots", ru = "Маньяк: убрать ботов" },
+	{ id = "maniac_start", cat = "test", target = "none", en = "Maniac: start round now", ru = "Маньяк: начать раунд сейчас" },
 }
 
-C.CATEGORIES = { "world", "players", "moderation", "fun", "god" }
+C.CATEGORIES = { "world", "players", "moderation", "fun", "god", "test" }
 
 C.BY_ID = {}
 for _, c in C.LIST do
@@ -2282,7 +2287,40 @@ Lang.en = {
 		p_shop = "Shop",
 		p_rest = "Rest",
 		p_roles = "Choose role",
-		p_door = "Open",
+		p_door = "Open / close",
+		room_dining = "Dining hall",
+		room_royal_dining = "Royal dining hall",
+		room_kitchen = "Kitchen",
+		room_servants = "Servants' quarters",
+		room_shop = "Shop",
+		room_casino = "Casino",
+		room_barracks = "Barracks",
+		room_training = "Training hall",
+		room_chapel = "Chapel",
+		room_chapel_small = "Chapel",
+		room_stairs = "Stairs",
+		room_stairs_down = "Stairs down",
+		room_bedroom = "Bedroom",
+		room_guest_suite = "Guest suite",
+		room_study = "Study",
+		room_sitting = "Sitting room",
+		room_lounge = "Lounge",
+		room_music = "Music room",
+		room_reading = "Reading room",
+		room_trophy = "Trophy room",
+		room_gallery = "Gallery",
+		room_nursery = "Nursery",
+		room_wardrobe = "Wardrobe",
+		room_bath = "Bath",
+		room_observatory = "Observatory",
+		room_treasury = "Treasury",
+		room_council = "Council chamber",
+		room_map_room = "Map room",
+		room_king = "King's chambers",
+		room_queen = "Queen's chambers",
+		room_landing = "Landing",
+		room_grand_hall = "Grand hall",
+		room_throne = "Throne room",
 		p_cell = "Open cell",
 		p_scepter = "Take scepter",
 		p_work = "Work",
@@ -2340,6 +2378,7 @@ Lang.en = {
 		cat_players = "Players",
 		cat_fun = "Fun",
 		cat_god = "God powers",
+		cat_test = "Testing",
 		cat_moderation = "Order",
 		-- король
 		KingPanel = "King",
@@ -2386,6 +2425,12 @@ Lang.en = {
 		NotEnoughGold = "Not enough gold",
 		Bought = "Bought",
 		Summoned = "Guards summoned",
+		FellBack = "You fell off the island and were returned to the courtyard",
+		ScepterHint = "The scepter commands the guard: point it at a player and use it to send the guards, use it at empty space to call them back",
+		ScepterOrder = "The guards are hunting %s",
+		ScepterHunted = "The king has sent the guard after you",
+		ScepterRecall = "The guards return to the king",
+		ScepterNoGuards = "There are no guards, summon them in the king panel first",
 		Saved = "Saved",
 		Tutorial = "How to play",
 		Menu = "Menu",
@@ -2495,7 +2540,40 @@ Lang.ru = {
 		p_shop = "Магазин",
 		p_rest = "Отдохнуть",
 		p_roles = "Выбрать роль",
-		p_door = "Открыть",
+		p_door = "Открыть / закрыть",
+		room_dining = "Трапезная (столовая)",
+		room_royal_dining = "Королевская столовая",
+		room_kitchen = "Кухня",
+		room_servants = "Комнаты прислуги",
+		room_shop = "Лавка",
+		room_casino = "Казино",
+		room_barracks = "Казармы",
+		room_training = "Тренировочный зал",
+		room_chapel = "Часовня",
+		room_chapel_small = "Часовня",
+		room_stairs = "Лестница",
+		room_stairs_down = "Лестница вниз",
+		room_bedroom = "Спальня",
+		room_guest_suite = "Гостевые покои",
+		room_study = "Кабинет",
+		room_sitting = "Гостиная",
+		room_lounge = "Салон",
+		room_music = "Музыкальный зал",
+		room_reading = "Читальня",
+		room_trophy = "Зал трофеев",
+		room_gallery = "Галерея",
+		room_nursery = "Детская",
+		room_wardrobe = "Гардероб",
+		room_bath = "Купальня",
+		room_observatory = "Обсерватория",
+		room_treasury = "Сокровищница",
+		room_council = "Зал совета",
+		room_map_room = "Комната карт",
+		room_king = "Покои короля",
+		room_queen = "Покои королевы",
+		room_landing = "Площадка",
+		room_grand_hall = "Большой зал",
+		room_throne = "Тронный зал",
 		p_cell = "Открыть камеру",
 		p_scepter = "Взять скипетр",
 		p_work = "Работать",
@@ -2553,6 +2631,7 @@ Lang.ru = {
 		cat_players = "Игроки",
 		cat_fun = "Веселье",
 		cat_god = "Силы Бога",
+		cat_test = "Проверка",
 		cat_moderation = "Порядок",
 		KingPanel = "Король",
 		Summon = "Призвать стражу",
@@ -2594,6 +2673,12 @@ Lang.ru = {
 		NotEnoughGold = "Не хватает золота",
 		Bought = "Куплено",
 		Summoned = "Стража призвана",
+		FellBack = "Ты упал с острова и вернулся во двор",
+		ScepterHint = "Скипетр командует стражей: направь его на игрока и используй, чтобы послать стражу, а взмах в пустоту зовёт её обратно",
+		ScepterOrder = "Стража преследует: %s",
+		ScepterHunted = "Король послал за тобой стражу",
+		ScepterRecall = "Стража возвращается к королю",
+		ScepterNoGuards = "Стражи нет, сначала призови её в панели короля",
 		Saved = "Сохранено",
 		Tutorial = "Как играть",
 		Menu = "Меню",
@@ -7172,6 +7257,7 @@ local Builder = require(script.Parent.CastleBuilder)
 local Npc = require(script.Parent.Npc)
 local Seasons = require(script.Parent.Seasons)
 local G = require(script.Parent.CastleGame)
+local ManiacGame = require(script.Parent.Parent.Maniac.ManiacGame)
 
 local Admin = {}
 
@@ -7356,6 +7442,23 @@ local WORLD = {
 		G.state.minionTarget = nil
 		G.syncWorld()
 		return true
+	end,
+	bot_survivor = function(_admin, arg)
+		local ok = false
+		for _ = 1, num(arg, 1, 6, 1) do
+			ok = ManiacGame.addBot("survivor") or ok
+		end
+		return ok
+	end,
+	bot_maniac = function()
+		return ManiacGame.addBot("maniac")
+	end,
+	clear_bots = function()
+		ManiacGame.clearBots()
+		return true
+	end,
+	maniac_start = function()
+		return ManiacGame.startNow()
 	end,
 	pvp_on = function()
 		G.setPvp(true)
@@ -8006,6 +8109,7 @@ local function box(parent, name, x0, y0, z0, x1, y1, z1, color, mat, extra)
 	return P(parent, name, Vector3.new(math.abs(x1 - x0), math.abs(y1 - y0), math.abs(z1 - z0)), CFrame.new((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), color, mat or M.Slate, extra)
 end
 B.box = box
+local roomSign
 
 -- плита с прямоугольными дырами { x0, x1, z0, z1 } (не пересекающимися)
 local function slab(parent, name, x0, x1, z0, z1, y0, y1, holes, color, mat, extra)
@@ -8197,10 +8301,14 @@ local function faceDecor(parent, axis, plane, normal, a0, a1, y0, y1, style, hol
 		rect(parent, name, axis, plane + normal * thick / 2, thick, a0, a1, ya, yb, holes, color, mat, { CanCollide = false, CanQuery = false })
 	end
 	local paperFrom = y0
-	if opts.wainscot then
+	if opts.wainscot and style.plinth then
+		-- каменный цоколь с карнизом: коридоры, залы, кухня, казармы
+		layer(0.35, y0, y0 + 2.6, rgb(118, 110, 100), M.Cobblestone, "Plinth")
+		layer(0.5, y0 + 2.6, y0 + 3, rgb(150, 142, 130), M.Limestone, "PlinthCap")
+		paperFrom = y0 + 3
+	elseif opts.wainscot then
 		layer(0.25, y0, y0 + 4.4, Props.WOOD_DARK, M.Wood, "Wainscot")
 		layer(0.42, y0 + 4.4, y0 + 4.8, Props.WOOD, M.Wood, "ChairRail")
-		layer(0.32, y0, y0 + 0.6, rgb(36, 24, 18), M.Wood, "Baseboard")
 		paperFrom = y0 + 4.8
 	end
 	layer(0.1, paperFrom, y1, style.paper, style.wall or M.Plaster, "Wallpaper")
@@ -8225,6 +8333,42 @@ local extraOpenings = {}
 
 local function edgeKey(level, i, j, axis)
 	return level .. ":" .. i .. "," .. j .. axis
+end
+
+-- Табличка над дверью: дубовая доска в железной раме, надпись на языке игрока
+-- (клиент подставляет перевод по атрибуту RoomSign)
+local ROOM_EN = {
+	dining = "Dining hall", royal_dining = "Royal dining hall", kitchen = "Kitchen", servants = "Servants' quarters",
+	shop = "Shop", casino = "Casino", barracks = "Barracks", training = "Training hall", chapel = "Chapel",
+	chapel_small = "Chapel", stairs = "Stairs", stairs_down = "Stairs down", bedroom = "Bedroom", guest_suite = "Guest suite",
+	study = "Study", sitting = "Sitting room", lounge = "Lounge", music = "Music room", reading = "Reading room",
+	trophy = "Trophy room", gallery = "Gallery", nursery = "Nursery", wardrobe = "Wardrobe", bath = "Bath",
+	observatory = "Observatory", treasury = "Treasury", council = "Council chamber", map_room = "Map room",
+	king = "King's chambers", queen = "Queen's chambers", landing = "Landing", grand_hall = "Grand hall", throne = "Throne room",
+}
+B.ROOM_EN = ROOM_EN
+roomSign = function(parent, pos: Vector3, facing: Vector3, kind: string)
+	local m = Props.model(parent, "RoomSign")
+	local cf = CFrame.lookAt(pos, pos + facing)
+	local board = P(m, "Board", Vector3.new(7, 1.5, 0.25), cf, rgb(96, 64, 40), M.WoodPlanks, { CanCollide = false })
+	P(m, "Frame", Vector3.new(7.4, 1.9, 0.15), cf * CFrame.new(0, 0, 0.12), Props.IRON, M.Metal, { CanCollide = false })
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 40
+	gui.LightInfluence = 0.6
+	gui.Parent = board
+	local t = Instance.new("TextLabel")
+	t.Name = "Text"
+	t.BackgroundTransparency = 1
+	t.Size = UDim2.fromScale(1, 1)
+	t.Font = Enum.Font.Fantasy
+	t.TextScaled = true
+	t.TextColor3 = rgb(236, 208, 140)
+	t.Text = ROOM_EN[kind] or kind
+	t:SetAttribute("RoomSign", kind)
+	t.Parent = gui
+	return m
 end
 
 -- Все стены одного яруса
@@ -8265,6 +8409,13 @@ local function buildWalls(parent, level, decor)
 			local pos = if axis == "x" then Vector3.new(plane, y, along) else Vector3.new(along, y, plane)
 			local n = if axis == "x" then Vector3.xAxis else Vector3.zAxis
 			Props.door(decor, CFrame.lookAt(pos, pos + n), dw, dh, nil, door.wide)
+			-- табличка с названием комнаты над дверью со стороны коридора
+			local ta, tb = type(a) == "table" and not voidA, type(b) == "table" and not voidB
+			if ta and tb and (a.kind == "hall") ~= (b.kind == "hall") and dh + 3.6 &lt; H - 1.3 then
+				local room = if a.kind == "hall" then b else a
+				local side = if a.kind == "hall" then -1 else 1
+				roomSign(decor, pos + n * side * 0.75 + Vector3.new(0, dh + 2.6, 0), n * side, room.kind)
+			end
 		end
 	end
 	local function exterior(i, j, dir: Vector3)
@@ -8426,14 +8577,10 @@ local function buildLevel(parent, level, ctx)
 				local k = room.kind
 				if aboveDown then
 					local _ = 0
-				elseif level == "U" or k == "kitchen" or k == "barracks" or k == "servants" or k == "training" then
+				elseif level == "U" or k == "kitchen" or k == "barracks" or k == "servants" or k == "training" or k == "hall" or k == "dining" then
+					-- тёмные деревянные балки поперёк потолка
 					for b = -1, 1 do
 						box(floors, "Beam", cx - CELL / 2, ceilY - 1.4, cz + b * 10 - 0.6, cx + CELL / 2, ceilY - 0.25, cz + b * 10 + 0.6, if level == "U" then rgb(80, 76, 70) else Props.WOOD_DARK, if level == "U" then M.Slate else M.Wood, { CanCollide = false })
-					end
-				elseif k ~= "stairs" and k ~= "hall" and k ~= "stairs_down" then
-					for b = -1, 1, 2 do
-						box(floors, "Coffer", cx - CELL / 2, ceilY - 0.9, cz + b * 8 - 0.4, cx + CELL / 2, ceilY - 0.25, cz + b * 8 + 0.4, CEIL:Lerp(rgb(0, 0, 0), 0.1), M.SmoothPlastic, { CanCollide = false })
-						box(floors, "Coffer", cx + b * 8 - 0.4, ceilY - 0.9, cz - CELL / 2, cx + b * 8 + 0.4, ceilY - 0.25, cz + CELL / 2, CEIL:Lerp(rgb(0, 0, 0), 0.1), M.SmoothPlastic, { CanCollide = false })
 					end
 				end
 			end
@@ -8533,7 +8680,7 @@ local function throneRoom(parent)
 		end
 	end
 	for k = 0, 2 do
-		Props.chandelier(m, Vector3.new(0, ceilY - 9, 34 + k * 26), 8, 8)
+		Props.chandelier(m, Vector3.new(0, ceilY - 9, 34 + k * 26), 8, 9.3)
 	end
 	-- помост в две ступени с дырой под люк
 	slab(m, "Dais", -20, 20, 86, 111, 0, 1.5, { { hx0, hx1, hz0, hz1 } }, rgb(150, 26, 34), M.Carpet)
@@ -8613,9 +8760,11 @@ local function throneRoom(parent)
 		end
 	end
 	local lever = Props.model(sh, "Lever")
-	P(lever, "Plate", Vector3.new(0.3, 1.8, 1.2), CFrame.new(5.6, uy + 4, 106.2), Props.IRON, M.Metal)
-	local handle = P(lever, "Handle", Vector3.new(0.25, 2, 0.25), CFrame.new(6, uy + 4.8, 106.2) * CFrame.Angles(0, 0, math.rad(-25)), rgb(150, 150, 156), M.Metal)
-	S(lever, "Grip", 0.6, CFrame.new(6.4, uy + 5.7, 106.2), rgb(120, 22, 30), M.SmoothPlastic)
+	-- рычаг закреплён на восточной стенке шахты со стороны туннеля, рядом с проходом
+	P(lever, "Plate", Vector3.new(0.3, 1.8, 1.2), CFrame.new(5.65, uy + 4, 104), Props.IRON, M.Metal)
+	P(lever, "Pivot", Vector3.new(0.4, 0.4, 0.4), CFrame.new(5.95, uy + 4, 104), Props.IRON, M.Metal)
+	local handle = P(lever, "Handle", Vector3.new(0.25, 2, 0.25), CFrame.new(6.0, uy + 4, 104) * CFrame.Angles(0, 0, math.rad(-25)) * CFrame.new(0, 0.95, 0), rgb(150, 150, 156), M.Metal)
+	S(lever, "Grip", 0.6, (CFrame.new(6.0, uy + 4, 104) * CFrame.Angles(0, 0, math.rad(-25)) * CFrame.new(0, 2, 0)), rgb(120, 22, 30), M.SmoothPlastic)
 	prompt(handle, "lever", 0.5)
 	B.points.tunnel = CFrame.new(20, uy + 3, 96)
 	-- перила вокруг люка: появляются, только когда ход открыт
@@ -8831,7 +8980,7 @@ local function library(parent)
 	local px = cxm + 4
 	for _, ox in { -30, 30 } do
 		for _, oz in { -30, 30 } do
-			Props.chandelier(m, Vector3.new(cxm + ox, -22, midZ + oz), 7, 20)
+			Props.chandelier(m, Vector3.new(cxm + ox, -22, midZ + oz), 7, 21.2)
 		end
 	end
 	-- напольные лампы в проходах между стеллажами и вдоль галерей
@@ -8847,12 +8996,16 @@ local function library(parent)
 		for k = 0, 4 do
 			local x = inner[1] + (k + 0.5) * dx
 			for _, z in { inner[3], inner[4] } do
-				local lamp = S(m, "RailLamp", 0.9, CFrame.new(x, gy + 4.4, z), rgb(255, 220, 160), M.Neon, { CanCollide = false })
-				Props.light(lamp, 18, 1.1)
+				-- шар стоит на латунной чашке прямо на поручне
+				C(m, "RailLampCup", 0.3, 0.7, CFrame.new(x, gy + 3.62, z), Props.GOLD, M.Metal, { CanCollide = false })
+				local lamp = S(m, "RailLamp", 0.9, CFrame.new(x, gy + 4.15, z), rgb(255, 220, 160), M.Neon, { CanCollide = false })
+				if k % 2 == 0 then
+					Props.light(lamp, 20, 1.1)
+				end
 			end
 		end
 	end
-	Props.chandelier(m, Vector3.new(px, -10, midZ), 10, 8)
+	Props.chandelier(m, Vector3.new(px, -10, midZ), 10, 9.2)
 	C(m, "Dais", 1, 18, CFrame.new(px, fy + 0.5, midZ), rgb(150, 140, 126), M.Marble)
 	C(m, "DaisRing", 1.1, 14, CFrame.new(px, fy + 0.55, midZ), rgb(120, 22, 30), M.Carpet)
 	for k = 0, 5 do
@@ -8927,7 +9080,7 @@ local function prison(parent)
 		torch(m, CFrame.new(x1 - cellDepth - 0.25, uy + 9, z) * CFrame.Angles(0, -math.pi / 2, 0))
 	end
 	for _, z in { z0 + 40, z1 - 40 } do
-		Props.ceilingLamp(m, Vector3.new(ymid, uy + 13, z), 2.5)
+		Props.ceilingLamp(m, Vector3.new(ymid, uy + 13, z), 3)
 	end
 	-- ворота: решётка в проёме между караульной и тюрьмой
 	local gx, gz = -96, -16
@@ -8939,7 +9092,7 @@ local function prison(parent)
 		P(gate, "GateRail", Vector3.new(8, 0.4, 0.4), CFrame.new(gx, y, gz), Props.IRON, M.Metal)
 	end
 	local lock = P(gate, "Lock", Vector3.new(1, 1.2, 0.8), CFrame.new(gx + 3, uy + 4.5, gz - 0.5), Props.GOLD, M.Metal)
-	P(gate, "GateBlock", Vector3.new(8, 10, 1), CFrame.new(gx, uy + 5, gz), rgb(0, 0, 0), M.SmoothPlastic, { Transparency = 1 })
+	P(gate, "GateBlock", Vector3.new(8, 10, 1), CFrame.new(gx, uy + 5, gz), rgb(0, 0, 0), M.SmoothPlastic, { Transparency = 1, CastShadow = false })
 	prompt(lock, "prisongate", 0.8, 10)
 	B.points.prisonInside = CFrame.new(gx, uy + 3, gz + 6)
 	B.points.prisonOutside = CFrame.new(gx, uy + 3, gz - 6)
@@ -8997,10 +9150,16 @@ local function courtyard(parent)
 	Props.railing(m, Vector3.new(-26, 0, -ISLAND - 29.7), Vector3.new(26, 0, -ISLAND - 29.7), FACADE_DARK)
 	Props.railing(m, Vector3.new(-25.7, 0, -ISLAND - 30), Vector3.new(-25.7, 0, gz0), FACADE_DARK)
 	Props.railing(m, Vector3.new(25.7, 0, -ISLAND - 30), Vector3.new(25.7, 0, gz0), FACADE_DARK)
-	Props.telescope(m, CFrame.new(-18, 0, -ISLAND - 25))
-	Props.lamppost(m, CFrame.new(-22, 0, gz0 - 3))
-	Props.lamppost(m, CFrame.new(22, 0, gz0 - 3))
-	Props.bench(m, CFrame.new(12, 0, -ISLAND - 25), 8)
+	-- невидимые стенки по краю террасы: за перила не перепрыгнуть
+	for _, w in { { -27, -26, -ISLAND - 31, gz0 }, { 26, 27, -ISLAND - 31, gz0 }, { -27, 27, -ISLAND - 31, -ISLAND - 30 } } do
+		box(m, "Barrier", w[1], 0, w[3], w[2], 16, w[4], rgb(0, 0, 0), M.SmoothPlastic, { Transparency = 1, CastShadow = false })
+	end
+	-- симметрично: две подзорные трубы по краям, скамья посередине смотрит в небо
+	for _, x in { -18, 18 } do
+		Props.telescope(m, CFrame.new(x, 0, -ISLAND - 25))
+		Props.lamppost(m, CFrame.new(x + (if x &lt; 0 then -4 else 4), 0, gz0 - 3))
+	end
+	Props.bench(m, CFrame.new(0, 0, -ISLAND - 25), 8)
 	B.points.outside = CFrame.new(0, 3, -ISLAND - 16)
 
 	-- парадный двор: фонтан со статуей короля, дорожки, скамьи, фонари, клумбы
@@ -9205,6 +9364,63 @@ local function exterior(parent)
 	end
 end
 
+-- Дверь: створки поворачиваются на петлях (видно всем, створки твёрдые)
+local TweenService = game:GetService("TweenService")
+function B.toggleDoor(trigger: Instance)
+	local door = trigger.Parent
+	if not door or door:GetAttribute("Busy") then
+		return
+	end
+	door:SetAttribute("Busy", true)
+	local open = not door:GetAttribute("Open")
+	door:SetAttribute("Open", open)
+	local leaves = {}
+	for _, l in door:GetChildren() do
+		if l:IsA("Model") and l.Name == "Leaf" then
+			local base = l:GetAttribute("Base")
+			if typeof(base) ~= "CFrame" then
+				base = l:GetPivot()
+				l:SetAttribute("Base", base)
+			end
+			table.insert(leaves, { model = l, base = base, dir = l:GetAttribute("Dir") or 1 })
+		end
+	end
+	local v = Instance.new("NumberValue")
+	v.Value = if open then 0 else 1
+	v.Changed:Connect(function(a)
+		for _, lf in leaves do
+			lf.model:PivotTo(lf.base * CFrame.Angles(0, math.rad(88) * a * lf.dir, 0))
+		end
+	end)
+	local t = TweenService:Create(v, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Value = if open then 1 else 0 })
+	t:Play()
+	t.Completed:Connect(function()
+		v:Destroy()
+		door:SetAttribute("Busy", nil)
+	end)
+	local s = Instance.new("Sound")
+	s.SoundId = "rbxasset://sounds/swoosh.wav"
+	s.PlaybackSpeed = if open then 0.55 else 0.45
+	s.Volume = 0.5
+	s.RollOffMaxDistance = 50
+	s.Parent = trigger
+	s:Play()
+	game:GetService("Debris"):AddItem(s, 3)
+end
+
+-- Открыть закрытые двери рядом с точкой (стража и боты проходят сквозь двери так же, как игроки)
+local CollectionService = game:GetService("CollectionService")
+function B.openDoorsNear(pos: Vector3, radius: number)
+	for _, door in CollectionService:GetTagged("CastleDoor") do
+		if not door:GetAttribute("Open") and not door:GetAttribute("Busy") then
+			local t = door:FindFirstChild("DoorTrigger")
+			if t and t:IsA("BasePart") and (t.Position - pos).Magnitude &lt; radius then
+				B.toggleDoor(t)
+			end
+		end
+	end
+end
+
 -- Кнопки для всех отмеченных деталей мебели. allow — список разрешённых видов (для режима «Маньяк»)
 function B.attachInteractions(rootInst: Instance, allow: { [string]: boolean }?)
 	for _, d in rootInst:GetDescendants() do
@@ -9221,7 +9437,7 @@ end
 -- Карта режима «Маньяк»: копия первого и второго этажей замка в темноте, далеко от острова.
 -- Кровь, скелеты, паутина, тусклый мигающий свет, генераторы, доски, проломы, выход
 
-B.MANIAC_ALLOW = { hide = true, repair = true, barricade = true, sit = false, lamp = false }
+B.MANIAC_ALLOW = { hide = true, repair = true, barricade = true, door = true, sit = false, lamp = false }
 B.maniacPrompts = {}
 
 local function maniacThrone(parent)
@@ -9250,7 +9466,7 @@ local function maniacThrone(parent)
 	Props.skeleton(m, CFrame.new(-20, 0, 105) * CFrame.Angles(0, math.pi, 0))
 	Props.skeleton(m, CFrame.new(22, 0, 104) * CFrame.Angles(0, math.pi, 0))
 	for k = 0, 2 do
-		Props.chandelier(m, Vector3.new(0, 2 * H - 10, 34 + k * 26), 7, 8)
+		Props.chandelier(m, Vector3.new(0, 2 * H - 10, 34 + k * 26), 7, 9)
 	end
 end
 
@@ -9329,7 +9545,27 @@ function B.buildManiac(offset: Vector3)
 		local gm, body, lamp = Props.generator(map, cf)
 		table.insert(gens, { model = gm, body = body, lamp = lamp, level = spot[1] })
 	end
-	-- доски в проёмах и проломы, через которые маньяку не пройти
+	-- доски в проёмах и проломы, через которые маньяку не пройти. Створки дверей в этих
+	-- проёмах убираются, чтобы доски и завалы не стояли внутри двери
+	local doorTriggers = {}
+	for _, d in map:GetDescendants() do
+		if d:IsA("BasePart") and d.Name == "DoorTrigger" then
+			table.insert(doorTriggers, d)
+		end
+	end
+	local function stripDoorAt(pos: Vector3)
+		for _, t in doorTriggers do
+			local dp = t.Position
+			if t.Parent and math.abs(dp.X - pos.X) &lt; 1.5 and math.abs(dp.Z - pos.Z) &lt; 1.5 and math.abs(dp.Y - pos.Y) &lt; 12 then
+				local door = t.Parent
+				for _, c in door:GetChildren() do
+					if (c:IsA("Model") and c.Name == "Leaf") or c == t then
+						c:Destroy()
+					end
+				end
+			end
+		end
+	end
 	local barricades, safe = {}, {}
 	local k = 0
 	for _, level in { "G", "F1" } do
@@ -9346,9 +9582,11 @@ function B.buildManiac(offset: Vector3)
 			if not d.wide and ra.kind ~= "stairs" and rb.kind ~= "stairs" then
 				k += 1
 				if isHallDoor and k % 3 == 0 then
+					stripDoorAt(pos)
 					Props.rubble(map, CFrame.lookAt(pos, pos + n), w, h)
 					table.insert(safe, pos)
 				elseif k % 4 == 1 then
+					stripDoorAt(pos)
 					local _, block = Props.barricade(map, CFrame.lookAt(pos, pos + n), w, h)
 					table.insert(barricades, block)
 				end
@@ -9362,6 +9600,10 @@ function B.buildManiac(offset: Vector3)
 	Props.railing(ex, Vector3.new(-14, 0, -142), Vector3.new(14, 0, -142), FACADE_DARK)
 	Props.railing(ex, Vector3.new(-14, 0, -142), Vector3.new(-14, 0, -113), FACADE_DARK)
 	Props.railing(ex, Vector3.new(14, 0, -142), Vector3.new(14, 0, -113), FACADE_DARK)
+	-- невидимые стенки: с площадки нельзя спрыгнуть в пустоту
+	for _, w in { { -15, -14, -143, -112 }, { 14, 15, -143, -112 }, { -15, 15, -143, -142 } } do
+		box(ex, "Barrier", w[1], 0, w[3], w[2], 14, w[4], rgb(0, 0, 0), M.SmoothPlastic, { Transparency = 1, CastShadow = false })
+	end
 	for _, x in { -12, 12 } do
 		torch(ex, CFrame.new(x, 8, -112.2) * CFrame.Angles(0, math.pi, 0))
 	end
@@ -9520,6 +9762,7 @@ local Remotes = require(Shared.Roblox.Remotes)
 local Builder = require(script.Parent.CastleBuilder)
 local Seasons = require(script.Parent.Seasons)
 local Npc = require(script.Parent.Npc)
+Npc.doorHook = Builder.openDoorsNear
 local Outfits = require(script.Parent.Outfits)
 local Statue = require(script.Parent.Parent.Statue)
 local CurrencyService = require(script.Parent.Parent.CurrencyService)
@@ -10002,6 +10245,7 @@ function G.setRole(p: Player, role: string)
 		announce("NewKing", nil, p.DisplayName)
 		updateKingStatue(p.UserId)
 		G.giveItem(p, "scepter", true)
+		toast(p, "ScepterHint")
 	end
 	dress(p)
 	dropForbidden(p)
@@ -10308,6 +10552,44 @@ onActivate = function(p: Player, item: string, tool: Tool)
 		s.Parent = h
 		Debris:AddItem(s, 2)
 		playSound(h, SOUND.chime, 0.5)
+		-- скипетр — жезл власти: король указывает им на игрока, и стража идёт его схватить;
+		-- взмах в пустоту отзывает стражу обратно к королю
+		if info.role ~= "king" then
+			return
+		end
+		local root = rootOf(p)
+		if not root then
+			return
+		end
+		local best, bestScore = nil, -1
+		for q in state.players do
+			local r = q ~= p and rootOf(q)
+			if r then
+				local off = r.Position - root.Position
+				local d = off.Magnitude
+				if d &lt; 70 and d &gt; 0.1 then
+					local dot = root.CFrame.LookVector:Dot(off.Unit)
+					if dot &gt; 0.8 then
+						local score = dot - d / 200
+						if score &gt; bestScore then
+							best, bestScore = q, score
+						end
+					end
+				end
+			end
+		end
+		if Npc.aliveCount() == 0 then
+			toast(p, "ScepterNoGuards")
+			return
+		end
+		if best then
+			state.minionTarget = best
+			toast(p, "ScepterOrder", best.DisplayName)
+			toast(best, "ScepterHunted")
+		else
+			state.minionTarget = nil
+			toast(p, "ScepterRecall")
+		end
 	elseif item == "book" then
 		if info.role == "librarian" and cooldown(p, "bookPay", 30) then
 			CurrencyService.add(p, 3)
@@ -10501,6 +10783,10 @@ local NOTES = { 0, 4, 7, 12, 7, 4, 5, 9, 12, 9, 7, 4, 2, 0 }
 
 function G.wireFurniture(prompts)
 	local seatsWired = {}
+	-- двери открываются удержанием кнопки взаимодействия
+	prompts("door", function(_p, pr)
+		Builder.toggleDoor(pr.Parent)
+	end)
 	prompts("sit", function(p, pr)
 		local seat = pr.Parent
 		local hum = humOf(p)
@@ -10734,7 +11020,9 @@ local function wirePrompts()
 		G.giveItem(p, "cuffs")
 	end)
 	prompts("scepter", function(p)
-		G.giveItem(p, "scepter")
+		if G.giveItem(p, "scepter") then
+			toast(p, "ScepterHint")
+		end
 	end)
 	prompts("cook", function(p)
 		local info = state.players[p]
@@ -11221,6 +11509,12 @@ function G.init(projectStore)
 						end
 					end
 					sync(p)
+					-- страховка: упавший за пределы замка возвращается во двор, а не падает вечно
+					local fr = rootOf(p)
+					if fr and fr.Position.Y &lt; -90 then
+						teleport(p, Builder.points.yard)
+						toast(p, "FellBack")
+					end
 					-- срок вышел — на свободу; сбежавшего узника возвращаем
 					if info.jailed then
 						if (info.jailUntil or 0) &lt;= os.time() then
@@ -11367,6 +11661,41 @@ local function dressMinion(model: Model)
 	end
 end
 
+-- Анимации ходьбы и покоя для NPC (стража, боты режима «Маньяк»)
+function Npc.animate(hum: Humanoid)
+	local animator = hum:FindFirstChildOfClass("Animator") or Instance.new("Animator", hum)
+	local function load(id)
+		local a = Instance.new("Animation")
+		a.AnimationId = id
+		local ok2, track = pcall(function()
+			return animator:LoadAnimation(a)
+		end)
+		return if ok2 then track else nil
+	end
+	local m = { hum = hum, walk = load(WALK_ANIM), idle = load(IDLE_ANIM), slash = load(SLASH_ANIM) }
+	if m.idle then
+		m.idle.Looped = true
+		m.idle:Play()
+	end
+	if m.walk then
+		m.walk.Looped = true
+	end
+	hum.Running:Connect(function(speed)
+		if not m.walk then
+			return
+		end
+		if speed &gt; 0.5 then
+			if not m.walk.IsPlaying then
+				m.walk:Play(0.15)
+			end
+			m.walk:AdjustSpeed(speed / 14)
+		elseif m.walk.IsPlaying then
+			m.walk:Stop(0.2)
+		end
+	end)
+	return m
+end
+
 function Npc.spawnMinion(at: CFrame, parent: Instance)
 	local desc = Instance.new("HumanoidDescription")
 	local skin = ({ rgb(234, 184, 146), rgb(204, 142, 105), rgb(160, 110, 80), rgb(110, 75, 55) })[math.random(1, 4)]
@@ -11404,36 +11733,12 @@ function Npc.spawnMinion(at: CFrame, parent: Instance)
 			root:SetNetworkOwner(nil)
 		end)
 	end
-	local animator = hum:FindFirstChildOfClass("Animator") or Instance.new("Animator", hum)
-	local function load(id)
-		local a = Instance.new("Animation")
-		a.AnimationId = id
-		local ok2, track = pcall(function()
-			return animator:LoadAnimation(a)
-		end)
-		return if ok2 then track else nil
-	end
-	local m = { model = model, hum = hum, walk = load(WALK_ANIM), idle = load(IDLE_ANIM), slash = load(SLASH_ANIM), lastHit = 0, path = nil, pathAt = 0, wp = 1 }
-	if m.idle then
-		m.idle.Looped = true
-		m.idle:Play()
-	end
-	if m.walk then
-		m.walk.Looped = true
-	end
-	hum.Running:Connect(function(speed)
-		if not m.walk then
-			return
-		end
-		if speed &gt; 0.5 then
-			if not m.walk.IsPlaying then
-				m.walk:Play(0.15)
-			end
-			m.walk:AdjustSpeed(speed / 14)
-		elseif m.walk.IsPlaying then
-			m.walk:Stop(0.2)
-		end
-	end)
+	local m = Npc.animate(hum)
+	m.model = model
+	m.lastHit = 0
+	m.path = nil
+	m.pathAt = 0
+	m.wp = 1
 	hum.Died:Connect(function()
 		task.delay(4, function()
 			model:Destroy()
@@ -11457,6 +11762,9 @@ local function goTo(m, goal: Vector3)
 	local root = rootOf(m.model)
 	if not root then
 		return
+	end
+	if Npc.doorHook then
+		Npc.doorHook(root.Position, 7)
 	end
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
@@ -11497,6 +11805,8 @@ local function goTo(m, goal: Vector3)
 		m.hum:MoveTo(w.Position)
 	end
 end
+
+Npc.goTo = goTo
 
 -- Один шаг поведения всех стражников. leader — король (или nil), target — цель атаки
 function Npc.stepMinions(leader: Player?, target: Model?, onHit: (Model, Humanoid) -&gt; ())
@@ -11728,11 +12038,11 @@ end
 local function mantle(f, torso, color)
 	weld(f, torso, { Name = "Mantle", Size = Vector3.new(2.3, 4.6, 0.14), Color = color, Material = MAT.SmoothPlastic, Reflectance = 0.05 }, CFrame.new(0, -1.5, 0.66) * CFrame.Angles(math.rad(7), 0, 0))
 	weld(f, torso, { Name = "MantleLining", Size = Vector3.new(2.2, 4.5, 0.05), Color = GOLD:Lerp(color, 0.3), Material = MAT.SmoothPlastic }, CFrame.new(0, -1.45, 0.58) * CFrame.Angles(math.rad(7), 0, 0))
-	weld(f, torso, { Name = "Ermine", Size = Vector3.new(2.4, 0.5, 1.4), Color = rgb(246, 244, 238), Material = MAT.SmoothPlastic }, CFrame.new(0, torso.Size.Y / 2 + 0.05, 0.05))
-	for k = 0, 5 do
-		weld(f, torso, { Name = "ErmineSpot", Size = Vector3.new(0.12, 0.22, 0.05), Color = rgb(20, 20, 20), Material = MAT.SmoothPlastic }, CFrame.new(-0.9 + k * 0.36, torso.Size.Y / 2 + 0.05, -0.68))
+	-- горностаевый воротник лежит только на плечах сзади: спереди мантии нет совсем
+	weld(f, torso, { Name = "Ermine", Size = Vector3.new(2.3, 0.45, 0.55), Color = rgb(246, 244, 238), Material = MAT.SmoothPlastic }, CFrame.new(0, torso.Size.Y / 2 - 0.05, 0.62))
+	for k = 0, 4 do
+		weld(f, torso, { Name = "ErmineSpot", Size = Vector3.new(0.12, 0.2, 0.05), Color = rgb(20, 20, 20), Material = MAT.SmoothPlastic }, CFrame.new(-0.8 + k * 0.4, torso.Size.Y / 2 - 0.1, 0.91))
 	end
-	weld(f, torso, { Name = "Clasp", Shape = Enum.PartType.Ball, Size = Vector3.new(0.4, 0.4, 0.4), Color = GOLD, Material = MAT.Metal }, CFrame.new(0, torso.Size.Y / 2 - 0.2, -torso.Size.Z / 2 - 0.15))
 end
 
 -- Причёска и шляпы аватара под короной скрыты, чтобы корона была видна всем
@@ -11965,6 +12275,13 @@ local function seat(parent: Instance, name: string, size: Vector3, cf: CFrame, c
 end
 Props.seat = seat
 
+-- Деталь-стержень между двумя точками (ножки, цепи, балки)
+local function rod(parent, name: string, a: Vector3, b: Vector3, thick: number, color: Color3, mat, extra)
+	local len = (b - a).Magnitude
+	return P(parent, name, Vector3.new(thick, thick, len), CFrame.lookAt((a + b) / 2, b), color, mat, extra)
+end
+Props.rod = rod
+
 local function model(parent: Instance, name: string): Model
 	local m = Instance.new("Model")
 	m.Name = name
@@ -11996,57 +12313,39 @@ end
 -- ---------------------------------------------------------------------------
 -- двери, окна, свет
 
-local doorNumber = 0
 
--- Дверной проём с рамой и одной или двумя створками. cf — центр проёма на полу,
--- LookVector перпендикулярен стене. Створки не мешают проходу: открываются у игрока
+-- Дверь замка: каменный проём, створки из досок с железными полосами и кольцом.
+-- Открывается удержанием кнопки (сервер поворачивает створки на петлях)
 function Props.door(parent, cf: CFrame, w: number, h: number, color: Color3?, double: boolean?)
 	local m = model(parent, "Door")
 	local wood = color or Props.WOOD
-	local frame = Props.WOOD_DARK
-	P(m, "Jamb", Vector3.new(0.7, h + 0.7, 1.6), cf * CFrame.new(-w / 2 - 0.35, (h + 0.7) / 2, 0), frame, M.Wood)
-	P(m, "Jamb", Vector3.new(0.7, h + 0.7, 1.6), cf * CFrame.new(w / 2 + 0.35, (h + 0.7) / 2, 0), frame, M.Wood)
-	P(m, "Head", Vector3.new(w + 2.2, 0.8, 1.7), cf * CFrame.new(0, h + 0.4, 0), frame, M.Wood)
-	P(m, "Cap", Vector3.new(w + 2.8, 0.3, 1.9), cf * CFrame.new(0, h + 0.95, 0), frame, M.Wood)
+	local stone = rgb(150, 142, 128)
+	P(m, "Jamb", Vector3.new(0.9, h + 1, 1.8), cf * CFrame.new(-w / 2 - 0.45, (h + 1) / 2, 0), stone, M.Limestone)
+	P(m, "Jamb", Vector3.new(0.9, h + 1, 1.8), cf * CFrame.new(w / 2 + 0.45, (h + 1) / 2, 0), stone, M.Limestone)
+	P(m, "Head", Vector3.new(w + 1.8, 1, 1.8), cf * CFrame.new(0, h + 0.5, 0), stone, M.Limestone)
+	P(m, "Keystone", Vector3.new(1.2, 1.4, 1.9), cf * CFrame.new(0, h + 0.8, 0), stone:Lerp(rgb(0, 0, 0), 0.1), M.Limestone)
 	local leaves = if double then { { -w / 2, w / 2, 1 }, { w / 2, w / 2, -1 } } else { { -w / 2, w, 1 } }
 	for _, lf in leaves do
 		local hingeX, lw, dir = lf[1], lf[2], lf[3]
 		local leaf = model(m, "Leaf")
 		local base = cf * CFrame.new(hingeX + dir * lw / 2, 0, 0)
-		P(leaf, "Slab", Vector3.new(lw - 0.1, h - 0.1, 0.32), base * CFrame.new(0, h / 2, 0), wood, M.Wood, nc())
-		-- филёнки с обеих сторон: две высокие и две низкие
+		local slabPart = P(leaf, "Slab", Vector3.new(lw - 0.1, h - 0.1, 0.34), base * CFrame.new(0, h / 2, 0), wood, M.WoodPlanks)
+		-- стража и боты строят путь сквозь закрытые двери и открывают их по дороге
+		local pm = Instance.new("PathfindingModifier")
+		pm.PassThrough = true
+		pm.Parent = slabPart
 		for _, side in { -1, 1 } do
-			for _, pz in { { 0.62, 0.42 }, { 0.2, 0.3 } } do
-				for _, px in { -0.22, 0.22 } do
-					local pw = lw * 0.36
-					local ph = h * pz[2]
-					P(leaf, "Panel", Vector3.new(pw, ph, 0.08), base * CFrame.new(px * lw, h * pz[1] + (if pz[1] &gt; 0.5 then 0 else 0.4), side * 0.19), wood:Lerp(Props.WOOD_DARK, 0.3), M.Wood, nc())
-				end
+			for _, y in { 0.22, 0.78 } do
+				P(leaf, "Strap", Vector3.new(lw - 0.3, 0.35, 0.06), base * CFrame.new(0, h * y, side * 0.2), Props.IRON, M.Metal, nc())
 			end
-			S(leaf, "Knob", 0.36, base * CFrame.new(-dir * (lw / 2 - 0.5), h * 0.45, side * 0.3), Props.GOLD, M.Metal, nc())
-		end
-		for _, hy in { 0.2, 0.8 } do
-			P(leaf, "Hinge", Vector3.new(0.15, 0.6, 0.4), base * CFrame.new(-dir * lw / 2, h * hy, 0), Props.IRON, M.Metal, nc())
+			C(leaf, "Ring", 0.08, 0.6, base * CFrame.new(-dir * (lw / 2 - 0.6), h * 0.48, side * 0.26) * CFrame.Angles(math.pi / 2, 0, 0), Props.IRON, M.Metal, nc())
 		end
 		leaf.WorldPivot = cf * CFrame.new(hingeX, 0, 0)
 		leaf:SetAttribute("Dir", dir)
 	end
-	-- табличка с номером, как в старом отеле
-	doorNumber += 1
-	local plate = P(m, "Plate", Vector3.new(1.6, 0.6, 0.06), cf * CFrame.new(0, h + 0.4, -0.88), Props.GOLD, M.Metal, nc())
-	local gui = Instance.new("SurfaceGui")
-	gui.Face = Enum.NormalId.Front
-	gui.CanvasSize = Vector2.new(160, 60)
-	gui.LightInfluence = 1
-	local t = Instance.new("TextLabel")
-	t.Size = UDim2.fromScale(1, 1)
-	t.BackgroundTransparency = 1
-	t.Text = string.format("%04d", doorNumber)
-	t.Font = Enum.Font.Garamond
-	t.TextScaled = true
-	t.TextColor3 = rgb(40, 28, 16)
-	t.Parent = gui
-	gui.Parent = plate
+	-- невидимая область с кнопкой «Открыть» по центру проёма
+	local trig = P(m, "DoorTrigger", Vector3.new(1, 1, 1), cf * CFrame.new(0, h * 0.45, 0), rgb(0, 0, 0), M.SmoothPlastic, nc({ Transparency = 1, CanQuery = true }))
+	mark(trig, "door", 0.6, 8)
 	pcall(function()
 		m.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 	end)
@@ -12066,7 +12365,7 @@ function Props.window(parent, cf: CFrame, w: number, h: number, thick: number)
 		local ww = w * (1 - k * 0.22)
 		P(m, "Arch", Vector3.new(ww, 0.5, thick + 0.2), cf * CFrame.new(0, h / 2 - 0.25 - (3 - k) * 0, 0) * CFrame.new(0, -0.5 * k + 0.5, 0), stone, M.Slate, nc())
 	end
-	P(m, "Glass", Vector3.new(w, h, 0.15), cf, rgb(150, 182, 206), M.Glass, nc({ Transparency = 0.55 }))
+	P(m, "Glass", Vector3.new(w, h, 0.15), cf, rgb(150, 182, 206), M.Glass, { Transparency = 0.55, CastShadow = false })
 	P(m, "FrameL", Vector3.new(0.35, h, 0.5), cf * CFrame.new(-w / 2, 0, 0), Props.WOOD_DARK, M.Wood)
 	P(m, "FrameR", Vector3.new(0.35, h, 0.5), cf * CFrame.new(w / 2, 0, 0), Props.WOOD_DARK, M.Wood)
 	P(m, "Mullion", Vector3.new(0.2, h, 0.35), cf, Props.WOOD_DARK, M.Wood, nc())
@@ -12081,8 +12380,8 @@ function Props.curtains(parent, cf: CFrame, w: number, h: number, color: Color3)
 	local m = model(parent, "Curtains")
 	P(m, "Rod", Vector3.new(w + 3, 0.2, 0.2), cf * CFrame.new(0, h / 2 + 1, -0.4), Props.GOLD, M.Metal, nc())
 	for _, s in { -1, 1 } do
-		for k = 0, 2 do
-			P(m, "Drape", Vector3.new(0.7, h + 1.6, 0.25), cf * CFrame.new(s * (w / 2 + 0.3 + k * 0.45), -0.2, -0.45 - (k % 2) * 0.12), color:Lerp(rgb(0, 0, 0), k * 0.08), M.SmoothPlastic, nc())
+		for k = 0, 1 do
+			P(m, "Drape", Vector3.new(0.9, h + 1.6, 0.25), cf * CFrame.new(s * (w / 2 + 0.4 + k * 0.6), -0.2, -0.45 - k * 0.12), color:Lerp(rgb(0, 0, 0), k * 0.1), M.SmoothPlastic, nc())
 		end
 		P(m, "Tie", Vector3.new(1.6, 0.25, 0.4), cf * CFrame.new(s * (w / 2 + 0.75), -h * 0.15, -0.6), Props.GOLD, M.Metal, nc())
 	end
@@ -12105,17 +12404,21 @@ function Props.sconce(parent, cf: CFrame, withLight: boolean?)
 end
 
 -- Подвесной светильник в духе старого отеля: штанга, абажур-колокол, лампа
+-- Подвесной железный фонарь со свечой. pos — центр фонаря, drop — длина цепи до потолка
 function Props.ceilingLamp(parent, pos: Vector3, drop: number?)
-	local m = model(parent, "CeilingLamp")
+	local m = model(parent, "Lantern")
 	local d = drop or 3
-	P(m, "Rod", Vector3.new(0.15, d, 0.15), CFrame.new(pos + Vector3.new(0, d / 2, 0)), Props.IRON, M.Metal, nc())
-	C(m, "Canopy", 0.3, 1, CFrame.new(pos + Vector3.new(0, d - 0.15, 0)), Props.GOLD, M.Metal, nc())
-	for k = 0, 2 do
-		C(m, "Shade", 0.45, 1.6 + k * 0.7, CFrame.new(pos - Vector3.new(0, k * 0.4, 0)), rgb(70, 40, 30), M.Metal, nc())
+	P(m, "Chain", Vector3.new(0.14, d, 0.14), CFrame.new(pos + Vector3.new(0, 0.9 + d / 2, 0)), Props.IRON, M.Metal, nc())
+	C(m, "Cap", 0.3, 1.5, CFrame.new(pos + Vector3.new(0, 0.95, 0)), Props.IRON, M.Metal, nc())
+	C(m, "Base", 0.25, 1.4, CFrame.new(pos - Vector3.new(0, 0.95, 0)), Props.IRON, M.Metal, nc())
+	for k = 0, 3 do
+		local a = k / 4 * math.pi * 2 + math.pi / 4
+		P(m, "Bar", Vector3.new(0.1, 1.9, 0.1), CFrame.new(pos + Vector3.new(math.cos(a) * 0.6, 0, math.sin(a) * 0.6)), Props.IRON, M.Metal, nc())
 	end
-local bulb = S(m, "Bulb", 0.7, CFrame.new(pos - Vector3.new(0, 1, 0)), rgb(255, 220, 170), M.Neon, nc({ CanQuery = true }))
+	P(m, "Glass", Vector3.new(1.05, 1.6, 1.05), CFrame.new(pos), rgb(255, 214, 150), M.Glass, nc({ Transparency = 0.5 }))
+	local bulb = S(m, "Bulb", 0.5, CFrame.new(pos), rgb(255, 210, 140), M.Neon, nc({ CanQuery = true }))
 	mark(bulb, "lamp", 0, 16)
-	light(bulb, 26, 1.4)
+	light(bulb, 24, 1.3)
 	return m
 end
 
@@ -12130,12 +12433,11 @@ function Props.chandelier(parent, pos: Vector3, size: number?, drop: number?)
 	for ring = 1, (if r &gt; 4 then 2 else 1) do
 		local rr = r * ring / (if r &gt; 4 then 2 else 1)
 		local y = -0.2 - (ring - 1) * 1.2
-		local n = math.max(6, math.floor(rr * 2.5))
+		local n = 6
 		P(m, "Ring", Vector3.new(0.25, rr * 2, rr * 2), CFrame.new(pos + Vector3.new(0, y, 0)) * CFrame.Angles(0, 0, math.pi / 2), Props.GOLD, M.Metal, nc({ Shape = CYL }))
 		for k = 0, n - 1 do
 			local a = k / n * math.pi * 2
 			local cp = pos + Vector3.new(math.cos(a) * rr, y + 0.35, math.sin(a) * rr)
-			C(m, "Cup", 0.2, 0.45, CFrame.new(cp), Props.GOLD, M.Metal, nc())
 			C(m, "Candle", 0.6, 0.22, CFrame.new(cp + Vector3.new(0, 0.4, 0)), rgb(245, 238, 220), M.SmoothPlastic, nc())
 			S(m, "Flame", 0.22, CFrame.new(cp + Vector3.new(0, 0.82, 0)), rgb(255, 190, 90), M.Neon, nc())
 		end
@@ -12272,7 +12574,7 @@ function Props.bookshelf(parent, cf: CFrame, w: number, h: number, seed: number,
 		P(m, "Board", Vector3.new(w - 0.7, 0.18, d - 0.2), cf * CFrame.new(0, y, 0), Props.WOOD, M.Wood)
 		local x = -w / 2 + 0.45
 		while x &lt; w / 2 - 0.9 do
-			local bw = if coarse then rnd:NextNumber(1, 1.9) else rnd:NextNumber(0.25, 0.55)
+			local bw = if coarse then rnd:NextNumber(2, 3.2) else rnd:NextNumber(0.9, 1.5)
 			local bh = rnd:NextNumber(1.3, 2)
 			if rnd:NextNumber() &lt; 0.08 then
 				x += 0.8 -- пустое место на полке
@@ -12354,8 +12656,7 @@ mark(P(m, "Body", Vector3.new(1.8, 2.2, 1.6), cf * CFrame.new(0, 1.3, 0), Props.
 	-- лампа с абажуром
 	C(m, "LampBase", 0.2, 0.7, cf * CFrame.new(0, 2.63, 0.1), Props.GOLD, M.Metal, nc())
 	C(m, "LampStem", 1, 0.15, cf * CFrame.new(0, 3.2, 0.1), Props.GOLD, M.Metal, nc())
-	local shade = C(m, "LampShade", 0.8, 1, cf * CFrame.new(0, 3.9, 0.1), rgb(240, 214, 170), M.Neon, nc({ Transparency = 0.35 }))
-	light(shade, 9, 0.6)
+	C(m, "LampShade", 0.8, 1, cf * CFrame.new(0, 3.9, 0.1), rgb(240, 214, 170), M.Neon, nc({ Transparency = 0.35 }))
 	return m
 end
 
@@ -12642,12 +12943,15 @@ end
 -- Глобус на подставке
 function Props.globe(parent, cf: CFrame)
 	local m = model(parent, "Globe")
+	local hub = (cf * CFrame.new(0, 2.3, 0)).Position
 	for k = 0, 2 do
 		local a = k / 3 * math.pi * 2
-		P(m, "Leg", Vector3.new(0.2, 2.6, 0.2), cf * CFrame.new(math.cos(a) * 0.6, 1.3, math.sin(a) * 0.6) * CFrame.Angles(math.cos(a) * 0.2, 0, -math.sin(a) * 0.2), Props.WOOD_DARK, M.Wood)
+		local foot = (cf * CFrame.new(math.cos(a) * 1.1, 0.05, math.sin(a) * 1.1)).Position
+		rod(m, "Leg", foot, hub, 0.22, Props.WOOD_DARK, M.Wood)
 	end
-	P(m, "Meridian", Vector3.new(0.12, 2.6, 2.6), cf * CFrame.new(0, 3.6, 0) * CFrame.Angles(0, 0, math.rad(23)), Props.GOLD, M.Metal, { Shape = CYL, CanCollide = false })
-mark(S(m, "Sphere", 2.2, cf * CFrame.new(0, 3.6, 0), rgb(70, 110, 150), M.SmoothPlastic), "spin")
+	C(m, "Stem", 0.6, 0.3, CFrame.new(hub + Vector3.new(0, 0.3, 0)), Props.WOOD_DARK, M.Wood)
+	P(m, "Meridian", Vector3.new(0.12, 2.7, 2.7), cf * CFrame.new(0, 3.6, 0) * CFrame.Angles(0, math.pi / 2, math.rad(23)), Props.GOLD, M.Metal, { Shape = CYL, CanCollide = false })
+	mark(S(m, "Sphere", 2.2, cf * CFrame.new(0, 3.6, 0), rgb(70, 110, 150), M.SmoothPlastic), "spin")
 	for k = 0, 3 do
 		S(m, "Land", 0.9, cf * CFrame.new(0, 3.6, 0) * CFrame.Angles(k, k * 1.7, 0) * CFrame.new(0, 0, -0.75), rgb(120, 150, 80), M.SmoothPlastic, nc())
 	end
@@ -12832,18 +13136,19 @@ function Props.prepTable(parent, cf: CFrame)
 end
 
 -- Полка с банками и посудой (на стене)
+-- Полка с банками на стене (cf — на стене, LookVector в комнату, полки уходят в комнату)
 function Props.shelfJars(parent, cf: CFrame, w: number)
 	local m = model(parent, "Shelves")
 	for k = 0, 2 do
 		local y = 5 + k * 2
-		P(m, "Board", Vector3.new(w, 0.2, 1.2), cf * CFrame.new(0, y, 0.6), Props.WOOD, M.Wood)
+		P(m, "Board", Vector3.new(w, 0.2, 1.2), cf * CFrame.new(0, y, -0.6), Props.WOOD, M.Wood)
 		for x = -w / 2 + 0.6, w / 2 - 0.6, 0.9 do
 			local h = 0.6 + ((x * 3 + k) % 3) * 0.25
-			C(m, "Jar", h, 0.55, cf * CFrame.new(x, y + 0.1 + h / 2, 0.6), Color3.fromHSV(((x + k) * 0.13) % 1, 0.4, 0.7), M.Glass, nc({ Transparency = 0.2 }))
+			C(m, "Jar", h, 0.55, cf * CFrame.new(x, y + 0.1 + h / 2, -0.6), Color3.fromHSV(((x + k) * 0.13) % 1, 0.4, 0.7), M.Glass, nc({ Transparency = 0.2 }))
 		end
 	end
 	for _, x in { -w / 2 + 0.3, w / 2 - 0.3 } do
-		P(m, "Bracket", Vector3.new(0.2, 4.4, 1.2), cf * CFrame.new(x, 7, 0.6), Props.WOOD_DARK, M.Wood)
+		P(m, "Bracket", Vector3.new(0.2, 4.4, 1.2), cf * CFrame.new(x, 7, -0.6), Props.WOOD_DARK, M.Wood)
 	end
 	return m
 end
@@ -12851,11 +13156,14 @@ end
 -- Вешалка с медной посудой
 function Props.panRack(parent, cf: CFrame)
 	local m = model(parent, "PanRack")
-	P(m, "Bar", Vector3.new(5, 0.3, 0.3), cf * CFrame.new(0, 7.5, 0.4), Props.IRON, M.Metal, nc())
+	P(m, "Bar", Vector3.new(5, 0.3, 0.3), cf * CFrame.new(0, 7.5, -0.5), Props.IRON, M.Metal, nc())
+	for _, x in { -2.4, 2.4 } do
+		P(m, "Holder", Vector3.new(0.2, 0.2, 0.6), cf * CFrame.new(x, 7.5, -0.25), Props.IRON, M.Metal, nc())
+	end
 	for k = 0, 4 do
 		local x = -2 + k
-		P(m, "Hook", Vector3.new(0.08, 0.6, 0.08), cf * CFrame.new(x, 7.1, 0.4), Props.IRON, M.Metal, nc())
-		C(m, "Pan", 0.15, 0.9 + (k % 2) * 0.3, cf * CFrame.new(x, 6.3, 0.3) * CFrame.Angles(math.pi / 2, 0, 0), rgb(184, 115, 70), M.Metal, nc())
+		P(m, "Hook", Vector3.new(0.08, 0.6, 0.08), cf * CFrame.new(x, 7.1, -0.5), Props.IRON, M.Metal, nc())
+		C(m, "Pan", 0.15, 0.9 + (k % 2) * 0.3, cf * CFrame.new(x, 6.3, -0.55) * CFrame.Angles(math.pi / 2, 0, 0), rgb(184, 115, 70), M.Metal, nc())
 	end
 	return m
 end
@@ -13037,12 +13345,25 @@ end
 -- Телескоп на треноге
 function Props.telescope(parent, cf: CFrame)
 	local m = model(parent, "Telescope")
+	local head = (cf * CFrame.new(0, 4.2, 0)).Position
 	for k = 0, 2 do
 		local a = k / 3 * math.pi * 2
-		P(m, "Leg", Vector3.new(0.2, 4, 0.2), cf * CFrame.new(math.cos(a) * 0.9, 2, math.sin(a) * 0.9) * CFrame.Angles(math.cos(a) * 0.25, 0, -math.sin(a) * 0.25), Props.WOOD_DARK, M.Wood)
+		local foot = (cf * CFrame.new(math.cos(a) * 1.4, 0.05, math.sin(a) * 1.4)).Position
+		rod(m, "Leg", foot, head, 0.22, Props.WOOD_DARK, M.Wood)
 	end
-	mark(C(m, "Tube", 5, 0.8, cf * CFrame.new(0, 4.6, 0) * CFrame.Angles(math.rad(-50), 0, 0) * CFrame.Angles(math.pi / 2, 0, 0), Props.GOLD, M.Metal), "telescope")
-	C(m, "Lens", 0.2, 1.1, cf * CFrame.new(0, 6.5, -1.6) * CFrame.Angles(math.rad(-50), 0, 0) * CFrame.Angles(math.pi / 2, 0, 0), Props.IRON, M.Metal, nc())
+	S(m, "Mount", 0.6, CFrame.new(head), Props.IRON, M.Metal)
+	-- труба лежит на креплении и смотрит вверх, вперёд
+	local dir = (cf.LookVector * math.cos(math.rad(40)) + Vector3.new(0, math.sin(math.rad(40)), 0)).Unit
+	local a, b = head - dir * 1.4, head + dir * 3.6
+	local tube = rod(m, "Tube", a, b, 0.7, Props.GOLD, M.Metal)
+	tube.Shape = CYL
+	tube.Size = Vector3.new(5, 0.7, 0.7)
+	tube.CFrame = CFrame.lookAt((a + b) / 2, b) * CFrame.Angles(0, math.pi / 2, 0)
+	mark(tube, "telescope")
+	local lens = P(m, "Lens", Vector3.new(0.25, 0.95, 0.95), CFrame.lookAt(b, b + dir) * CFrame.Angles(0, math.pi / 2, 0), Props.IRON, M.Metal, nc())
+	lens.Shape = CYL
+	local eye = P(m, "Eyepiece", Vector3.new(0.6, 0.35, 0.35), CFrame.lookAt(a, a - dir) * CFrame.Angles(0, math.pi / 2, 0), Props.IRON, M.Metal, nc())
+	eye.Shape = CYL
 	return m
 end
 
@@ -13071,7 +13392,7 @@ function Props.feastTable(parent, cf: CFrame, len: number, chairs: boolean)
 			C(m, "Goblet", 0.6, 0.35, cf * CFrame.new(s * 1.1, top + 0.35, z + 0.9), Props.GOLD, M.Metal, nc())
 			P(m, "Fork", Vector3.new(0.1, 0.04, 0.9), cf * CFrame.new(s * 1.5 - 0.9, top + 0.05, z), rgb(200, 202, 210), M.Metal, nc())
 			if chairs then
-				Props.chair(m, cf * CFrame.new(s * 3.6, 0, z) * CFrame.Angles(0, if s &gt; 0 then -math.pi / 2 else math.pi / 2, 0))
+				Props.chair(m, cf * CFrame.new(s * 3.6, 0, z) * CFrame.Angles(0, if s &gt; 0 then math.pi / 2 else -math.pi / 2, 0))
 			end
 		end
 		if k % 2 == 1 then
@@ -13293,9 +13614,9 @@ return Props
           <Properties>
             <string name="Name">Rooms</string>
             <ProtectedString name="Source">--!nonstrict
--- Обстановка комнат по их назначению. Мебель ставится в «слоты» вдоль стен: по два на
--- каждый 32-studs участок стены, в стороне от середины, где двери и окна. Центр комнаты
--- свободен для ковра и стола, поэтому предметы не налезают друг на друга и на проходы
+-- Обстановка комнат по их назначению. Мебель ставится зеркальными парами вдоль стен:
+-- каждая стена симметрична относительно своей середины (дверь, окно, камин, кровать).
+-- Занятые места запоминаются, поэтому предметы не налезают друг на друга и на проходы
 
 local MAT = require(game:GetService("ReplicatedStorage").Workshop.Shared.Materials)
 local Props = require(script.Parent.Props)
@@ -13307,9 +13628,9 @@ local P, C = Props.P, Props.C
 
 -- Стили: обои, пол, низ стены. Пол везде каменный, дерево только в отделке
 Rooms.STYLE = {
-	hall = { paper = rgb(92, 40, 42), wall = MAT.Plaster, floor = rgb(150, 140, 126), mat = MAT.Marble, rug = rgb(120, 22, 30) },
-	grand_hall = { paper = rgb(200, 188, 166), wall = MAT.Limestone, floor = rgb(196, 188, 176), mat = MAT.Marble, rug = rgb(120, 22, 30) },
-	throne = { paper = rgb(120, 30, 36), wall = MAT.Plaster, floor = rgb(206, 198, 186), mat = MAT.Marble, rug = rgb(140, 20, 28) },
+	hall = { paper = rgb(156, 146, 130), wall = MAT.Limestone, plinth = true, floor = rgb(150, 140, 126), mat = MAT.Slate, rug = rgb(120, 22, 30) },
+	grand_hall = { paper = rgb(186, 176, 158), wall = MAT.Limestone, plinth = true, floor = rgb(196, 188, 176), mat = MAT.Marble, rug = rgb(120, 22, 30) },
+	throne = { paper = rgb(176, 166, 150), wall = MAT.Limestone, plinth = true, floor = rgb(206, 198, 186), mat = MAT.Marble, rug = rgb(140, 20, 28) },
 	bedroom = { paper = rgb(52, 74, 62), wall = MAT.Plaster, floor = rgb(128, 120, 110), mat = MAT.Slate, rug = rgb(110, 40, 40) },
 	guest_suite = { paper = rgb(66, 58, 90), wall = MAT.Plaster, floor = rgb(128, 120, 110), mat = MAT.Slate, rug = rgb(60, 50, 100) },
 	study = { paper = rgb(104, 70, 46), wall = MAT.WoodPlanks, floor = rgb(120, 112, 102), mat = MAT.Granite, rug = rgb(90, 30, 30) },
@@ -13317,26 +13638,26 @@ Rooms.STYLE = {
 	lounge = { paper = rgb(70, 34, 50), wall = MAT.Plaster, floor = rgb(150, 140, 126), mat = MAT.Granite, rug = rgb(90, 30, 60) },
 	music = { paper = rgb(44, 58, 84), wall = MAT.Plaster, floor = rgb(176, 168, 156), mat = MAT.Marble, rug = rgb(120, 22, 30) },
 	reading = { paper = rgb(96, 64, 42), wall = MAT.WoodPlanks, floor = rgb(120, 112, 102), mat = MAT.Slate, rug = rgb(40, 70, 50) },
-	trophy = { paper = rgb(130, 72, 56), wall = MAT.Brick, floor = rgb(110, 104, 98), mat = MAT.Slate, rug = rgb(60, 40, 30) },
+	trophy = { paper = rgb(150, 140, 124), wall = MAT.Limestone, plinth = true, floor = rgb(110, 104, 98), mat = MAT.Slate, rug = rgb(60, 40, 30) },
 	gallery = { paper = rgb(36, 50, 70), wall = MAT.Plaster, floor = rgb(196, 188, 176), mat = MAT.Marble, rug = rgb(120, 22, 30) },
 	nursery = { paper = rgb(150, 170, 186), wall = MAT.Plaster, floor = rgb(176, 168, 156), mat = MAT.Marble, rug = rgb(200, 150, 170) },
 	wardrobe = { paper = rgb(100, 70, 90), wall = MAT.Plaster, floor = rgb(150, 140, 126), mat = MAT.Marble, rug = rgb(110, 50, 80) },
 	bath = { paper = rgb(196, 214, 218), wall = MAT.CeramicTiles, floor = rgb(220, 218, 212), mat = MAT.CeramicTiles, rug = rgb(70, 110, 140) },
-	kitchen = { paper = rgb(150, 92, 70), wall = MAT.Brick, floor = rgb(120, 110, 98), mat = MAT.CeramicTiles, rug = nil },
-	dining = { paper = rgb(100, 28, 32), wall = MAT.Plaster, floor = rgb(150, 140, 126), mat = MAT.Marble, rug = rgb(120, 22, 30) },
+	kitchen = { paper = rgb(140, 120, 100), wall = MAT.Brick, plinth = true, floor = rgb(120, 110, 98), mat = MAT.Cobblestone, rug = nil },
+	dining = { paper = rgb(150, 138, 120), wall = MAT.Limestone, plinth = true, floor = rgb(150, 140, 126), mat = MAT.Slate, rug = rgb(120, 22, 30) },
 	servants = { paper = rgb(140, 128, 108), wall = MAT.Plaster, floor = rgb(110, 104, 98), mat = MAT.Slate, rug = rgb(100, 80, 60) },
-	barracks = { paper = rgb(118, 92, 80), wall = MAT.Brick, floor = rgb(100, 96, 90), mat = MAT.Cobblestone, rug = nil },
-	training = { paper = rgb(176, 166, 148), wall = MAT.Limestone, floor = rgb(120, 114, 106), mat = MAT.Pavement, rug = nil },
-	chapel = { paper = rgb(214, 204, 184), wall = MAT.Limestone, floor = rgb(206, 198, 186), mat = MAT.Marble, rug = rgb(120, 22, 30) },
-	chapel_small = { paper = rgb(214, 204, 184), wall = MAT.Limestone, floor = rgb(206, 198, 186), mat = MAT.Marble, rug = rgb(120, 22, 30) },
+	barracks = { paper = rgb(130, 124, 114), wall = MAT.Cobblestone, plinth = true, floor = rgb(100, 96, 90), mat = MAT.Cobblestone, rug = nil },
+	training = { paper = rgb(176, 166, 148), wall = MAT.Limestone, plinth = true, floor = rgb(120, 114, 106), mat = MAT.Pavement, rug = nil },
+	chapel = { paper = rgb(214, 204, 184), wall = MAT.Limestone, plinth = true, floor = rgb(206, 198, 186), mat = MAT.Marble, rug = rgb(120, 22, 30) },
+	chapel_small = { paper = rgb(214, 204, 184), wall = MAT.Limestone, plinth = true, floor = rgb(206, 198, 186), mat = MAT.Marble, rug = rgb(120, 22, 30) },
 	shop = { paper = rgb(120, 84, 54), wall = MAT.WoodPlanks, floor = rgb(150, 140, 126), mat = MAT.Limestone, rug = rgb(60, 80, 40) },
 	casino = { paper = rgb(60, 20, 50), wall = MAT.Plaster, floor = rgb(40, 34, 40), mat = MAT.Marble, rug = rgb(110, 20, 60) },
-	stairs = { paper = rgb(92, 40, 42), wall = MAT.Plaster, floor = rgb(150, 140, 126), mat = MAT.Marble, rug = rgb(120, 22, 30) },
+	stairs = { paper = rgb(156, 146, 130), wall = MAT.Limestone, plinth = true, floor = rgb(150, 140, 126), mat = MAT.Slate, rug = rgb(120, 22, 30) },
 	stairs_down = { paper = rgb(80, 74, 66), wall = MAT.Cobblestone, floor = rgb(120, 114, 106), mat = MAT.Slate, rug = nil },
-	landing = { paper = rgb(92, 40, 42), wall = MAT.Plaster, floor = rgb(150, 140, 126), mat = MAT.Marble, rug = rgb(120, 22, 30) },
+	landing = { paper = rgb(156, 146, 130), wall = MAT.Limestone, plinth = true, floor = rgb(150, 140, 126), mat = MAT.Slate, rug = rgb(120, 22, 30) },
 	observatory = { paper = rgb(30, 34, 60), wall = MAT.Plaster, floor = rgb(120, 112, 102), mat = MAT.Slate, rug = rgb(30, 40, 80) },
 	treasury = { paper = rgb(200, 186, 150), wall = MAT.Marble, floor = rgb(196, 188, 176), mat = MAT.Marble, rug = rgb(120, 22, 30) },
-	council = { paper = rgb(98, 66, 44), wall = MAT.WoodPlanks, floor = rgb(150, 140, 126), mat = MAT.Marble, rug = rgb(120, 22, 30) },
+	council = { paper = rgb(160, 150, 134), wall = MAT.Limestone, plinth = true, floor = rgb(150, 140, 126), mat = MAT.Marble, rug = rgb(120, 22, 30) },
 	map_room = { paper = rgb(110, 76, 50), wall = MAT.WoodPlanks, floor = rgb(150, 140, 126), mat = MAT.Granite, rug = rgb(60, 50, 30) },
 	royal_dining = { paper = rgb(100, 28, 32), wall = MAT.Plaster, floor = rgb(196, 188, 176), mat = MAT.Marble, rug = rgb(120, 22, 30) },
 	king = { paper = rgb(110, 22, 30), wall = MAT.Plaster, floor = rgb(206, 198, 186), mat = MAT.Marble, rug = rgb(150, 20, 28) },
@@ -13353,30 +13674,35 @@ function Rooms.style(kind: string)
 	return Rooms.STYLE[kind] or Rooms.STYLE.default
 end
 
--- Слоты у стен: два на каждый участок, на расстоянии 9.5 от середины участка
+-- ---------------------------------------------------------------------------
+-- Расстановка. Каждый 32-studs участок стены — одна композиция, симметричная
+-- относительно его середины: посередине дверь, окно или главный предмет (камин,
+-- кровать, алтарь), по бокам — одинаковая пара предметов на ±9 studs. Всё, что
+-- ставится в пару, ставится зеркально в оба места
+
+local PAIR_OFF = 9
+
+-- пары мест у стен в постоянном порядке (сначала глухие стены, потом с проёмами)
 local function slots(room)
 	local list = {}
 	for si, seg in room.segs do
-		for _, off in { -9, 9 } do
-			local p = seg.pos + seg.tangent * off
-			table.insert(list, { cf = CFrame.lookAt(p, p + seg.inward), seg = seg, used = false, room = room, index = si * 2 + (if off &gt; 0 then 1 else 0) })
-		end
+		local base = CFrame.lookAt(seg.pos, seg.pos + seg.inward)
+		table.insert(list, {
+			seg = seg,
+			room = room,
+			index = si,
+			used = false,
+			L = { cf = base * CFrame.new(-PAIR_OFF, 0, 0), side = -1, seg = seg, room = room },
+			R = { cf = base * CFrame.new(PAIR_OFF, 0, 0), side = 1, seg = seg, room = room },
+		})
 	end
-	-- порядок перемешан, но одинаковый при каждом запуске
 	table.sort(list, function(a, b)
+		local sa, sb = if a.seg.opening then 1 else 0, if b.seg.opening then 1 else 0
+		if sa ~= sb then
+			return sa &lt; sb
+		end
 		return (a.index * 7919) % 101 &lt; (b.index * 7919) % 101
 	end)
-	return list
-end
-
--- Участки стен без дверей и окон (для каминов, алтарей, больших картин)
-local function solidWalls(room)
-	local list = {}
-	for _, seg in room.segs do
-		if not seg.opening then
-			table.insert(list, seg)
-		end
-	end
 	return list
 end
 
@@ -13397,33 +13723,60 @@ local function hits(occ, r)
 	return false
 end
 
--- занять место в центре комнаты (столы, диваны), чтобы мебель у стен туда не заходила
+-- занять место в середине комнаты (столы, диваны), чтобы мебель у стен туда не заходила
 local function occupy(room, cf: CFrame, w: number, d: number)
 	room.occ = room.occ or {}
 	table.insert(room.occ, rectOf(cf, w, d))
 end
 
--- первый свободный слот, куда помещается предмет w × d (спиной к стене)
-local function take(list, w: number?, d: number?)
-	local ww, dd = w or 6, d or 3
-	for _, s in list do
-		if not s.used then
-			local room = s.room
+-- свободная пара мест, куда с обеих сторон помещается предмет w × d (спиной к стене)
+local function take(list, w: number, d: number, openingOnly: boolean?)
+	for _, pair in list do
+		if not pair.used and (not openingOnly or pair.seg.opening) then
+			local room = pair.room
 			room.occ = room.occ or {}
-			local r = rectOf(s.cf * CFrame.new(0, 0, -(dd / 2 + 0.35)), ww, dd)
-			if not hits(room.occ, r) then
-				s.used = true
-				table.insert(room.occ, r)
-				return s
+			local rl = rectOf(pair.L.cf * CFrame.new(0, 0, -(d / 2 + 0.35)), w, d)
+			local rr = rectOf(pair.R.cf * CFrame.new(0, 0, -(d / 2 + 0.35)), w, d)
+			if not hits(room.occ, rl) and not hits(room.occ, rr) then
+				pair.used = true
+				table.insert(room.occ, rl)
+				table.insert(room.occ, rr)
+				return pair
 			end
 		end
 	end
 	return nil
 end
 
--- поставить предмет глубиной d в слот (спиной к стене)
-local function at(slot, depth: number, extra: CFrame?)
-	return slot.cf * CFrame.new(0, 0, -(depth / 2 + 0.35)) * (extra or CFrame.new())
+-- оба места пары (или пусто, если пары нет)
+local function sides(pair)
+	if not pair then
+		return {}
+	end
+	return { pair.L, pair.R }
+end
+
+-- середина глухого участка стены для главного предмета (камин, кровать, алтарь)
+local function middle(room, list, w: number, d: number)
+	for _, pair in list do
+		if not pair.seg.opening and not pair.mid then
+			local cf = CFrame.lookAt(pair.seg.pos, pair.seg.pos + pair.seg.inward)
+			room.occ = room.occ or {}
+			local r = rectOf(cf * CFrame.new(0, 0, -(d / 2 + 0.35)), w, d)
+			if not hits(room.occ, r) then
+				pair.mid = true
+				table.insert(room.occ, r)
+				return { cf = cf, side = 0, seg = pair.seg, room = room }
+			end
+		end
+	end
+	return nil
+end
+
+-- место предмета глубиной depth спиной к стене; ox, oy, oz и yaw зеркалятся у правого места
+local function at(slot, depth: number, ox: number?, oy: number?, oz: number?, yaw: number?)
+	local m = if slot.side == 1 then -1 else 1
+	return slot.cf * CFrame.new((ox or 0) * m, oy or 0, -(depth / 2 + 0.35) + (oz or 0)) * CFrame.Angles(0, (yaw or 0) * m, 0)
 end
 
 local function onWall(slot, y: number)
@@ -13443,7 +13796,17 @@ local function paintingAbove(parent, slot, seed)
 	Props.painting(parent, onWall(slot, 8.5), 5, 4, seed)
 end
 
--- свет комнаты: люстра или лампа в центре каждой клетки (не больше четырёх)
+-- камин посередине глухой стены
+local function fireplace(parent, room, list)
+	local fp = middle(room, list, 8.4, 4)
+	if fp then
+		Props.fireplace(parent, fp.cf * CFrame.new(0, 0, -1.7), room.h)
+	end
+	return fp
+end
+
+-- свет комнаты: люстра или фонарь в центре каждой клетки (не больше четырёх).
+-- Цепь доходит до потолка (низ потолка — y + h - 0.25)
 local function lights(parent, room, chandelier: boolean?)
 	local n = 0
 	for _, c in room.cells do
@@ -13451,25 +13814,25 @@ local function lights(parent, room, chandelier: boolean?)
 		if n &gt; 4 then
 			break
 		end
-		local pos = Vector3.new(c.x, room.y + room.h - 4, c.z)
 		if chandelier then
-			Props.chandelier(parent, pos, 3, 3)
+			Props.chandelier(parent, Vector3.new(c.x, room.y + room.h - 4, c.z), 3, 4)
 		else
-			Props.ceilingLamp(parent, pos + Vector3.new(0, 0.5, 0), 3)
+			Props.ceilingLamp(parent, Vector3.new(c.x, room.y + room.h - 3.5, c.z), 3)
 		end
 	end
 end
 
--- бра на двух участках стены по сторонам от проёма
+-- бра у углов участков стены (±13 от середины): дальше от пар мебели, симметрично.
+-- Светит только первое, остальные — украшение (меньше источников света)
 local function sconces(parent, room, count: number)
 	local n = 0
 	for _, seg in room.segs do
 		if n &gt;= count then
 			break
 		end
-		for _, off in { -6.8, 6.8 } do
-			local p = seg.pos + seg.tangent * off + Vector3.new(0, 8, 0)
-			Props.sconce(parent, CFrame.lookAt(p, p + seg.inward), n &lt; 2)
+		for _, off in { -13, 13 } do
+			local p = seg.pos + seg.tangent * off + Vector3.new(0, 8.5, 0)
+			Props.sconce(parent, CFrame.lookAt(p, p + seg.inward), n &lt; 1)
 			n += 1
 		end
 	end
@@ -13482,139 +13845,70 @@ local function rugCenter(parent, room, st, w, d)
 	end
 end
 
+-- оставшиеся пустые пары заполняются, чтобы стены не были голыми
+local function fill(parent, list, kind: string?)
+	local k = 0
+	for _, pair in list do
+		if not pair.used then
+			k += 1
+			local p2 = take({ pair }, 3, 3)
+			if p2 then
+				for _, slot in sides(p2) do
+					if kind == "stone" then
+						Props.barrel(parent, at(slot, 2.8))
+					else
+						Props.plant(parent, at(slot, 1.8), true)
+						paintingAbove(parent, slot, pair.index + k)
+					end
+				end
+			end
+		end
+	end
+end
+
 -- ---------------------------------------------------------------------------
 
 local D = {}
+
+-- кровать изголовьем к середине глухой стены, по бокам тумбочки
+local function bedOnWall(parent, room, list, ctx, color, royal: boolean?)
+	local w, d = if royal then 8 else 6, if royal then 9.8 else 8.8
+	local spot = middle(room, list, w + 5, d)
+	if spot then
+		local _, blanket = Props.bed(parent, spot.cf * CFrame.new(0, 0, -(d / 2 + 0.2)), color, royal)
+		ctx.prompt(blanket, "rest", 1.5)
+		for _, sx in { -1, 1 } do
+			Props.nightstand(parent, spot.cf * CFrame.new(sx * (w / 2 + 1.3), 0, -1.2))
+		end
+		return true
+	end
+	-- глухой стены нет: две кровати парой
+	for _, slot in sides(take(list, 6, 9)) do
+		local _, blanket = Props.bed(parent, at(slot, 8.5), color, royal)
+		ctx.prompt(blanket, "rest", 1.5)
+	end
+	return false
+end
 
 D.bedroom = function(parent, room, ctx)
 	local st = Rooms.style(room.kind)
 	local s = slots(room)
 	rugCenter(parent, room, st, 14, 10)
-	local slot = take(s, 5.8, 9)
-	if slot then
-		local _, blanket = Props.bed(parent, at(slot, 8.5), Color3.fromHSV((room.id * 0.13) % 1, 0.45, 0.5))
-		ctx.prompt(blanket, "rest", 1.5)
-	end
-	slot = take(s, 5.2, 2.8)
-	if slot then
+	bedOnWall(parent, room, s, ctx, Color3.fromHSV((room.id * 0.13) % 1, 0.45, 0.5))
+	fireplace(parent, room, s)
+	for _, slot in sides(take(s, 5.2, 2.8)) do
 		Props.wardrobe(parent, at(slot, 2.4))
 	end
-	slot = take(s, 5.6, 2.2)
-	if slot then
+	for _, slot in sides(take(s, 5.6, 2.2)) do
 		Props.dresser(parent, at(slot, 1.8), 5, room.id)
 		paintingAbove(parent, slot, room.id)
 	end
-	slot = take(s, 5.4, 5.6)
-	if slot then
-		Props.desk(parent, at(slot, 2.6))
-	end
-	slot = take(s, 9, 3)
-	if slot then
+	for _, slot in sides(take(s, 3.4, 3)) do
 		Props.armchair(parent, at(slot, 2.8), rgb(110, 40, 40))
-		Props.nightstand(parent, at(slot, 1.6, CFrame.new(3.2, 0, 0)))
 	end
-	slot = take(s, 2.2, 2.2)
-	if slot then
-		Props.plant(parent, at(slot, 1.8))
-		paintingAbove(parent, slot, room.id + 3)
-	end
-	local walls = solidWalls(room)
-	if walls[1] then
-		local p = walls[1].pos
-		Props.fireplace(parent, CFrame.lookAt(p, p + walls[1].inward) * CFrame.new(0, 0, -1.7), room.h)
-	end
+	fill(parent, s)
 	lights(parent, room)
 	sconces(parent, room, 2)
-end
-D.guest_suite = function(parent, room, ctx)
-	local c = center(room)
-	occupy(room, c * CFrame.new(0, 0, 2), 9, 7)
-	Props.sofa(parent, c * CFrame.new(0, 0, 4), rgb(70, 60, 110))
-	Props.coffeeTable(parent, c)
-	D.bedroom(parent, room, ctx)
-end
-
-D.study = function(parent, room, ctx)
-	local st = Rooms.style(room.kind)
-	local s = slots(room)
-	rugCenter(parent, room, st, 12, 10)
-	occupy(room, center(room) * CFrame.new(0, 0, 0), 6, 6)
-	Props.desk(parent, center(room) * CFrame.new(0, 0, 1))
-	for k = 1, 3 do
-		local slot = take(s, 6.8, 2.4)
-		if slot then
-			Props.bookshelf(parent, at(slot, 2), 6, 12, room.id * 10 + k)
-		end
-	end
-	local slot = take(s, 2.6, 2)
-	if slot then
-		Props.grandfatherClock(parent, at(slot, 1.6))
-	end
-	slot = take(s, 2.8, 2.8)
-	if slot then
-		Props.globe(parent, at(slot, 2.4))
-		paintingAbove(parent, slot, room.id)
-	end
-	slot = take(s, 3.4, 3)
-	if slot then
-		Props.armchair(parent, at(slot, 2.8), rgb(60, 40, 30))
-	end
-	slot = take(s, 2.2, 2.2)
-	if slot then
-		Props.plant(parent, at(slot, 1.8))
-	end
-	local book = P(parent, "BookProp", Vector3.new(1.2, 0.3, 0.9), center(room) * CFrame.new(1.2, 3.52, 1.2), rgb(110, 30, 30), MAT.Leather)
-	ctx.prompt(book, "book")
-	lights(parent, room)
-	sconces(parent, room, 2)
-end
-D.map_room = function(parent, room, ctx)
-	occupy(room, center(room), 9, 6)
-	Props.mapTable(parent, center(room))
-	local s = slots(room)
-	for k = 1, 3 do
-		local slot = take(s, 6.8, 2.4)
-		if slot then
-			Props.bookshelf(parent, at(slot, 2), 6, 12, room.id * 10 + k)
-		end
-	end
-	local slot = take(s, 2.8, 2.8)
-	if slot then
-		Props.globe(parent, at(slot, 2.4))
-	end
-	slot = take(s, 5.6, 2.2)
-	if slot then
-		Props.dresser(parent, at(slot, 1.8), 5, room.id)
-		paintingAbove(parent, slot, room.id)
-	end
-	lights(parent, room, true)
-	sconces(parent, room, 2)
-	local _ = ctx
-end
-D.observatory = function(parent, room, ctx)
-	local st = Rooms.style(room.kind)
-	rugCenter(parent, room, st, 12, 12)
-	occupy(room, center(room) * CFrame.new(0, 0, 3), 4, 4)
-	Props.telescope(parent, center(room) * CFrame.new(0, 0, 3))
-	local s = slots(room)
-	local slot = take(s, 5.4, 5.6)
-	if slot then
-		Props.desk(parent, at(slot, 2.6))
-	end
-	slot = take(s, 2.8, 2.8)
-	if slot then
-		Props.globe(parent, at(slot, 2.4))
-		paintingAbove(parent, slot, 2)
-	end
-	for k = 1, 2 do
-		slot = take(s, 6.8, 2.4)
-		if slot then
-			Props.bookshelf(parent, at(slot, 2), 6, 12, room.id + k)
-		end
-	end
-	lights(parent, room)
-	sconces(parent, room, 2)
-	local _ = ctx
 end
 
 local function sittingArea(parent, room, color)
@@ -13626,44 +13920,114 @@ local function sittingArea(parent, room, color)
 	Props.armchair(parent, c * CFrame.new(5, 0, 0) * CFrame.Angles(0, math.pi / 2, 0), color)
 end
 
+D.guest_suite = function(parent, room, ctx)
+	local st = Rooms.style(room.kind)
+	local s = slots(room)
+	rugCenter(parent, room, st)
+	sittingArea(parent, room, rgb(70, 60, 110))
+	bedOnWall(parent, room, s, ctx, rgb(70, 60, 110))
+	fireplace(parent, room, s)
+	for _, slot in sides(take(s, 5.2, 2.8)) do
+		Props.wardrobe(parent, at(slot, 2.4))
+	end
+	for _, slot in sides(take(s, 5.6, 2.2)) do
+		Props.dresser(parent, at(slot, 1.8), 5, room.id)
+		paintingAbove(parent, slot, room.id)
+	end
+	for _, slot in sides(take(s, 6.8, 2.4)) do
+		Props.bookshelf(parent, at(slot, 2), 6, 12, room.id)
+	end
+	fill(parent, s)
+	lights(parent, room, true)
+	sconces(parent, room, 2)
+end
+
+D.study = function(parent, room, ctx)
+	local st = Rooms.style(room.kind)
+	local s = slots(room)
+	rugCenter(parent, room, st, 12, 10)
+	occupy(room, center(room), 6, 6)
+	Props.desk(parent, center(room) * CFrame.new(0, 0, 1))
+	local book = P(parent, "BookProp", Vector3.new(1.2, 0.3, 0.9), center(room) * CFrame.new(0, 3.52, 1.2), rgb(110, 30, 30), MAT.Leather)
+	ctx.prompt(book, "book")
+	fireplace(parent, room, s)
+	for _ = 1, 2 do
+		for _, slot in sides(take(s, 6.8, 2.4)) do
+			Props.bookshelf(parent, at(slot, 2), 6, 12, room.id * 10 + slot.side)
+		end
+	end
+	for _, slot in sides(take(s, 2.8, 2.8)) do
+		Props.globe(parent, at(slot, 2.4))
+		paintingAbove(parent, slot, room.id)
+	end
+	fill(parent, s)
+	lights(parent, room)
+	sconces(parent, room, 2)
+end
+
+D.map_room = function(parent, room, ctx)
+	occupy(room, center(room), 9, 6)
+	Props.mapTable(parent, center(room))
+	local s = slots(room)
+	fireplace(parent, room, s)
+	for _ = 1, 2 do
+		for _, slot in sides(take(s, 6.8, 2.4)) do
+			Props.bookshelf(parent, at(slot, 2), 6, 12, room.id * 10 + slot.side)
+		end
+	end
+	for _, slot in sides(take(s, 2.8, 2.8)) do
+		Props.globe(parent, at(slot, 2.4))
+	end
+	fill(parent, s)
+	lights(parent, room, true)
+	sconces(parent, room, 2)
+	local _ = ctx
+end
+
+D.observatory = function(parent, room, ctx)
+	local st = Rooms.style(room.kind)
+	rugCenter(parent, room, st, 12, 12)
+	occupy(room, center(room), 5, 7)
+	Props.telescope(parent, center(room))
+	local s = slots(room)
+	for _, slot in sides(take(s, 2.8, 2.8)) do
+		Props.globe(parent, at(slot, 2.4))
+		paintingAbove(parent, slot, 2)
+	end
+	for _, slot in sides(take(s, 6.8, 2.4)) do
+		Props.bookshelf(parent, at(slot, 2), 6, 12, room.id + slot.side)
+	end
+	for _, slot in sides(take(s, 5.4, 3)) do
+		Props.dresser(parent, at(slot, 1.8), 5, room.id)
+	end
+	fill(parent, s)
+	lights(parent, room)
+	sconces(parent, room, 2)
+	local _ = ctx
+end
+
 D.sitting = function(parent, room, ctx, withArmor)
 	local st = Rooms.style(room.kind)
 	rugCenter(parent, room, st, 16, 14)
 	sittingArea(parent, room, rgb(120, 90, 50))
 	local s = slots(room)
-	local walls = solidWalls(room)
-	if walls[1] then
-		local p = walls[1].pos
-		Props.fireplace(parent, CFrame.lookAt(p, p + walls[1].inward) * CFrame.new(0, 0, -1.7), room.h)
-	end
-	local slot = take(s, 2.6, 2)
-	if slot then
-		Props.grandfatherClock(parent, at(slot, 1.6))
-	end
-	slot = take(s, 5.6, 2.2)
-	if slot then
+	fireplace(parent, room, s)
+	for _, slot in sides(take(s, 5.6, 2.2)) do
 		Props.dresser(parent, at(slot, 1.8), 5, room.id)
 		paintingAbove(parent, slot, room.id)
 	end
-	for _ = 1, 2 do
-		slot = take(s, 3, 3)
-		if slot then
-			Props.plant(parent, at(slot, 1.8), true)
-			paintingAbove(parent, slot, room.id + 1)
-		end
+	for _, slot in sides(take(s, 6.8, 2.4)) do
+		Props.bookshelf(parent, at(slot, 2), 6, 12, room.id + slot.side)
 	end
-	slot = take(s, 6.8, 2.4)
-	if slot then
-		Props.bookshelf(parent, at(slot, 2), 6, 12, room.id)
+	for _, slot in sides(take(s, 2.6, 2)) do
+		Props.grandfatherClock(parent, at(slot, 1.6))
 	end
 	if withArmor then
-		for _ = 1, 2 do
-			slot = take(s, 3, 2.8)
-			if slot then
-				Props.armor(parent, at(slot, 2.6))
-			end
+		for _, slot in sides(take(s, 3, 2.8)) do
+			Props.armor(parent, at(slot, 2.6))
 		end
 	end
+	fill(parent, s)
 	lights(parent, room, true)
 	sconces(parent, room, 2)
 	local _ = ctx
@@ -13684,17 +14048,15 @@ D.music = function(parent, room, ctx)
 		end
 	end
 	local s = slots(room)
-	for k = 1, 4 do
-		local slot = take(s, 6.8, 3)
-		if slot then
-			if k % 2 == 0 then
-				Props.plant(parent, at(slot, 1.8), true)
-			else
-				Props.dresser(parent, at(slot, 1.8), 5, room.id + k)
-			end
-			paintingAbove(parent, slot, room.id + k)
-		end
+	fireplace(parent, room, s)
+	for _, slot in sides(take(s, 5.6, 2.4)) do
+		Props.dresser(parent, at(slot, 1.8), 5, room.id)
+		paintingAbove(parent, slot, room.id)
 	end
+	for _, slot in sides(take(s, 6.8, 2.4)) do
+		Props.bookshelf(parent, at(slot, 2), 6, 12, room.id + slot.side)
+	end
+	fill(parent, s)
 	lights(parent, room, true)
 	sconces(parent, room, 4)
 	local _ = ctx
@@ -13704,36 +14066,41 @@ D.reading = function(parent, room, ctx)
 	local st = Rooms.style(room.kind)
 	rugCenter(parent, room, st, 12, 12)
 	local c = center(room)
+	occupy(room, c, 10, 5)
 	Props.armchair(parent, c * CFrame.new(-3, 0, 0) * CFrame.Angles(0, -math.pi / 2, 0), rgb(40, 70, 50))
 	Props.armchair(parent, c * CFrame.new(3, 0, 0) * CFrame.Angles(0, math.pi / 2, 0), rgb(40, 70, 50))
 	Props.coffeeTable(parent, c * CFrame.Angles(0, math.pi / 2, 0))
-	local s = slots(room)
-	for k = 1, 5 do
-		local slot = take(s, 6.8, 2.4)
-		if slot then
-			Props.bookshelf(parent, at(slot, 2), 6, 13, room.id * 7 + k)
-		end
-	end
 	local book = P(parent, "BookProp", Vector3.new(1.2, 0.3, 0.9), c * CFrame.new(0.8, 1.86, 0.4), rgb(40, 60, 110), MAT.Leather)
 	ctx.prompt(book, "book")
+	local s = slots(room)
+	for _ = 1, 4 do
+		for _, slot in sides(take(s, 6.8, 2.4)) do
+			Props.bookshelf(parent, at(slot, 2), 6, 13, room.id * 7 + slot.side)
+		end
+	end
+	fill(parent, s)
 	lights(parent, room)
 	sconces(parent, room, 2)
 end
 
 D.trophy = function(parent, room, ctx)
 	local s = slots(room)
-	for k = 1, 6 do
-		local slot = take(s, 7.2, 2.8)
-		if slot then
-			if k % 3 == 0 then
+	local k = 0
+	for _ = 1, 4 do
+		k += 1
+		local pair = take(s, 7.2, 2.8)
+		for _, slot in sides(pair) do
+			if k % 2 == 0 then
 				Props.weaponRack(parent, at(slot, 1.8))
 			else
 				Props.armor(parent, at(slot, 2.6))
-				Props.banner(parent, onWall(slot, 15), 7, Color3.fromHSV((k * 0.17) % 1, 0.6, 0.45))
 			end
+			Props.banner(parent, onWall(slot, 15), 7, if k % 2 == 0 then rgb(30, 46, 110) else rgb(130, 20, 28))
 		end
 	end
+	occupy(room, center(room), 5, 4)
 	Props.chest(parent, center(room), true)
+	fill(parent, s)
 	lights(parent, room, true)
 	sconces(parent, room, 2)
 	local _ = ctx
@@ -13748,7 +14115,7 @@ D.gallery = function(parent, room, ctx)
 		Props.bench(parent, c * CFrame.new(k * w / 6, 0, 0) * CFrame.Angles(0, math.pi / 2, 0), 6)
 	end
 	for i, seg in room.segs do
-		for _, off in { -9.5, 9.5 } do
+		for _, off in { -PAIR_OFF, PAIR_OFF } do
 			local p = seg.pos + seg.tangent * off
 			Props.painting(parent, CFrame.lookAt(p, p + seg.inward) * CFrame.new(0, 8, -0.3), 7, 6, i * 3 + (if off &gt; 0 then 1 else 0))
 			Props.plant(parent, CFrame.lookAt(p, p + seg.inward) * CFrame.new(0, 0, -1.6))
@@ -13762,19 +14129,14 @@ D.nursery = function(parent, room, ctx)
 	local st = Rooms.style(room.kind)
 	rugCenter(parent, room, st, 12, 12)
 	local s = slots(room)
-	for k = 1, 2 do
-		local slot = take(s, 5.8, 9)
-		if slot then
-			local _, blanket = Props.bed(parent, at(slot, 8.5), Color3.fromHSV(k * 0.3, 0.3, 0.85))
-			ctx.prompt(blanket, "rest", 1.5)
-		end
+	for _, slot in sides(take(s, 6, 9)) do
+		local _, blanket = Props.bed(parent, at(slot, 8.5), Color3.fromHSV(0.6, 0.3, 0.85))
+		ctx.prompt(blanket, "rest", 1.5)
 	end
-	local slot = take(s, 5.2, 2.8)
-	if slot then
+	for _, slot in sides(take(s, 5.2, 2.8)) do
 		Props.wardrobe(parent, at(slot, 2.4), rgb(200, 190, 170))
 	end
-	slot = take(s, 3.8, 2.4)
-	if slot then
+	for _, slot in sides(take(s, 3.8, 2.4)) do
 		Props.chest(parent, at(slot, 2))
 		paintingAbove(parent, slot, 4)
 	end
@@ -13782,8 +14144,9 @@ D.nursery = function(parent, room, ctx)
 	local c = center(room)
 	occupy(room, c, 4, 3)
 	for k = 0, 5 do
-		Props.P(parent, "ToyBlock", Vector3.new(1, 1, 1), c * CFrame.new(-1.5 + (k % 3), 0.5 + math.floor(k / 3), (k % 2) * 0.3) * CFrame.Angles(0, k * 0.3, 0), Color3.fromHSV(k / 6, 0.7, 0.9), MAT.SmoothPlastic)
+		Props.P(parent, "ToyBlock", Vector3.new(1, 1, 1), c * CFrame.new(-1.5 + (k % 3), 0.5 + math.floor(k / 3), 0), Color3.fromHSV(k / 6, 0.7, 0.9), MAT.SmoothPlastic)
 	end
+	fill(parent, s)
 	lights(parent, room)
 	sconces(parent, room, 2)
 end
@@ -13792,28 +14155,27 @@ D.wardrobe = function(parent, room, ctx)
 	local st = Rooms.style(room.kind)
 	rugCenter(parent, room, st, 10, 10)
 	local s = slots(room)
-	for k = 1, 5 do
-		local slot = take(s, 5.6, 2.8)
-		if slot then
-			if k == 3 then
-				Props.dresser(parent, at(slot, 1.8), 5, 2)
-			else
-				Props.wardrobe(parent, at(slot, 2.4), Color3.fromHSV(0.07, 0.45, 0.35 + k * 0.03))
-			end
+	for _ = 1, 3 do
+		for _, slot in sides(take(s, 5.6, 2.8)) do
+			Props.wardrobe(parent, at(slot, 2.4), Color3.fromHSV(0.07, 0.45, 0.38))
 		end
+	end
+	for _, slot in sides(take(s, 5.6, 2.2)) do
+		Props.dresser(parent, at(slot, 1.8), 5, 2)
 	end
 	-- вешалка с платьями
 	local c = center(room)
-	occupy(room, c * CFrame.new(0, 0, -2), 9, 9)
-	P(parent, "Rail", Vector3.new(8, 0.25, 0.25), c * CFrame.new(0, 6.5, 0), Props.GOLD, MAT.Metal)
+	occupy(room, c, 9, 12)
+	P(parent, "Rail", Vector3.new(8, 0.25, 0.25), c * CFrame.new(0, 6.5, 1), Props.GOLD, MAT.Metal)
 	for _, x in { -3.8, 3.8 } do
-		P(parent, "RailPost", Vector3.new(0.3, 6.5, 0.3), c * CFrame.new(x, 3.25, 0), Props.GOLD, MAT.Metal)
+		P(parent, "RailPost", Vector3.new(0.3, 6.5, 0.3), c * CFrame.new(x, 3.25, 1), Props.GOLD, MAT.Metal)
 	end
 	for k = 0, 5 do
-		P(parent, "Gown", Vector3.new(0.6, 4, 2), c * CFrame.new(-3 + k * 1.2, 4.2, 0), Color3.fromHSV(k * 0.15, 0.5, 0.6), MAT.SmoothPlastic)
+		P(parent, "Gown", Vector3.new(0.6, 4, 2), c * CFrame.new(-3 + k * 1.2, 4.2, 1), Color3.fromHSV(k * 0.15, 0.5, 0.6), MAT.SmoothPlastic)
 	end
-	local chest = Props.chest(parent, c * CFrame.new(0, 0, -5))
+	local chest = Props.chest(parent, c * CFrame.new(0, 0, -4))
 	ctx.prompt(chest:FindFirstChild("Box"), "shop", 0, 10)
+	fill(parent, s)
 	lights(parent, room, true)
 	sconces(parent, room, 2)
 end
@@ -13822,27 +14184,25 @@ D.bath = function(parent, room, ctx)
 	local st = Rooms.style(room.kind)
 	rugCenter(parent, room, st, 8, 6)
 	local s = slots(room)
-	local slot = take(s, 6.8, 3.8)
-	if slot then
-		Props.bathtub(parent, at(slot, 6.4, CFrame.Angles(0, math.pi / 2, 0)))
-	end
-	slot = take(s, 3.8, 2.2)
-	if slot then
-		Props.washstand(parent, at(slot, 1.8))
-		local basin = slot.cf
-		local _ = basin
-	end
-	slot = take(s, 3, 3)
-	if slot then
-		Props.plant(parent, at(slot, 1.8), true)
-	end
-	slot = take(s, 5.6, 2.2)
-	if slot then
-		local m = Props.dresser(parent, at(slot, 1.8), 5, 2)
-		for k = 0, 2 do
-			P(m, "Towel", Vector3.new(1.6, 0.3, 1.2), at(slot, 1.8, CFrame.new(-1 + k, 3.5, 0)), rgb(240, 240, 236), MAT.SmoothPlastic)
+	-- ванна вдоль середины глухой стены
+	local spot = middle(room, s, 7.2, 4)
+	if spot then
+		Props.bathtub(parent, spot.cf * CFrame.new(0, 0, -2.2) * CFrame.Angles(0, math.pi / 2, 0))
+	else
+		for _, slot in sides(take(s, 6.8, 4)) do
+			Props.bathtub(parent, at(slot, 3.6, 0, 0, 0, math.pi / 2))
 		end
 	end
+	for _, slot in sides(take(s, 3.8, 2.2)) do
+		Props.washstand(parent, at(slot, 1.8))
+	end
+	for _, slot in sides(take(s, 5.6, 2.2)) do
+		local m = Props.dresser(parent, at(slot, 1.8), 5, 2)
+		for k = 0, 2 do
+			P(m, "Towel", Vector3.new(1.4, 0.3, 1.2), at(slot, 1.8, -1.6 + k * 1.6, 3.5, 0), rgb(240, 240, 236), MAT.SmoothPlastic)
+		end
+	end
+	fill(parent, s)
 	lights(parent, room)
 	sconces(parent, room, 2)
 	local _ = ctx
@@ -13851,52 +14211,44 @@ end
 D.kitchen = function(parent, room, ctx)
 	local s = slots(room)
 	local c = center(room)
-	local stoves = 0
-	for _, seg in solidWalls(room) do
-		if stoves &gt;= 2 then
-			break
+	-- печи посередине двух глухих стен
+	for _ = 1, 2 do
+		local spot = middle(room, s, 8, 4)
+		if spot then
+			local _, mouth = Props.stove(parent, spot.cf * CFrame.new(0, 0, -1.9))
+			ctx.prompt(mouth, "cook", 2)
 		end
-		local p = seg.pos
-		local _, mouth = Props.stove(parent, CFrame.lookAt(p, p + seg.inward) * CFrame.new(0, 0, -1.9))
-		ctx.prompt(mouth, "cook", 2)
-		stoves += 1
 	end
 	occupy(room, c, 22, 6)
 	local _, top = Props.prepTable(parent, c * CFrame.new(-6, 0, 0))
-	local bread = P(parent, "BreadLoaves", Vector3.new(2.2, 0.8, 1.2), c * CFrame.new(-8.2, top + 0.4, 0.6), rgb(196, 140, 70), MAT.Sand)
+	local bread = P(parent, "BreadLoaves", Vector3.new(2.2, 0.8, 1.2), c * CFrame.new(-6, top + 0.4, 0), rgb(196, 140, 70), MAT.Sand)
 	ctx.prompt(bread, "bread")
 	Props.prepTable(parent, c * CFrame.new(6, 0, 0))
-	local basket = C(parent, "AppleBasket", 0.9, 1.8, c * CFrame.new(7.8, top + 0.45, 0.6), rgb(150, 110, 60), MAT.Wood)
+	local basket = C(parent, "AppleBasket", 0.9, 1.8, c * CFrame.new(6, top + 0.45, 0), rgb(150, 110, 60), MAT.Wood)
 	for k = 0, 4 do
-		Props.S(parent, "Apple", 0.55, c * CFrame.new(7.4 + (k % 3) * 0.4, top + 1, 0.3 + math.floor(k / 3) * 0.5), rgb(190, 40, 40), MAT.SmoothPlastic, { CanCollide = false })
+		Props.S(parent, "Apple", 0.55, c * CFrame.new(5.6 + (k % 3) * 0.4, top + 1, -0.3 + math.floor(k / 3) * 0.5), rgb(190, 40, 40), MAT.SmoothPlastic, { CanCollide = false })
 	end
 	ctx.prompt(basket, "apple")
-	local k = 0
-	for _ = 1, 8 do
-		local slot = take(s, 6.2, 3.6)
-		if not slot then
-			break
-		end
-		k += 1
-		if k == 1 then
-			local m = Props.dresser(parent, at(slot, 1.8), 5, 1)
-			ctx.prompt(m:FindFirstChild("Body"), "spoon")
-		elseif k == 2 then
-			local m = Props.washtub(parent, at(slot, 3.2))
-			ctx.prompt(m:FindFirstChild("Tub"), "water")
-		elseif k % 3 == 0 then
-			Props.barrel(parent, at(slot, 2.8))
-			Props.barrel(parent, at(slot, 2.8, CFrame.new(3, 0, 0)))
-			Props.shelfJars(parent, onWall(slot, 0), 6)
-		elseif k % 3 == 1 then
-			Props.sack(parent, at(slot, 2))
-			Props.sack(parent, at(slot, 2, CFrame.new(2.2, 0, 0)))
-			Props.panRack(parent, onWall(slot, 0))
-		else
-			Props.crate(parent, at(slot, 2.6))
-			Props.shelfJars(parent, onWall(slot, 0), 6)
-		end
+	for _, slot in sides(take(s, 5.6, 2.4)) do
+		local m = Props.dresser(parent, at(slot, 1.8), 5, 1)
+		ctx.prompt(m:FindFirstChild("Body"), "spoon")
+		Props.panRack(parent, onWall(slot, 0))
 	end
+	for _, slot in sides(take(s, 3.6, 3.6)) do
+		local m = Props.washtub(parent, at(slot, 3.2))
+		ctx.prompt(m:FindFirstChild("Tub"), "water")
+	end
+	for _, slot in sides(take(s, 6.2, 3.2)) do
+		Props.barrel(parent, at(slot, 2.8, -1.5))
+		Props.barrel(parent, at(slot, 2.8, 1.5))
+		Props.shelfJars(parent, onWall(slot, 0), 6)
+	end
+	for _, slot in sides(take(s, 5, 2.4)) do
+		Props.sack(parent, at(slot, 2, -1.2))
+		Props.sack(parent, at(slot, 2, 1.2))
+		Props.shelfJars(parent, onWall(slot, 0), 5)
+	end
+	fill(parent, s, "stone")
 	lights(parent, room)
 end
 
@@ -13910,22 +14262,18 @@ D.dining = function(parent, room, ctx)
 	occupy(room, c * rot, 10, long + 1)
 	Props.feastTable(parent, c * rot, long, true)
 	local s = slots(room)
-	local walls = solidWalls(room)
-	if walls[1] then
-		local p = walls[1].pos
-		Props.fireplace(parent, CFrame.lookAt(p, p + walls[1].inward) * CFrame.new(0, 0, -1.7), room.h)
+	fireplace(parent, room, s)
+	for _, slot in sides(take(s, 6.6, 2.2)) do
+		Props.dresser(parent, at(slot, 1.8), 6, room.id)
+		paintingAbove(parent, slot, room.id)
 	end
-	for k = 1, 6 do
-		local slot = if k % 2 == 0 then take(s, 3, 2.8) else take(s, 6.6, 2.2)
-		if slot then
-			if k % 2 == 0 then
-				Props.armor(parent, at(slot, 2.6))
-			else
-				Props.dresser(parent, at(slot, 1.8), 6, k)
-				paintingAbove(parent, slot, room.id + k)
-			end
+	for _ = 1, 2 do
+		for _, slot in sides(take(s, 3, 2.8)) do
+			Props.armor(parent, at(slot, 2.6))
+			Props.banner(parent, onWall(slot, 14), 7, rgb(130, 20, 28))
 		end
 	end
+	fill(parent, s)
 	lights(parent, room, true)
 	sconces(parent, room, 4)
 	local _ = ctx
@@ -13934,15 +14282,13 @@ D.royal_dining = D.dining
 
 D.servants = function(parent, room, ctx)
 	local s = slots(room)
-	for k = 1, 4 do
-		local slot = take(s, 5.8, 9)
-		if slot then
+	for _ = 1, 2 do
+		for _, slot in sides(take(s, 6, 9)) do
 			local _, blanket = Props.bed(parent, at(slot, 8.5), rgb(120, 110, 90))
 			ctx.prompt(blanket, "rest", 1.5)
 		end
 	end
-	local slot = take(s, 6.8, 2.2)
-	if slot then
+	for _, slot in sides(take(s, 6.8, 2.2)) do
 		local m = Props.weaponRack(parent, at(slot, 1.8))
 		for _, d in m:GetChildren() do
 			if d.Name == "Blade" then
@@ -13952,20 +14298,18 @@ D.servants = function(parent, room, ctx)
 		end
 		ctx.prompt(m:FindFirstChild("Back"), "broom")
 	end
-	slot = take(s, 3.6, 3.6)
-	if slot then
-		Props.washtub(parent, at(slot, 3.2))
-	end
-	slot = take(s, 3.8, 2.4)
-	if slot then
+	for _, slot in sides(take(s, 3.8, 2.4)) do
 		Props.chest(parent, at(slot, 2))
 	end
 	local c = center(room)
 	occupy(room, c, 7, 7)
 	Props.table(parent, c, 6, 3)
 	Props.chair(parent, c * CFrame.new(-2, 0, -2.4) * CFrame.Angles(0, math.pi, 0))
+	Props.chair(parent, c * CFrame.new(2, 0, -2.4) * CFrame.Angles(0, math.pi, 0))
+	Props.chair(parent, c * CFrame.new(-2, 0, 2.4))
 	Props.chair(parent, c * CFrame.new(2, 0, 2.4))
 	Props.candle(parent, (c * CFrame.new(0, 3.35, 0)).Position)
+	fill(parent, s)
 	lights(parent, room)
 end
 
@@ -13973,28 +14317,27 @@ D.barracks = function(parent, room, ctx)
 	occupy(room, center(room), 9, 6)
 	Props.mapTable(parent, center(room))
 	local s = slots(room)
-	local k = 0
-	for _ = 1, 10 do
-		local nextK = k + 1
-		local slot = if nextK == 1 then take(s, 6.8, 2.2) elseif nextK == 2 then take(s, 3.8, 2.4) elseif nextK % 3 == 0 then take(s, 3, 2.8) else take(s, 3.8, 7.6)
-		if not slot then
-			break
-		end
-		k += 1
-		if k == 1 then
-			local m = Props.weaponRack(parent, at(slot, 1.8))
-			ctx.prompt(m:FindFirstChild("Back"), "sword")
-		elseif k == 2 then
-			local m = Props.chest(parent, at(slot, 2))
-			ctx.prompt(m:FindFirstChild("Box"), "cuffs")
-			P(parent, "ShacklesHook", Vector3.new(2, 0.3, 0.3), onWall(slot, 6), Props.IRON, MAT.Metal)
-		elseif k % 3 == 0 then
-			Props.armor(parent, at(slot, 2.6))
-			Props.banner(parent, onWall(slot, 15), 6)
-		else
+	for _, slot in sides(take(s, 6.8, 2.2)) do
+		local m = Props.weaponRack(parent, at(slot, 1.8))
+		ctx.prompt(m:FindFirstChild("Back"), "sword")
+	end
+	for _, slot in sides(take(s, 3.8, 2.4)) do
+		local m = Props.chest(parent, at(slot, 2))
+		ctx.prompt(m:FindFirstChild("Box"), "cuffs")
+		P(parent, "ShacklesHook", Vector3.new(2, 0.3, 0.3), onWall(slot, 6), Props.IRON, MAT.Metal)
+	end
+	for _ = 1, 4 do
+		for _, slot in sides(take(s, 3.8, 7.6)) do
 			Props.bunk(parent, at(slot, 7.2))
 		end
 	end
+	for _ = 1, 2 do
+		for _, slot in sides(take(s, 3, 2.8)) do
+			Props.armor(parent, at(slot, 2.6))
+			Props.banner(parent, onWall(slot, 15), 6)
+		end
+	end
+	fill(parent, s)
 	lights(parent, room)
 	sconces(parent, room, 2)
 end
@@ -14007,24 +14350,26 @@ D.training = function(parent, room, ctx)
 	table.insert(ctx.points.dummies, c * CFrame.new(-5, 3, 0))
 	table.insert(ctx.points.dummies, c * CFrame.new(5, 3, 0))
 	local s = slots(room)
-	for k = 1, 6 do
-		local slot = take(s, 7.2, 2.2)
-		if slot then
-			if k == 1 then
-				local m = Props.weaponRack(parent, at(slot, 1.8))
-				ctx.prompt(m:FindFirstChild("Back"), "sword")
-			elseif k % 2 == 0 then
-				Props.bench(parent, at(slot, 1.8), 6)
-			else
-				-- мишень для стрельбы
-				local cf = at(slot, 1)
-				P(parent, "TargetStand", Vector3.new(0.4, 5, 0.4), cf * CFrame.new(0, 2.5, 0.3), Props.WOOD, MAT.Wood)
-				for r = 0, 3 do
-					C(parent, "Target", 0.2 + r * 0.02, 4 - r, cf * CFrame.new(0, 5, -r * 0.06) * CFrame.Angles(math.pi / 2, 0, 0), if r % 2 == 0 then rgb(230, 225, 210) else rgb(170, 30, 30), MAT.SmoothPlastic)
-				end
+	for _, slot in sides(take(s, 7.2, 2.2)) do
+		local m = Props.weaponRack(parent, at(slot, 1.8))
+		ctx.prompt(m:FindFirstChild("Back"), "sword")
+	end
+	for _ = 1, 2 do
+		for _, slot in sides(take(s, 6.4, 2.2)) do
+			-- мишень для стрельбы
+			local cf = at(slot, 1)
+			P(parent, "TargetStand", Vector3.new(0.4, 5, 0.4), cf * CFrame.new(0, 2.5, 0.3), Props.WOOD, MAT.Wood)
+			for r = 0, 3 do
+				C(parent, "Target", 0.2 + r * 0.02, 4 - r, cf * CFrame.new(0, 5, -r * 0.06) * CFrame.Angles(math.pi / 2, 0, 0), if r % 2 == 0 then rgb(230, 225, 210) else rgb(170, 30, 30), MAT.SmoothPlastic)
 			end
 		end
 	end
+	for _ = 1, 2 do
+		for _, slot in sides(take(s, 6.4, 2.2)) do
+			Props.bench(parent, at(slot, 1.8), 6)
+		end
+	end
+	fill(parent, s)
 	lights(parent, room)
 end
 
@@ -14032,26 +14377,24 @@ D.chapel = function(parent, room, ctx)
 	local st = Rooms.style(room.kind)
 	local c = center(room)
 	local w, d = size(room)
-	local walls = solidWalls(room)
-	local altarSeg = walls[1]
-	local forward = if altarSeg then altarSeg.inward else Vector3.new(0, 0, -1)
-	if altarSeg then
-		local p = altarSeg.pos
-		Props.altar(parent, CFrame.lookAt(p, p + altarSeg.inward) * CFrame.new(0, 0, -3))
-		Props.stainedGlass(parent, CFrame.lookAt(p, p + altarSeg.inward) * CFrame.new(0, 10, -0.3), 6, 8)
+	local s = slots(room)
+	local spot = middle(room, s, 10, 6)
+	local forward = if spot then spot.seg.inward else Vector3.new(0, 0, -1)
+	if spot then
+		Props.altar(parent, spot.cf * CFrame.new(0, 0, -3))
+		Props.stainedGlass(parent, spot.cf * CFrame.new(0, 10, -0.3), 6, 8)
 	end
 	local base = CFrame.lookAt(c.Position, c.Position + forward)
 	Props.runner(parent, base, 3, math.min(w, d) - 6, st.rug)
 	local rows = math.floor((math.min(w, d) - 14) / 3.6)
+	occupy(room, base * CFrame.new(0, 0, -2 + (rows - 1) * 1.8), 18, rows * 3.6)
 	for r = 0, rows - 1 do
 		for _, sx in { -1, 1 } do
 			Props.pew(parent, base * CFrame.new(sx * 5.5, 0, -2 + r * 3.6), 7)
 		end
 	end
-	local s = slots(room)
 	for _ = 1, 4 do
-		local slot = take(s, 1.4, 1.4)
-		if slot then
+		for _, slot in sides(take(s, 1.6, 1.6)) do
 			Props.candelabra(parent, at(slot, 1).Position)
 			Props.painting(parent, onWall(slot, 9), 4, 6, 1)
 		end
@@ -14069,17 +14412,17 @@ D.shop = function(parent, room, ctx)
 	local counter = Props.counter(parent, c * CFrame.new(0, 0, 3), 10)
 	ctx.prompt(counter:FindFirstChild("Body"), "shop", 0, 12)
 	local s = slots(room)
-	for k = 1, 6 do
-		local slot = take(s, 6.2, 3)
-		if slot then
-			if k % 2 == 1 then
-				Props.shelfJars(parent, onWall(slot, -2), 6)
-				Props.crate(parent, at(slot, 2.2), 2.2)
-			else
-				Props.wardrobe(parent, at(slot, 2.4), rgb(110, 80, 50))
-			end
+	for _, slot in sides(take(s, 5.2, 2.8)) do
+		Props.wardrobe(parent, at(slot, 2.4), rgb(110, 80, 50))
+	end
+	for _ = 1, 2 do
+		for _, slot in sides(take(s, 6.2, 3)) do
+			Props.shelfJars(parent, onWall(slot, -2), 6)
+			Props.crate(parent, at(slot, 2.2, -1.6), 2.2)
+			Props.crate(parent, at(slot, 2.2, 1.6), 2.2)
 		end
 	end
+	fill(parent, s)
 	lights(parent, room)
 	sconces(parent, room, 2)
 end
@@ -14091,14 +14434,15 @@ D.casino = function(parent, room, ctx)
 	local felt = Props.feltTable(parent, center(room))
 	ctx.prompt(felt:FindFirstChild("Felt"), "coin")
 	local s = slots(room)
-	for k = 1, 4 do
-		local slot = take(s, 3.6, 2.8)
-		if slot then
+	for _ = 1, 4 do
+		for _, slot in sides(take(s, 3.6, 2.8)) do
 			local m = Props.slotMachine(parent, at(slot, 2.4))
 			ctx.prompt(m:FindFirstChild("Cabinet"), "slots")
 		end
 	end
+	fill(parent, s)
 	lights(parent, room, true)
+	sconces(parent, room, 2)
 end
 
 D.treasury = function(parent, room, ctx)
@@ -14121,16 +14465,17 @@ D.treasury = function(parent, room, ctx)
 	end
 	Props.chest(parent, c, true)
 	local s = slots(room)
-	for k = 1, 8 do
-		local slot = take(s, 3.8, 2.8)
-		if slot then
-			if k % 3 == 0 then
-				Props.armor(parent, at(slot, 2.6))
-			else
-				Props.chest(parent, at(slot, 2), k % 2 == 0)
-			end
+	for _ = 1, 3 do
+		for _, slot in sides(take(s, 3.8, 2.4)) do
+			Props.chest(parent, at(slot, 2), true)
 		end
 	end
+	for _ = 1, 2 do
+		for _, slot in sides(take(s, 3, 2.8)) do
+			Props.armor(parent, at(slot, 2.6))
+		end
+	end
+	fill(parent, s)
 	lights(parent, room, true)
 	local _ = ctx
 end
@@ -14148,25 +14493,23 @@ D.council = function(parent, room, ctx)
 		Props.chair(parent, CFrame.lookAt(cp, Vector3.new(c.Position.X, cp.Y, c.Position.Z)), rgb(40, 50, 90))
 	end
 	for k = 0, 4 do
-		Props.candle(parent, (c * CFrame.new(math.cos(k) * 4, 3.45, math.sin(k) * 4)).Position)
-	end
-	local walls = solidWalls(room)
-	if walls[1] then
-		local p = walls[1].pos
-		Props.fireplace(parent, CFrame.lookAt(p, p + walls[1].inward) * CFrame.new(0, 0, -1.7), room.h)
+		local a = k / 5 * math.pi * 2
+		Props.candle(parent, (c * CFrame.new(math.cos(a) * 4, 3.45, math.sin(a) * 4)).Position)
 	end
 	local s = slots(room)
-	for k = 1, 6 do
-		local slot = if k % 2 == 0 then take(s, 3, 2.8) else take(s, 6.8, 2.4)
-		if slot then
-			Props.banner(parent, onWall(slot, 15), 8, Color3.fromHSV(k * 0.15, 0.6, 0.4))
-			if k % 2 == 0 then
-				Props.armor(parent, at(slot, 2.6))
-			else
-				Props.bookshelf(parent, at(slot, 2), 6, 10, k)
-			end
+	fireplace(parent, room, s)
+	for _ = 1, 2 do
+		for _, slot in sides(take(s, 6.8, 2.4)) do
+			Props.bookshelf(parent, at(slot, 2), 6, 10, room.id + slot.side)
 		end
 	end
+	for _ = 1, 2 do
+		for _, slot in sides(take(s, 3, 2.8)) do
+			Props.armor(parent, at(slot, 2.6))
+			Props.banner(parent, onWall(slot, 15), 8, rgb(30, 46, 110))
+		end
+	end
+	fill(parent, s)
 	lights(parent, room, true)
 	local _ = ctx
 end
@@ -14175,42 +14518,45 @@ local function royal(parent, room, ctx, color, isKing)
 	local st = Rooms.style(room.kind)
 	rugCenter(parent, room, st)
 	local s = slots(room)
-	local slot = take(s, 7.8, 10)
-	if slot then
-		local _, blanket = Props.bed(parent, at(slot, 9.5), color, true)
-		ctx.prompt(blanket, "rest", 1.5)
-	end
-	local walls = solidWalls(room)
-	if walls[1] then
-		local p = walls[1].pos
-		Props.fireplace(parent, CFrame.lookAt(p, p + walls[1].inward) * CFrame.new(0, 0, -1.7), room.h)
-	end
 	sittingArea(parent, room, color)
-	local dims = { { 5.2, 2.8 }, { 6.6, 2.2 }, { 5.4, 5.6 }, { 1.8, 1.8 }, { 3, 2.8 }, { 3, 3 }, { 3, 3 }, { 3, 3 } }
-	for k = 1, 8 do
-		slot = take(s, dims[k][1], dims[k][2])
-		if not slot then
-			break
-		end
-		if k == 1 then
-			Props.wardrobe(parent, at(slot, 2.4), Props.WOOD_DARK)
-		elseif k == 2 then
-			Props.dresser(parent, at(slot, 1.8), 6, 2)
-			paintingAbove(parent, slot, room.id)
-		elseif k == 3 then
-			Props.desk(parent, at(slot, 2.6))
-		elseif k == 4 and isKing then
-			local stand = P(parent, "ScepterStand", Vector3.new(1.6, 4, 1.6), at(slot, 1.6, CFrame.new(0, 2, 0)), rgb(220, 214, 204), MAT.Marble)
-			P(parent, "Scepter", Vector3.new(0.3, 3, 0.3), at(slot, 1.6, CFrame.new(0, 5.5, 0)), Props.GOLD, MAT.Metal, { CanCollide = false })
-			Props.S(parent, "Gem", 0.6, at(slot, 1.6, CFrame.new(0, 7.2, 0)), rgb(200, 30, 50), MAT.Neon, { CanCollide = false })
+	bedOnWall(parent, room, s, ctx, color, true)
+	fireplace(parent, room, s)
+	-- подставка со скипетром (у короля) или туалетный столик с зеркалом (у королевы) —
+	-- посередине ещё одной глухой стены, если она есть
+	local spot = middle(room, s, 3, 3)
+	if spot then
+		local cf = spot.cf * CFrame.new(0, 0, -1.8)
+		if isKing then
+			local stand = P(parent, "ScepterStand", Vector3.new(1.6, 4, 1.6), cf * CFrame.new(0, 2, 0), rgb(220, 214, 204), MAT.Marble)
+			P(parent, "Scepter", Vector3.new(0.3, 3, 0.3), cf * CFrame.new(0, 5.5, 0), Props.GOLD, MAT.Metal, { CanCollide = false })
+			Props.S(parent, "Gem", 0.6, cf * CFrame.new(0, 7.2, 0), rgb(200, 30, 50), MAT.Neon, { CanCollide = false })
 			ctx.prompt(stand, "scepter")
-		elseif k == 5 then
-			Props.armor(parent, at(slot, 2.6))
 		else
-			Props.plant(parent, at(slot, 1.8), true)
-			paintingAbove(parent, slot, room.id + k)
+			Props.dresser(parent, spot.cf * CFrame.new(0, 0, -1.25), 3, 7)
+			P(parent, "Mirror", Vector3.new(2.4, 3.2, 0.15), spot.cf * CFrame.new(0, 6.2, -0.3), rgb(200, 210, 220), MAT.Glass, { Reflectance = 0.4 })
+		end
+	elseif isKing then
+		local cf = center(room) * CFrame.new(0, 0, -9)
+		occupy(room, cf, 2, 2)
+		local stand = P(parent, "ScepterStand", Vector3.new(1.6, 4, 1.6), cf * CFrame.new(0, 2, 0), rgb(220, 214, 204), MAT.Marble)
+		P(parent, "Scepter", Vector3.new(0.3, 3, 0.3), cf * CFrame.new(0, 5.5, 0), Props.GOLD, MAT.Metal, { CanCollide = false })
+		Props.S(parent, "Gem", 0.6, cf * CFrame.new(0, 7.2, 0), rgb(200, 30, 50), MAT.Neon, { CanCollide = false })
+		ctx.prompt(stand, "scepter")
+	end
+	for _, slot in sides(take(s, 5.2, 2.8)) do
+		Props.wardrobe(parent, at(slot, 2.4), Props.WOOD_DARK)
+	end
+	for _, slot in sides(take(s, 6.6, 2.2)) do
+		Props.dresser(parent, at(slot, 1.8), 6, 2)
+		paintingAbove(parent, slot, room.id)
+	end
+	for _ = 1, 2 do
+		for _, slot in sides(take(s, 3, 2.8)) do
+			Props.armor(parent, at(slot, 2.6))
+			Props.banner(parent, onWall(slot, 14), 8, color)
 		end
 	end
+	fill(parent, s)
 	lights(parent, room, true)
 	sconces(parent, room, 4)
 end
@@ -14219,8 +14565,6 @@ D.king = function(parent, room, ctx)
 end
 D.queen = function(parent, room, ctx)
 	royal(parent, room, ctx, rgb(100, 40, 120), false)
-	local c = center(room)
-	Props.piano(parent, c * CFrame.new(-8, 0, -8) * CFrame.Angles(0, math.pi / 4, 0))
 end
 
 D.landing = function(parent, room, ctx)
@@ -14230,8 +14574,8 @@ D.landing = function(parent, room, ctx)
 			local cf = CFrame.lookAt(seg.pos, seg.pos + seg.inward)
 			Props.bench(parent, cf * CFrame.new(0, 0, -1.3), 7)
 			Props.painting(parent, cf * CFrame.new(0, 8.5, -0.3), 7, 5, room.id)
-			Props.plant(parent, cf * CFrame.new(-8, 0, -1.4), true)
-			Props.plant(parent, cf * CFrame.new(8, 0, -1.4), true)
+			Props.plant(parent, cf * CFrame.new(-PAIR_OFF, 0, -1.4), true)
+			Props.plant(parent, cf * CFrame.new(PAIR_OFF, 0, -1.4), true)
 		end
 	end
 	lights(parent, room)
@@ -14241,27 +14585,29 @@ end
 D.storeroom = function(parent, room, ctx)
 	local s = slots(room)
 	local k = 0
-	for _ = 1, 16 do
-		local slot = take(s, 6.2, 3)
-		if not slot then
+	for _ = 1, 8 do
+		k += 1
+		local pair = take(s, 6.2, 3)
+		if not pair then
 			break
 		end
-		k += 1
-		if k % 3 == 0 then
-			Props.barrel(parent, at(slot, 2.8))
-			Props.barrel(parent, at(slot, 2.8, CFrame.new(3, 0, 0)))
-		elseif k % 3 == 1 then
-			Props.crate(parent, at(slot, 2.6))
-			Props.crate(parent, at(slot, 2.6, CFrame.new(0, 2.6, 0)), 2.2)
-			Props.crate(parent, at(slot, 2.6, CFrame.new(2.9, 0, 0)))
-		else
-			Props.sack(parent, at(slot, 2))
-			Props.sack(parent, at(slot, 2, CFrame.new(2.2, 0, 0)))
-			Props.shelfJars(parent, onWall(slot, 0), 6)
+		for _, slot in sides(pair) do
+			if k % 3 == 0 then
+				Props.barrel(parent, at(slot, 2.8, -1.5))
+				Props.barrel(parent, at(slot, 2.8, 1.5))
+			elseif k % 3 == 1 then
+				Props.crate(parent, at(slot, 2.6, -1.45))
+				Props.crate(parent, at(slot, 2.6, -1.45, 2.6), 2.2)
+				Props.crate(parent, at(slot, 2.6, 1.45))
+			else
+				Props.sack(parent, at(slot, 2, -1.1))
+				Props.sack(parent, at(slot, 2, 1.1))
+				Props.shelfJars(parent, onWall(slot, 0), 6)
+			end
 		end
 	end
 	for _, c in room.cells do
-		Props.ceilingLamp(parent, Vector3.new(c.x, room.y + room.h - 3.5, c.z), 2.5)
+		Props.ceilingLamp(parent, Vector3.new(c.x, room.y + room.h - 3.5, c.z), 3)
 	end
 	local _ = ctx
 end
@@ -14269,23 +14615,25 @@ D.storage = D.storeroom
 
 D.cellar = function(parent, room, ctx)
 	local s = slots(room)
-	for _ = 1, 20 do
-		local slot = take(s, 5.4, 3.4)
-		if not slot then
+	for _ = 1, 10 do
+		local pair = take(s, 5.4, 3.4)
+		if not pair then
 			break
 		end
-		-- стеллаж с лежащими бочками в два яруса и бутылками сбоку
-		local cf = at(slot, 3)
-		local rack = Props.model(parent, "WineRack")
-		P(rack, "Shelf", Vector3.new(5, 0.4, 3), cf * CFrame.new(0, 3.2, 0), Props.WOOD_DARK, MAT.Wood)
-		P(rack, "Top", Vector3.new(5, 0.4, 3), cf * CFrame.new(0, 6.6, 0), Props.WOOD_DARK, MAT.Wood)
-		for _, x in { -2.3, 2.3 } do
-			P(rack, "Post", Vector3.new(0.4, 6.8, 3), cf * CFrame.new(x, 3.4, 0), Props.WOOD_DARK, MAT.Wood)
-		end
-		Props.barrel(rack, cf * CFrame.new(0, -0.1, 0), true)
-		Props.barrel(rack, cf * CFrame.new(0, 3.3, 0), true)
-		for k = 0, 2 do
-			C(rack, "Bottle", 1.1, 0.32, cf * CFrame.new(-1.5 + k * 1.5, 7.35, 0), rgb(40, 70, 40), MAT.Glass, { CanCollide = false })
+		for _, slot in sides(pair) do
+			-- стеллаж с лежащими бочками в два яруса и бутылками сверху
+			local cf = at(slot, 3)
+			local rack = Props.model(parent, "WineRack")
+			P(rack, "Shelf", Vector3.new(5, 0.4, 3), cf * CFrame.new(0, 3.2, 0), Props.WOOD_DARK, MAT.Wood)
+			P(rack, "Top", Vector3.new(5, 0.4, 3), cf * CFrame.new(0, 6.6, 0), Props.WOOD_DARK, MAT.Wood)
+			for _, x in { -2.3, 2.3 } do
+				P(rack, "Post", Vector3.new(0.4, 6.8, 3), cf * CFrame.new(x, 3.4, 0), Props.WOOD_DARK, MAT.Wood)
+			end
+			Props.barrel(rack, cf * CFrame.new(0, -0.1, 0), true)
+			Props.barrel(rack, cf * CFrame.new(0, 3.3, 0), true)
+			for k = 0, 2 do
+				C(rack, "Bottle", 1.1, 0.32, cf * CFrame.new(-1.5 + k * 1.5, 7.35, 0), rgb(40, 70, 40), MAT.Glass, { CanCollide = false })
+			end
 		end
 	end
 	local c = center(room)
@@ -14295,7 +14643,7 @@ D.cellar = function(parent, room, ctx)
 		C(parent, "Bottle", 1.2, 0.35, c * CFrame.new(-2 + k, 4, 0), rgb(40, 70, 40), MAT.Glass)
 	end
 	for _, cell in room.cells do
-		Props.ceilingLamp(parent, Vector3.new(cell.x, room.y + room.h - 3.5, cell.z), 2.5)
+		Props.ceilingLamp(parent, Vector3.new(cell.x, room.y + room.h - 3.5, cell.z), 3)
 	end
 	local _ = ctx
 end
@@ -14304,36 +14652,24 @@ D.guardroom = function(parent, room, ctx)
 	local c = center(room)
 	occupy(room, c, 10, 5)
 	Props.table(parent, c, 6, 4)
-	for _, s in { -1, 1 } do
-		Props.chair(parent, c * CFrame.new(s * 4, 0, 0) * CFrame.Angles(0, s * math.pi / 2, 0))
+	for _, sx in { -1, 1 } do
+		Props.chair(parent, c * CFrame.new(sx * 4, 0, 0) * CFrame.Angles(0, sx * math.pi / 2, 0))
 	end
 	Props.candle(parent, (c * CFrame.new(0, 3.35, 0)).Position)
 	P(parent, "Keys", Vector3.new(0.8, 0.1, 0.5), c * CFrame.new(1, 3.4, 0.5), Props.GOLD, MAT.Metal)
 	local s = slots(room)
-	for k = 1, 4 do
-		local slot = take(s, 6.8, 3)
-		if slot then
-			if k == 1 then
-				local m = Props.weaponRack(parent, at(slot, 1.8))
-				ctx.prompt(m:FindFirstChild("Back"), "sword")
-			elseif k == 2 then
-				local m = Props.chest(parent, at(slot, 2))
-				ctx.prompt(m:FindFirstChild("Box"), "cuffs")
-			else
-				Props.barrel(parent, at(slot, 2.8))
-			end
-		end
+	for _, slot in sides(take(s, 6.8, 2.2)) do
+		local m = Props.weaponRack(parent, at(slot, 1.8))
+		ctx.prompt(m:FindFirstChild("Back"), "sword")
 	end
+	for _, slot in sides(take(s, 3.8, 2.4)) do
+		local m = Props.chest(parent, at(slot, 2))
+		ctx.prompt(m:FindFirstChild("Box"), "cuffs")
+	end
+	fill(parent, s, "stone")
 	for _, cell in room.cells do
-		Props.ceilingLamp(parent, Vector3.new(cell.x, room.y + room.h - 3.5, cell.z), 2.5)
+		Props.ceilingLamp(parent, Vector3.new(cell.x, room.y + room.h - 3.5, cell.z), 3)
 	end
-end
-D.prison_guard = function(parent, room, ctx)
-	for _, cell in room.cells do
-		Props.ceilingLamp(parent, Vector3.new(cell.x, room.y + room.h - 3.5, cell.z), 2.5)
-	end
-	local _ = ctx
-	local _ = parent
 end
 
 D.grand_hall = function(parent, room, ctx)
@@ -14348,34 +14684,40 @@ D.grand_hall = function(parent, room, ctx)
 		end
 	end
 	for k = -1, 1 do
-		Props.chandelier(parent, Vector3.new(c.X + k * 26, room.y + room.h - 9, c.Z), 7, 8)
+		Props.chandelier(parent, Vector3.new(c.X + k * 26, room.y + room.h - 9, c.Z), 7, 9)
 	end
 	local s = slots(room)
-	for k = 1, 10 do
-		local slot = take(s, 7.2, 3)
-		if slot then
+	local k = 0
+	for _ = 1, 8 do
+		k += 1
+		for _, slot in sides(take(s, 7.2, 3)) do
 			if k % 2 == 0 then
 				Props.armor(parent, at(slot, 2.6))
 			else
 				Props.plant(parent, at(slot, 1.8), true)
 			end
-			Props.banner(parent, onWall(slot, room.h - 4), 12, if k % 3 == 0 then rgb(30, 50, 110) else rgb(120, 22, 30))
+			Props.banner(parent, onWall(slot, room.h - 4), 12, if k % 2 == 0 then rgb(30, 50, 110) else rgb(120, 22, 30))
 		end
 	end
-	-- доска ролей у входа
-	local board = P(parent, "RoleBoard", Vector3.new(8, 6, 0.4), c * CFrame.new(-14, 5, -d / 2 + 9) * CFrame.Angles(0, math.pi, 0), Props.WOOD, MAT.WoodPlanks)
-	for _, x in { -3.6, 3.6 } do
-		P(parent, "BoardLeg", Vector3.new(0.4, 8, 0.4), c * CFrame.new(-14 + x, 4, -d / 2 + 9), Props.WOOD_DARK, MAT.Wood)
+	-- у входа по обе стороны: доски ролей (нажать — выбрать роль)
+	for _, sx in { -1, 1 } do
+		local bx = sx * 14
+		local board = P(parent, "RoleBoard", Vector3.new(8, 6, 0.4), c * CFrame.new(bx, 5, -d / 2 + 9) * CFrame.Angles(0, math.pi, 0), Props.WOOD, MAT.WoodPlanks)
+		for _, x in { -3.6, 3.6 } do
+			P(parent, "BoardLeg", Vector3.new(0.4, 8, 0.4), c * CFrame.new(bx + x, 4, -d / 2 + 9), Props.WOOD_DARK, MAT.Wood)
+		end
+		for n = 0, 5 do
+			P(parent, "Notice", Vector3.new(1.6, 2, 0.05), c * CFrame.new(bx - 2.4 + (n % 3) * 2.4, 5.8 - math.floor(n / 3) * 2.4, -d / 2 + 8.75), rgb(240, 230, 200), MAT.SmoothPlastic)
+		end
+		ctx.prompt(board, "roles", 0, 12)
+		Props.grandfatherClock(parent, c * CFrame.new(sx * (w / 2 - 2.3), 0, d / 2 - 2.3) * CFrame.Angles(0, sx * math.pi * 0.75, 0))
 	end
-	for k = 0, 5 do
-		P(parent, "Notice", Vector3.new(1.6, 2, 0.05), c * CFrame.new(-16.5 + (k % 3) * 2.4, 5.8 - math.floor(k / 3) * 2.4, -d / 2 + 8.75), rgb(240, 230, 200), MAT.SmoothPlastic)
-	end
-	ctx.prompt(board, "roles", 0, 12)
-	Props.bench(parent, c * CFrame.new(14, 0, -d / 2 + 9), 8)
-	Props.grandfatherClock(parent, c * CFrame.new(w / 2 - 2.3, 0, d / 2 - 2.3) * CFrame.Angles(0, math.pi * 0.75, 0))
 end
 
--- клетка коридора: дорожка, бра, картины, столики, доспехи
+-- ---------------------------------------------------------------------------
+-- Коридоры: каменные стены, дорожка, железные фонари, доспехи и гобелены.
+-- Обе стены одной клетки обставлены одинаково — коридор симметричен
+
 function Rooms.hallCell(parent, cell, room, ctx, nb)
 	-- дорожка тянется к каждой соседней клетке коридора, на перекрёстках куски сходятся
 	local pieces = 0
@@ -14393,40 +14735,51 @@ function Rooms.hallCell(parent, cell, room, ctx, nb)
 	if pieces == 0 then
 		Props.runner(parent, CFrame.new(cell.x, room.y, cell.z), 6, 30, Rooms.STYLE.hall.rug)
 	end
-	Props.ceilingLamp(parent, Vector3.new(cell.x, room.y + room.h - 3, cell.z), 2.5)
+	-- фонарь в каждой клетке, светит каждый второй (меньше источников света)
+	local lamp = Props.ceilingLamp(parent, Vector3.new(cell.x, room.y + room.h - 3.5, cell.z), 3)
+	if (cell.i + cell.j) % 2 == 1 then
+		for _, d in lamp:GetDescendants() do
+			if d:IsA("PointLight") then
+				d:Destroy()
+			elseif d.Name == "Bulb" then
+				d:SetAttribute("Interact", nil)
+			end
+		end
+	end
 	local _ = ctx
 end
 
 function Rooms.hallWalls(parent, room, seed)
-	-- по сторонам коридора: у каждого участка стены картина с бра или доспехи
-	for i, seg in room.segs do
-		for _, off in { -9.5, 9.5 } do
-			local p = seg.pos + seg.tangent * off
-			local cf = CFrame.lookAt(p, p + seg.inward)
-			local k = (i * 2 + (if off &gt; 0 then 1 else 0) + seed) % 5
+	for _, seg in room.segs do
+		-- клетка, к которой относится участок: у противоположных стен она одна и та же
+		local cp = seg.pos + seg.inward * 15
+		local ci, cj = math.floor(cp.X / 32 + 0.5), math.floor(cp.Z / 32 + 0.5)
+		local k = (ci * 3 + cj * 5 + seed) % 4
+		local base = CFrame.lookAt(seg.pos, seg.pos + seg.inward)
+		-- середина участка: гобелен, если там нет двери
+		if not seg.opening then
+			Props.banner(parent, base * CFrame.new(0, 14, -0.25), 9, if k % 2 == 0 then rgb(120, 22, 30) else rgb(30, 46, 110))
+		end
+		for _, sx in { -1, 1 } do
+			local cf = base * CFrame.new(sx * PAIR_OFF, 0, 0)
 			if k == 0 then
 				Props.armor(parent, cf * CFrame.new(0, 0, -1.7))
 			elseif k == 1 then
 				Props.plant(parent, cf * CFrame.new(0, 0, -1.2), true)
-				Props.painting(parent, cf * CFrame.new(0, 8.5, -0.3), 5, 4, i)
+				Props.painting(parent, cf * CFrame.new(0, 8.5, -0.3), 5, 4, ci + cj)
 			elseif k == 2 then
-				-- консольный столик с вазой
-				P(parent, "Console", Vector3.new(4, 0.3, 1.4), cf * CFrame.new(0, 3, -1), Props.WOOD, MAT.Wood)
-				for _, x in { -1.7, 1.7 } do
-					P(parent, "ConsoleLeg", Vector3.new(0.25, 2.85, 0.25), cf * CFrame.new(x, 1.43, -1), Props.WOOD_DARK, MAT.Wood)
-				end
-				C(parent, "Vase", 1.4, 0.8, cf * CFrame.new(0, 3.85, -1), Color3.fromHSV((i * 0.17) % 1, 0.45, 0.6), MAT.Glass)
-				Props.painting(parent, cf * CFrame.new(0, 8.5, -0.3), 5, 4, i + 1)
-			elseif k == 3 then
-				Props.painting(parent, cf * CFrame.new(0, 8, -0.3), 4, 6, i + 2)
-				Props.bench(parent, cf * CFrame.new(0, 0, -1.2), 5)
+				-- каменная консоль с вазой
+				P(parent, "Console", Vector3.new(4, 0.4, 1.4), cf * CFrame.new(0, 3, -1), rgb(170, 162, 150), MAT.Limestone)
+				P(parent, "ConsoleBase", Vector3.new(3, 2.8, 0.9), cf * CFrame.new(0, 1.4, -0.9), rgb(150, 142, 130), MAT.Limestone)
+				C(parent, "Vase", 1.4, 0.8, cf * CFrame.new(0, 3.9, -1), Color3.fromHSV(((ci + cj) * 0.17) % 1, 0.45, 0.6), MAT.Glass)
+				Props.painting(parent, cf * CFrame.new(0, 8.5, -0.3), 5, 4, ci + cj + 1)
 			else
-				Props.grandfatherClock(parent, cf * CFrame.new(0, 0, -1))
+				Props.bench(parent, cf * CFrame.new(0, 0, -1.2), 5)
+				Props.painting(parent, cf * CFrame.new(0, 8, -0.3), 4, 6, ci + cj + 2)
 			end
-			if (i + seed) % 2 == 0 then
-				local sp = seg.pos + seg.tangent * (off * 0.55) + Vector3.new(0, 8, 0)
-				Props.sconce(parent, CFrame.lookAt(sp, sp + seg.inward), false)
-			end
+			-- факел-бра у угла участка, без собственного света
+			local sp = seg.pos + seg.tangent * (sx * 13) + Vector3.new(0, 8.5, 0)
+			Props.sconce(parent, CFrame.lookAt(sp, sp + seg.inward), false)
 		end
 	end
 end
@@ -15574,7 +15927,7 @@ local function humOf(p: Player): Humanoid?
 end
 
 local function send(p: Player, msg)
-	if p.Parent then
+	if p.Parent and not (p :: any).isBot then
 		event:FireClient(p, msg)
 	end
 end
@@ -15687,6 +16040,9 @@ local function channel(): TextChannel
 end
 
 local function setChat(p: Player, on: boolean)
+	if (p :: any).isBot then
+		return
+	end
 	local c = channel()
 	local src = nil
 	for _, s in c:GetChildren() do
@@ -15865,8 +16221,8 @@ local function down(p: Player)
 	exec.MaxActivationDistance = 9
 	exec.RequiresLineOfSight = false
 	exec.Parent = r
-	exec.Triggered:Connect(function(killer)
-		if killer == state.maniac and info.st == "downed" then
+	local function execute(killer)
+		if killer == state.maniac and info.st == "downed" and state.players[p] == info then
 			clearPrompts(p)
 			send(killer, { type = "anim", kind = "execute" })
 			-- казнь: жертву поднимает, кровь, крик
@@ -15890,7 +16246,9 @@ local function down(p: Player)
 				makeGhost(p)
 			end)
 		end
-	end)
+	end
+	info.execute = execute
+	exec.Triggered:Connect(execute)
 	sync()
 end
 
@@ -16001,8 +16359,57 @@ local function openExit()
 	sync()
 end
 
+-- один ремонт генератора (удержание кнопки или ход бота)
+local function repairGen(p, g)
+	local info = state.players[p]
+	if state.phase ~= "playing" or not g or g.done or not info or info.role ~= "survivor" or info.st == "downed" or not Rules.isAlive(info.st) then
+		return
+	end
+	local body = g.body
+	local helpers = 0
+	for q, qi in state.players do
+		local r = rootOf(q)
+		if qi.role == "survivor" and r and (r.Position - body.Position).Magnitude &lt; 9 then
+			helpers += 1
+		end
+	end
+	g.progress = Rules.repair(g.progress, helpers)
+	body:SetAttribute("Progress", g.progress)
+	local sp = body:FindFirstChild("Sparks")
+	if sp then
+		sp:Emit(20)
+	end
+	if g.progress &gt;= 100 then
+		g.done = true
+		g.lamp.Color = Color3.fromRGB(60, 230, 90)
+		local l = g.lamp:FindFirstChildOfClass("PointLight")
+		if l then
+			l.Color = Color3.fromRGB(90, 255, 120)
+		end
+		sound(body, SOUND.fixed, 1, 0.8)
+		announce("GeneratorFixed")
+		local done = 0
+		for _, gg in gens do
+			if gg.done then
+				done += 1
+			end
+		end
+		if done &gt;= state.gensTotal and not state.exitOpen then
+			openExit()
+		end
+	end
+	sync()
+end
+
 local function wireMap()
 	local reg = map.prompts
+	for _, pr in reg.door or {} do
+		pr.Triggered:Connect(function(p)
+			if state.players[p] then
+				Builder.toggleDoor(pr.Parent)
+			end
+		end)
+	end
 	for _, pr in reg.repair or {} do
 		local body = pr.Parent
 		local g
@@ -16012,43 +16419,7 @@ local function wireMap()
 			end
 		end
 		pr.Triggered:Connect(function(p)
-			local info = state.players[p]
-			if state.phase ~= "playing" or not g or g.done or not info or info.role ~= "survivor" or info.st == "downed" or not Rules.isAlive(info.st) then
-				return
-			end
-			local helpers = 0
-			for q, qi in state.players do
-				local r = rootOf(q)
-				if qi.role == "survivor" and r and (r.Position - body.Position).Magnitude &lt; 9 then
-					helpers += 1
-				end
-			end
-			g.progress = Rules.repair(g.progress, helpers)
-			body:SetAttribute("Progress", g.progress)
-			local sp = body:FindFirstChild("Sparks")
-			if sp then
-				sp:Emit(20)
-			end
-			if g.progress &gt;= 100 then
-				g.done = true
-				g.lamp.Color = Color3.fromRGB(60, 230, 90)
-				local l = g.lamp:FindFirstChildOfClass("PointLight")
-				if l then
-					l.Color = Color3.fromRGB(90, 255, 120)
-				end
-				sound(body, SOUND.fixed, 1, 0.8)
-				announce("GeneratorFixed")
-				local done = 0
-				for _, gg in gens do
-					if gg.done then
-						done += 1
-					end
-				end
-				if done &gt;= state.gensTotal and not state.exitOpen then
-					openExit()
-				end
-			end
-			sync()
+			repairGen(p, g)
 		end)
 	end
 	for _, pr in reg.barricade or {} do
@@ -16130,9 +16501,22 @@ local function startRound()
 		sync()
 		return
 	end
-	local maniac = Rules.pickManiac(list, function(a, b)
-		return math.random(a, b)
-	end)
+	-- бот, созданный «маньяком», всегда маньяк; боты-выжившие маньяком не становятся
+	local maniac = nil
+	local candidates = {}
+	for _, p in list do
+		local b = p :: any
+		if b.isBot and b.prefer == "maniac" and not maniac then
+			maniac = p
+		elseif not (b.isBot and b.prefer == "survivor") then
+			table.insert(candidates, p)
+		end
+	end
+	if not maniac then
+		maniac = Rules.pickManiac(if #candidates &gt; 0 then candidates else list, function(a, b)
+			return math.random(a, b)
+		end)
+	end
 	state.maniac = maniac
 	state.winner = nil
 	table.clear(state.lastAbility)
@@ -16276,15 +16660,303 @@ local function ability(p: Player, name: string)
 			end)
 		end
 	elseif name == "sense" then
-		local ids = {}
+		local ids, chars = {}, {}
 		for _, q in survivors() do
 			if Rules.isAlive(state.players[q].st) then
 				table.insert(ids, q.UserId)
+				if q.Character then
+					table.insert(chars, q.Character)
+				end
 			end
 		end
-		send(p, { type = "sense", ids = ids, duration = a.duration })
+		send(p, { type = "sense", ids = ids, chars = chars, duration = a.duration })
 	end
 	return { ok = true }
+end
+
+-- ---------------------------------------------------------------------------
+-- Боты для проверки режима одним игроком (создаёт админ). Бот притворяется игроком:
+-- у него есть Character, DisplayName, UserId (отрицательный) и LoadCharacter
+
+local bots = {}
+local botSerial = 0
+local Bot = {}
+Bot.__index = Bot
+
+function Bot:SetAttribute(k, v)
+	self.attrs[k] = v
+end
+function Bot:GetAttribute(k)
+	return self.attrs[k]
+end
+function Bot:RequestStreamAroundAsync() end
+
+local function botDied(bot)
+	local i = state.players[bot]
+	if i and state.phase == "playing" and i.role == "survivor" and Rules.isAlive(i.st) then
+		i.st = "dead"
+		i.ghost = true
+		unhide(bot)
+		sync()
+	end
+	task.delay(3, function()
+		if state.players[bot] and bot.Parent then
+			bot:LoadCharacter()
+			teleport(bot, map.lobby)
+			if state.phase == "playing" then
+				local r = rootOf(bot)
+				if r then
+					r.Anchored = true
+				end
+			end
+		end
+	end)
+end
+
+function Bot:LoadCharacter()
+	if self.Character then
+		self.Character:Destroy()
+		self.Character = nil
+	end
+	local desc = Instance.new("HumanoidDescription")
+	local skin = ({ Color3.fromRGB(234, 184, 146), Color3.fromRGB(204, 142, 105), Color3.fromRGB(160, 110, 80) })[(self.serial % 3) + 1]
+	desc.HeadColor = skin
+	desc.LeftArmColor = skin
+	desc.RightArmColor = skin
+	desc.TorsoColor = ({ Color3.fromRGB(70, 90, 130), Color3.fromRGB(120, 60, 50), Color3.fromRGB(70, 110, 70), Color3.fromRGB(110, 100, 60) })[(self.serial % 4) + 1]
+	desc.LeftLegColor = Color3.fromRGB(50, 46, 44)
+	desc.RightLegColor = Color3.fromRGB(50, 46, 44)
+	local ok, model = pcall(function()
+		return Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R15)
+	end)
+	if not ok or not model then
+		return
+	end
+	model.Name = self.Name
+	for _, d in model:GetDescendants() do
+		if d:IsA("Script") or d:IsA("LocalScript") then
+			d:Destroy()
+		end
+	end
+	local hum = model:FindFirstChildOfClass("Humanoid") :: Humanoid
+	hum.DisplayName = self.DisplayName
+	hum.WalkSpeed = Rules.SPEED.survivor
+	model:PivotTo(map.lobby)
+	model.Parent = map.map
+	local r = model:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if r then
+		pcall(function()
+			r:SetNetworkOwner(nil)
+		end)
+	end
+	self.Character = model
+	self.nav = Npc.animate(hum)
+	self.nav.model = model
+	self.nav.pathAt = 0
+	self.nav.wp = 1
+	self.lastPos = nil
+	self.stuckAt = os.clock()
+	hum.Died:Connect(function()
+		if self.Character == model then
+			botDied(self)
+		end
+	end)
+end
+
+function M.addBot(prefer: string): boolean
+	if #bots &gt;= 8 then
+		return false
+	end
+	botSerial += 1
+	local bot = setmetatable({
+		isBot = true,
+		prefer = prefer,
+		serial = botSerial,
+		Name = "Bot" .. botSerial,
+		DisplayName = (if prefer == "maniac" then "Bot-Maniac " else "Bot ") .. botSerial,
+		UserId = -botSerial,
+		Parent = workspace,
+		attrs = {},
+	}, Bot)
+	table.insert(bots, bot)
+	state.players[bot :: any] = { role = nil, st = nil, ghost = state.phase == "playing" }
+	bot:LoadCharacter()
+	teleport(bot :: any, map.lobby)
+	if state.phase == "playing" then
+		state.players[bot :: any].role = "spectator"
+		local r = rootOf(bot :: any)
+		if r then
+			r.Anchored = true
+		end
+	end
+	sync()
+	return true
+end
+
+function M.clearBots()
+	for _, bot in table.clone(bots) do
+		bot.Parent = nil
+		M.leave(bot :: any)
+		if bot.Character then
+			bot.Character:Destroy()
+			bot.Character = nil
+		end
+	end
+	table.clear(bots)
+	sync()
+end
+
+-- админ: начать раунд сразу, без ожидания
+function M.startNow(): boolean
+	local n = 0
+	for _ in state.players do
+		n += 1
+	end
+	if n &lt; Rules.MIN_PLAYERS or (state.phase ~= "lobby" and state.phase ~= "countdown") then
+		return false
+	end
+	state.phase = "countdown"
+	state.endsAt = workspace:GetServerTimeNow()
+	return true
+end
+
+local function flat(v: Vector3): Vector3
+	return Vector3.new(v.X, 0, v.Z)
+end
+
+local function botGo(bot, goal: Vector3)
+	Npc.goTo(bot.nav, goal)
+end
+
+local function botStop(bot, root: BasePart)
+	bot.nav.path = nil
+	bot.nav.hum:MoveTo(root.Position)
+end
+
+local function survivorBot(bot, info, root: BasePart, hum: Humanoid)
+	if info.st == "downed" or hiddenIn[bot] then
+		botStop(bot, root)
+		return
+	end
+	-- бегство от маньяка
+	local mr = state.maniac and rootOf(state.maniac)
+	if mr and (mr.Position - map.lobby.Position).Magnitude &gt; 40 then
+		local off = flat(root.Position - mr.Position)
+		if off.Magnitude &lt; 26 then
+			local away = if off.Magnitude &gt; 0.1 then off.Unit else Vector3.xAxis
+			botGo(bot, root.Position + away * 24)
+			return
+		end
+	end
+	-- выход открыт: к воротам
+	if state.exitOpen then
+		botGo(bot, Vector3.new(map.exitX, root.Position.Y, map.exitZ - 8))
+		return
+	end
+	-- ближайший неисправный генератор
+	local best, bestD = nil, math.huge
+	for _, g in gens do
+		if not g.done then
+			local d = (g.body.Position - root.Position).Magnitude
+			if d &lt; bestD then
+				best, bestD = g, d
+			end
+		end
+	end
+	if not best then
+		botStop(bot, root)
+		return
+	end
+	if bestD &gt; 6.5 then
+		botGo(bot, best.body.Position)
+	else
+		botStop(bot, root)
+		root.CFrame = CFrame.lookAt(root.Position, Vector3.new(best.body.Position.X, root.Position.Y, best.body.Position.Z))
+		if os.clock() - (bot.lastRepair or 0) &gt; 3 then
+			bot.lastRepair = os.clock()
+			repairGen(bot, best)
+		end
+	end
+	local _ = hum
+end
+
+local function maniacBot(bot, info, root: BasePart, hum: Humanoid)
+	-- ждёт в комнате ожидания, пока его не выпустят
+	if (root.Position - map.lobby.Position).Magnitude &lt; 40 then
+		return
+	end
+	local target, targetD = nil, math.huge
+	for _, q in survivors() do
+		local qi = state.players[q]
+		local r = rootOf(q)
+		if r and Rules.isAlive(qi.st) and not hiddenIn[q] then
+			local d = (r.Position - root.Position).Magnitude
+			-- лежачего добивает
+			if qi.st == "downed" then
+				if d &lt; 7 and qi.execute then
+					botStop(bot, root)
+					qi.execute(bot)
+					return
+				end
+				d += 30
+			end
+			if d &lt; targetD then
+				target, targetD = q, d
+			end
+		end
+	end
+	if target then
+		local tr = rootOf(target) :: BasePart
+		if targetD &lt; 6 then
+			root.CFrame = CFrame.lookAt(root.Position, Vector3.new(tr.Position.X, root.Position.Y, tr.Position.Z))
+			ability(bot, "attack")
+		elseif targetD &lt; 40 and math.random() &lt; 0.05 then
+			ability(bot, "dash")
+		elseif targetD &lt; 22 and math.random() &lt; 0.03 then
+			ability(bot, "scream")
+		end
+		botGo(bot, tr.Position)
+	else
+		-- бродит между генераторами
+		if not bot.wander or os.clock() - (bot.wanderAt or 0) &gt; 12 then
+			bot.wanderAt = os.clock()
+			local g = gens[math.random(1, math.max(1, #gens))]
+			bot.wander = g and g.body.Position or map.maniacSpawn.Position
+		end
+		botGo(bot, bot.wander)
+	end
+	local _ = info
+	local __ = hum
+end
+
+local function botStep(bot)
+	local info = state.players[bot]
+	local char = bot.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not info or not hum or not root or hum.Health &lt;= 0 or root.Anchored then
+		return
+	end
+	if state.phase ~= "playing" or info.ghost or not Rules.isAlive(info.st or "healthy") and info.role == "survivor" then
+		return
+	end
+	Builder.openDoorsNear(root.Position, 7)
+	-- застрял: прыжок и новый путь
+	if bot.lastPos and (bot.lastPos - root.Position).Magnitude &lt; 0.6 and hum.MoveDirection.Magnitude &gt; 0 then
+		if os.clock() - bot.stuckAt &gt; 1.5 then
+			hum.Jump = true
+			bot.nav.path = nil
+			bot.stuckAt = os.clock()
+		end
+	else
+		bot.stuckAt = os.clock()
+	end
+	bot.lastPos = root.Position
+	if info.role == "maniac" then
+		maniacBot(bot, info, root, hum)
+	elseif info.role == "survivor" then
+		survivorBot(bot, info, root, hum)
+	end
 end
 
 -- ---------------------------------------------------------------------------
@@ -16378,6 +17050,19 @@ function M.init(h)
 	end
 
 	Players.PlayerRemoving:Connect(M.leave)
+
+	-- поведение ботов
+	task.spawn(function()
+		while true do
+			task.wait(0.25)
+			for _, bot in table.clone(bots) do
+				local ok, err = pcall(botStep, bot)
+				if not ok then
+					warn("[Maniac] bot: " .. tostring(err))
+				end
+			end
+		end
+	end)
 
 	-- смерть и новое появление участника режима
 	local function onCharacter(p: Player, char: Model)
@@ -17058,6 +17743,9 @@ function Client:localizePrompts()
 			if kind then
 				d.ActionText = self:T("p_" .. kind)
 			end
+		elseif d:IsA("TextLabel") and d:GetAttribute("RoomSign") then
+			-- таблички над дверями
+			d.Text = self:T("room_" .. d:GetAttribute("RoomSign"))
 		end
 	end
 	for _, d in castle:GetDescendants() do
@@ -17588,57 +18276,7 @@ function Client:fx(kind: string)
 	end
 end
 
--- Двери: створки поворачиваются на петлях, когда игрок рядом (только у себя на экране)
-function Client:watchDoors()
-	local CollectionService = game:GetService("CollectionService")
-	local doors = {}
-	local function add(m)
-		local leaves = {}
-		for _, l in m:GetChildren() do
-			if l:IsA("Model") and l.Name == "Leaf" then
-				table.insert(leaves, { model = l, base = l:GetPivot(), dir = l:GetAttribute("Dir") or 1, angle = 0 })
-			end
-		end
-		local jamb = m:FindFirstChild("Head")
-		if jamb then
-			doors[m] = { leaves = leaves, pos = jamb.Position }
-		end
-	end
-	for _, m in CollectionService:GetTagged("CastleDoor") do
-		add(m)
-	end
-	table.insert(self.conns, CollectionService:GetInstanceAddedSignal("CastleDoor"):Connect(function(m)
-		task.defer(add, m)
-	end))
-	table.insert(self.conns, CollectionService:GetInstanceRemovedSignal("CastleDoor"):Connect(function(m)
-		doors[m] = nil
-	end))
-	table.insert(self.conns, RunService.RenderStepped:Connect(function(dt)
-		local char = player.Character
-		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
-		if not root then
-			return
-		end
-		for _, d in doors do
-			local dist = (d.pos - root.Position).Magnitude
-			if dist &lt; 60 then
-				local want = if dist &lt; 13 then math.rad(85) else 0
-				for _, lf in d.leaves do
-					if math.abs(lf.angle - want) &gt; 0.001 then
-						lf.angle += (want - lf.angle) * math.min(1, dt * 7)
-						if math.abs(lf.angle - want) &lt; 0.01 then
-							lf.angle = want
-						end
-						lf.model:PivotTo(lf.base * CFrame.Angles(0, lf.angle * lf.dir, 0))
-					end
-				end
-			end
-		end
-	end))
-end
-
 function Client:watch()
-	self:watchDoors()
 	-- спрятался в шкафу: камера смотрит сквозь щель
 	local function hidden()
 		local eye = player:GetAttribute("HiddenEye")
@@ -19570,15 +20208,26 @@ function Client:onMessage(msg)
 			self:fade(self.blackout, 0, msg.duration or 3.5)
 		end
 	elseif msg.type == "sense" then
+		local chars = {}
+		for _, c in msg.chars or {} do
+			if typeof(c) == "Instance" then
+				chars[c] = true
+			end
+		end
 		for _, id in msg.ids or {} do
 			local q = Players:GetPlayerByUserId(id)
 			if q and q.Character then
+				chars[q.Character] = true
+			end
+		end
+		for ch in chars do
+			do
 				local h = Instance.new("Highlight")
 				h.FillColor = Color3.fromRGB(255, 40, 40)
 				h.FillTransparency = 0.6
 				h.OutlineColor = Color3.fromRGB(255, 120, 100)
 				h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-				h.Parent = q.Character
+				h.Parent = ch
 				Debris:AddItem(h, msg.duration or 5)
 			end
 		end
@@ -19630,6 +20279,8 @@ function Client:watch()
 			if kind then
 				pr.ActionText = self:T("p_" .. kind)
 			end
+		elseif pr:IsA("TextLabel") and pr:GetAttribute("RoomSign") then
+			pr.Text = self:T("room_" .. pr:GetAttribute("RoomSign"))
 		end
 	end
 	for _, d in workspace:GetDescendants() do

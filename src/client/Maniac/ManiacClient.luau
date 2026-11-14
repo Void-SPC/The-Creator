@@ -325,15 +325,26 @@ function Client:onMessage(msg)
 			self:fade(self.blackout, 0, msg.duration or 3.5)
 		end
 	elseif msg.type == "sense" then
+		local chars = {}
+		for _, c in msg.chars or {} do
+			if typeof(c) == "Instance" then
+				chars[c] = true
+			end
+		end
 		for _, id in msg.ids or {} do
 			local q = Players:GetPlayerByUserId(id)
 			if q and q.Character then
+				chars[q.Character] = true
+			end
+		end
+		for ch in chars do
+			do
 				local h = Instance.new("Highlight")
 				h.FillColor = Color3.fromRGB(255, 40, 40)
 				h.FillTransparency = 0.6
 				h.OutlineColor = Color3.fromRGB(255, 120, 100)
 				h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-				h.Parent = q.Character
+				h.Parent = ch
 				Debris:AddItem(h, msg.duration or 5)
 			end
 		end
@@ -385,6 +396,8 @@ function Client:watch()
 			if kind then
 				pr.ActionText = self:T("p_" .. kind)
 			end
+		elseif pr:IsA("TextLabel") and pr:GetAttribute("RoomSign") then
+			pr.Text = self:T("room_" .. pr:GetAttribute("RoomSign"))
 		end
 	end
 	for _, d in workspace:GetDescendants() do

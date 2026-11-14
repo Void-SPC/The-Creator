@@ -16,6 +16,7 @@ local Remotes = require(Shared.Roblox.Remotes)
 local Builder = require(script.Parent.CastleBuilder)
 local Seasons = require(script.Parent.Seasons)
 local Npc = require(script.Parent.Npc)
+Npc.doorHook = Builder.openDoorsNear
 local Outfits = require(script.Parent.Outfits)
 local Statue = require(script.Parent.Parent.Statue)
 local CurrencyService = require(script.Parent.Parent.CurrencyService)
@@ -498,6 +499,7 @@ function G.setRole(p: Player, role: string)
 		announce("NewKing", nil, p.DisplayName)
 		updateKingStatue(p.UserId)
 		G.giveItem(p, "scepter", true)
+		toast(p, "ScepterHint")
 	end
 	dress(p)
 	dropForbidden(p)
@@ -804,6 +806,44 @@ onActivate = function(p: Player, item: string, tool: Tool)
 		s.Parent = h
 		Debris:AddItem(s, 2)
 		playSound(h, SOUND.chime, 0.5)
+		-- скипетр — жезл власти: король указывает им на игрока, и стража идёт его схватить;
+		-- взмах в пустоту отзывает стражу обратно к королю
+		if info.role ~= "king" then
+			return
+		end
+		local root = rootOf(p)
+		if not root then
+			return
+		end
+		local best, bestScore = nil, -1
+		for q in state.players do
+			local r = q ~= p and rootOf(q)
+			if r then
+				local off = r.Position - root.Position
+				local d = off.Magnitude
+				if d < 70 and d > 0.1 then
+					local dot = root.CFrame.LookVector:Dot(off.Unit)
+					if dot > 0.8 then
+						local score = dot - d / 200
+						if score > bestScore then
+							best, bestScore = q, score
+						end
+					end
+				end
+			end
+		end
+		if Npc.aliveCount() == 0 then
+			toast(p, "ScepterNoGuards")
+			return
+		end
+		if best then
+			state.minionTarget = best
+			toast(p, "ScepterOrder", best.DisplayName)
+			toast(best, "ScepterHunted")
+		else
+			state.minionTarget = nil
+			toast(p, "ScepterRecall")
+		end
 	elseif item == "book" then
 		if info.role == "librarian" and cooldown(p, "bookPay", 30) then
 			CurrencyService.add(p, 3)
@@ -997,6 +1037,10 @@ local NOTES = { 0, 4, 7, 12, 7, 4, 5, 9, 12, 9, 7, 4, 2, 0 }
 
 function G.wireFurniture(prompts)
 	local seatsWired = {}
+	-- двери открываются удержанием кнопки взаимодействия
+	prompts("door", function(_p, pr)
+		Builder.toggleDoor(pr.Parent)
+	end)
 	prompts("sit", function(p, pr)
 		local seat = pr.Parent
 		local hum = humOf(p)
@@ -1230,7 +1274,9 @@ local function wirePrompts()
 		G.giveItem(p, "cuffs")
 	end)
 	prompts("scepter", function(p)
-		G.giveItem(p, "scepter")
+		if G.giveItem(p, "scepter") then
+			toast(p, "ScepterHint")
+		end
 	end)
 	prompts("cook", function(p)
 		local info = state.players[p]
@@ -1717,6 +1763,12 @@ function G.init(projectStore)
 						end
 					end
 					sync(p)
+					-- страховка: упавший за пределы замка возвращается во двор, а не падает вечно
+					local fr = rootOf(p)
+					if fr and fr.Position.Y < -90 then
+						teleport(p, Builder.points.yard)
+						toast(p, "FellBack")
+					end
 					-- срок вышел — на свободу; сбежавшего узника возвращаем
 					if info.jailed then
 						if (info.jailUntil or 0) <= os.time() then
