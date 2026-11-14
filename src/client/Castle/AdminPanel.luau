@@ -36,7 +36,8 @@ function AdminPanel.mount(app)
 	-- небольшая, но удобная для пальца кнопка рядом с верхней панелью Roblox
 	local btn = Ui.button(gui, "", nil, {
 		Size = UDim2.fromOffset(64, 30),
-		Position = UDim2.fromOffset(inset.Max.X + 8, math.max(4, inset.Min.Y + (inset.Height - 30) / 2)),
+		-- справа вверху: слева кнопки Roblox, там кнопка пряталась под ними
+		Position = UDim2.new(1, -76, 0, math.max(6, inset.Min.Y + (inset.Height - 30) / 2)),
 		TextSize = 13,
 		Font = Ui.FONT_BOLD,
 		TextColor3 = Ui.C.gold,

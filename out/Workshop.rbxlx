@@ -7340,8 +7340,10 @@ local function rgb(r, g, b)
 	return Color3.fromRGB(r, g, b)
 end
 
-local STONE = rgb(118, 112, 104)
-local STONE_DARK = rgb(84, 80, 76)
+local STONE = rgb(150, 145, 136)
+local STONE_DARK = rgb(108, 103, 97)
+local FLOOR = rgb(132, 124, 112)
+local PLANKS = rgb(118, 82, 52)
 local WOOD = rgb(92, 62, 40)
 local WOOD_DARK = rgb(60, 40, 28)
 local CARPET = rgb(140, 24, 32)
@@ -7577,6 +7579,19 @@ local function bookshelf(parent, cf: CFrame, w, h, seed)
 	end
 end
 
+-- плита с прямоугольной дырой (для люка и лестниц); пустые куски пропускаются
+local function slab(parent, name, x0, x1, z0, z1, y0, y1, hx0, hx1, hz0, hz1, color, mat)
+	local function piece(a0, b0, a1, b1)
+		if a1 - a0 &gt; 0.01 and b1 - b0 &gt; 0.01 then
+			box(parent, name, a0, y0, b0, a1, y1, b1, color, mat)
+		end
+	end
+	piece(x0, z0, x1, hz0)
+	piece(x0, hz1, x1, z1)
+	piece(x0, hz0, hx0, hz1)
+	piece(hx1, hz0, x1, hz1)
+end
+
 local function stairs(parent, x0, x1, z0, y0, rise, run, steps, dir, color)
 	-- dir = +1 вверх по оси Z, -1 вниз по оси Z
 	for i = 0, steps - 1 do
@@ -7588,14 +7603,69 @@ end
 -- ---------------------------------------------------------------------------
 -- Рельеф: остров с замком, ров с водой по кругу, трава вокруг
 
+-- Остров замка (|x| &lt; 84, |z| &lt; 156) целиком из деталей, рельефа на нём нет совсем,
+-- поэтому он не вылезает сквозь полы. Рельеф только снаружи: луг и ров с водой.
+-- Все границы кратны 4: так вода и трава ложатся ровно, без наплывов
+local ISLAND_X, ISLAND_Z = 84, 156
+local MOAT = 32
+B.ISLAND_X, B.ISLAND_Z, B.MOAT = ISLAND_X, ISLAND_Z, MOAT
+
 local function landscape()
-	terrain:FillBlock(CFrame.new(0, 30, 0), Vector3.new(900, 140, 900), Enum.Material.Air)
-	terrain:FillBlock(CFrame.new(0, -12, 0), Vector3.new(900, 24, 900), Enum.Material.Grass)
-	-- ров шириной 34 вокруг стен
-	terrain:FillBlock(CFrame.new(0, -6, 0), Vector3.new(160 + 68, 14, 300 + 68), Enum.Material.Air)
-	terrain:FillBlock(CFrame.new(0, -8.5, 0), Vector3.new(160 + 68, 9, 300 + 68), Enum.Material.Water)
-	terrain:FillBlock(CFrame.new(0, -7, 0), Vector3.new(164, 14, 304), Enum.Material.Rock)
-	terrain:FillBlock(CFrame.new(0, -12, 0), Vector3.new(160 + 80, 4, 300 + 80), Enum.Material.Mud)
+	terrain:Clear()
+	terrain.WaterColor = rgb(46, 84, 92)
+	terrain.WaterTransparency = 0.55
+	terrain.WaterReflectance = 0.35
+	terrain.WaterWaveSize = 0.08
+	terrain.WaterWaveSpeed = 6
+	-- луг вокруг: плиты по 256, чтобы не превысить лимиты одной операции
+	for x = -512, 511, 256 do
+		for z = -512, 511, 256 do
+			terrain:FillBlock(CFrame.new(x + 128, -8, z + 128), Vector3.new(256, 16, 256), Enum.Material.Grass)
+		end
+	end
+	local mx, mz = ISLAND_X + MOAT, ISLAND_Z + MOAT
+	-- ров: снимаем луг, кладём дно и воду ниже края берега
+	terrain:FillBlock(CFrame.new(0, -8, 0), Vector3.new(mx * 2, 16, mz * 2), Enum.Material.Air)
+	terrain:FillBlock(CFrame.new(0, -14, 0), Vector3.new(mx * 2, 4, mz * 2), Enum.Material.Mud)
+	terrain:FillBlock(CFrame.new(0, -8, 0), Vector3.new(mx * 2, 8, mz * 2), Enum.Material.Water)
+	-- остров пустой: его занимают детали фундамента
+	terrain:FillBlock(CFrame.new(0, -8, 0), Vector3.new(ISLAND_X * 2, 16, ISLAND_Z * 2), Enum.Material.Air)
+	-- колодец выхода из тайного хода за рвом
+	terrain:FillBlock(CFrame.new(-132, -8, 142), Vector3.new(8, 16, 12), Enum.Material.Air)
+end
+
+-- Фундамент острова: каменные стенки по краю (видны над водой) и закрытое дно
+local function foundation(parent)
+	local X, Z, Y0 = ISLAND_X, ISLAND_Z, -31
+	local c, m = rgb(110, 106, 100), Enum.Material.Cobblestone
+	box(parent, "Foundation", X - 3, Y0, -Z, X, 0, Z, c, m)
+	box(parent, "Foundation", -X, Y0, -Z, -X + 3, 0, 138, c, m)
+	box(parent, "Foundation", -X, Y0, 146, -X + 3, 0, Z, c, m)
+	box(parent, "Foundation", -X, -16, 138, -X + 3, 0, 146, c, m)
+	box(parent, "Foundation", -X, Y0, -Z, X, 0, -Z + 3, c, m)
+	box(parent, "Foundation", -X, Y0, Z - 3, X, 0, Z, c, m)
+	box(parent, "IslandBottom", -X, Y0 - 1, -Z, X, Y0, Z, rgb(60, 58, 56), Enum.Material.Slate)
+	-- каменный край внешнего берега рва
+	local mx, mz = X + MOAT, Z + MOAT
+	local e = rgb(120, 116, 108)
+	box(parent, "Embankment", mx, -16, -mz - 2, mx + 2, 0.2, mz + 2, e, m)
+	box(parent, "Embankment", -mx - 2, -16, -mz - 2, -mx, 0.2, mz + 2, e, m)
+	box(parent, "Embankment", -mx, -16, mz, mx, 0.2, mz + 2, e, m)
+	box(parent, "Embankment", -mx, -16, -mz - 2, -8, 0.2, -mz, e, m)
+	box(parent, "Embankment", 8, -16, -mz - 2, mx, 0.2, -mz, e, m)
+	-- дорога от моста и фонари вдоль неё
+	box(parent, "Road", -7, -0.2, -330, 7, 0.15, -mz - 2, rgb(128, 120, 108), Enum.Material.Cobblestone)
+	for z = -mz - 12, -320, -22 do
+		for _, x in { -9.5, 9.5 } do
+			box(parent, "LampPost", x - 0.3, 0, z - 0.3, x + 0.3, 9, z + 0.3, rgb(40, 38, 36), Enum.Material.Metal)
+			local lamp = box(parent, "Lamp", x - 0.7, 9, z - 0.7, x + 0.7, 10.6, z + 0.7, rgb(255, 200, 120), Enum.Material.Neon)
+			local l = Instance.new("PointLight")
+			l.Range = 22
+			l.Brightness = 1.4
+			l.Color = rgb(255, 190, 120)
+			l.Parent = lamp
+		end
+	end
 end
 
 -- ---------------------------------------------------------------------------
@@ -7611,6 +7681,7 @@ function B.build()
 	root.Parent = workspace
 	B.root = root
 	landscape()
+	foundation(root)
 
 	local outer = Instance.new("Model")
 	outer.Name = "Walls"
@@ -7655,22 +7726,39 @@ function B.build()
 	end
 
 	-- ---- мост и ворота
-	box(outer, "Bridge", -8, -0.6, -186, 8, 0.4, -150, WOOD, Enum.Material.WoodPlanks)
-	for z = -184, -152, 4 do
+	box(outer, "Bridge", -8, -0.6, -192, 8, 0.4, -150, WOOD, Enum.Material.WoodPlanks)
+	for _, x in { -6, 6 } do
+		for _, z in { -182, -168 } do
+			box(outer, "BridgePier", x - 1, -16, z - 1, x + 1, -0.6, z + 1, STONE_DARK, Enum.Material.Cobblestone)
+		end
+	end
+	for z = -190, -152, 4 do
 		box(outer, "Rail", -8.4, 0.4, z - 0.25, -7.6, 3.4, z + 0.25, WOOD_DARK, Enum.Material.Wood)
 		box(outer, "Rail", 7.6, 0.4, z - 0.25, 8.4, 3.4, z + 0.25, WOOD_DARK, Enum.Material.Wood)
 	end
-	box(outer, "Handrail", -8.5, 3.2, -186, -7.5, 3.6, -150, WOOD, Enum.Material.Wood)
-	box(outer, "Handrail", 7.5, 3.2, -186, 8.5, 3.6, -150, WOOD, Enum.Material.Wood)
+	box(outer, "Handrail", -8.5, 3.2, -192, -7.5, 3.6, -150, WOOD, Enum.Material.Wood)
+	box(outer, "Handrail", 7.5, 3.2, -192, 8.5, 3.6, -150, WOOD, Enum.Material.Wood)
 	local gate = box(outer, "Portcullis", -8, 0, -151, 8, 22, -149.5, rgb(45, 42, 40), Enum.Material.DiamondPlate, { Transparency = 0.15 })
 	gate:SetAttribute("Gate", true)
 	B.gate = gate
 	torch(outer, Vector3.new(-12, 14, -154), Vector3.new(0, 0, -1))
 	torch(outer, Vector3.new(12, 14, -154), Vector3.new(0, 0, -1))
-	B.points.outside = CFrame.new(0, 3, -200)
+	B.points.outside = CFrame.new(0, 3, -205)
 
 	-- ---- двор: брусчатка, фонтан со статуей короля, скамьи, доска ролей
-	terrain:FillBlock(CFrame.new(0, -0.5, -90), Vector3.new(154, 1, 118), Enum.Material.Cobblestone)
+	slab(yard, "Cobbles", -81, 81, -153, -30, -1, 0, -46, -38, -70, -44, rgb(124, 120, 114), Enum.Material.Cobblestone)
+	-- дорожки из плит к фонтану и к дверям, газоны по углам
+	box(yard, "Path", -4, 0, -150, 4, 0.08, -30, rgb(160, 152, 140), Enum.Material.Slate)
+	box(yard, "Path", -60, 0, -94, 60, 0.08, -86, rgb(160, 152, 140), Enum.Material.Slate)
+	for _, g in { { -74, -146, -28, -118 }, { 28, -146, 74, -118 }, { 28, -66, 74, -38 } } do
+		box(yard, "Lawn", g[1], 0, g[2], g[3], 0.12, g[4], rgb(86, 130, 62), Enum.Material.Grass)
+		box(yard, "Kerb", g[1] - 0.6, 0, g[2] - 0.6, g[3] + 0.6, 0.5, g[2], rgb(150, 145, 136), Enum.Material.Slate)
+		box(yard, "Kerb", g[1] - 0.6, 0, g[4], g[3] + 0.6, 0.5, g[4] + 0.6, rgb(150, 145, 136), Enum.Material.Slate)
+	end
+	-- колодец-коновязь и бочки у стены для уюта
+	for k = 0, 3 do
+		part(yard, { Name = "Barrel", Shape = Enum.PartType.Cylinder, Size = Vector3.new(3.2, 2.8, 2.8), CFrame = CFrame.new(70 - k * 3.2, 1.6, -36) * CFrame.Angles(0, 0, math.pi / 2), Color = WOOD, Material = Enum.Material.Wood })
+	end
 	local basin = part(yard, { Name = "Fountain", Shape = Enum.PartType.Cylinder, Size = Vector3.new(2, 30, 30), CFrame = CFrame.new(0, 1, -90) * CFrame.Angles(0, 0, math.pi / 2), Color = rgb(170, 165, 158), Material = Enum.Material.Marble })
 	part(yard, { Name = "FountainWater", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.6, 27, 27), CFrame = CFrame.new(0, 1.8, -90) * CFrame.Angles(0, 0, math.pi / 2), Color = rgb(70, 130, 170), Material = Enum.Material.Glass, Transparency = 0.35, CanCollide = false })
 	local plinth = box(yard, "StatuePlinth", -5, 0, -95, 5, 8, -85, rgb(170, 165, 158), Enum.Material.Marble)
@@ -7699,12 +7787,15 @@ function B.build()
 	prompt(board, "roles", "", 0, 14)
 	-- деревья во дворе и по берегу (меняются со временем года)
 	B.trees = {}
-	for _, t in { { -22, -125 }, { 55, -125 }, { -22, -55 }, { 55, -55 } } do
+	for _, t in { { -51, -132 }, { 51, -132 }, { 51, -52 }, { -20, -112 } } do
 		table.insert(B.trees, Vector3.new(t[1], 0, t[2]))
 	end
 	for i = 0, 27 do
 		local a = i / 28 * math.pi * 2
-		table.insert(B.trees, Vector3.new(math.cos(a) * 170, 0, math.sin(a) * 250))
+		local tp = Vector3.new(math.cos(a) * 190, 0, math.sin(a) * 275)
+		if math.abs(tp.X) &gt; 16 or tp.Z &gt; 0 then
+			table.insert(B.trees, tp)
+		end
 	end
 	-- свечение окон и факелы вдоль стен двора
 	for z = -140, -40, 20 do
@@ -7725,20 +7816,11 @@ function B.build()
 	-- ---- главное здание: z от -30 до 147, два этажа по 20 и тронный зал высотой 36
 	local FH = 20
 	local KZ0 = -30
-	local function floorWithHole(name, x0, x1, z0, z1, y0, y1, hx0, hx1, hz0, hz1, color, mat)
-		-- плита с прямоугольной дырой (для люка и лестниц); пустые куски пропускаются
-		local function piece(a0, b0, a1, b1)
-			if a1 - a0 &gt; 0.01 and b1 - b0 &gt; 0.01 then
-				box(inside, name, a0, y0, b0, a1, y1, b1, color, mat)
-			end
-		end
-		piece(x0, z0, x1, hz0)
-		piece(x0, hz1, x1, z1)
-		piece(x0, hz0, hx0, hz1)
-		piece(hx1, hz0, x1, hz1)
+	local function floorWithHole(...)
+		slab(inside, ...)
 	end
 	-- пол первого этажа, с отверстием под люком за троном
-	floorWithHole("Floor", -78, 78, KZ0, 147, -0.4, 0.2, -3, 3, 139, 145, rgb(100, 94, 86), Enum.Material.Slate)
+	floorWithHole("Floor", -78, 78, KZ0, 147, -1, 0.2, -3, 3, 139, 145, FLOOR, Enum.Material.Slate)
 	wallX(inside, KZ0, -78, 78, 0, 60, { { 0, 12, 16 } }, 3)
 	for _, x in { -60, -40, -20, 20, 40, 60 } do
 		window(inside, Vector3.new(x, 10, KZ0 - 1.6), Vector3.new(0, 0, -1))
@@ -7766,12 +7848,15 @@ function B.build()
 		box(inside, "Baluster", x - 0.2, i + 1, -22.4, x + 0.2, i + 4, -22, WOOD_DARK, Enum.Material.Wood)
 	end
 	box(inside, "HallCeiling", -12, 40, KZ0, 12, 41, 0, STONE_DARK)
-	chandelier(inside, Vector3.new(0, 30, -15))
+	chandelier(inside, Vector3.new(0, 26, -15))
+	for _, x in { -60, -40, 40, 60 } do
+		torch(inside, Vector3.new(x, 9, -1.4), Vector3.new(0, 0, -1))
+	end
 	banner(inside, Vector3.new(-8, 34, -1.2), Vector3.new(0, 0, -1), 12)
 	banner(inside, Vector3.new(8, 34, -1.2), Vector3.new(0, 0, -1), 12)
 	-- второй этаж: плиты с проёмами над лестницами, стены и потолки
-	floorWithHole("Floor2", -78, -12, KZ0, 90, FH, FH + 1, -40, -12, KZ0, -20, rgb(100, 94, 86), Enum.Material.Slate)
-	floorWithHole("Floor2", 12, 78, KZ0, 0, FH, FH + 1, 12, 40, KZ0, -20, rgb(100, 94, 86), Enum.Material.Slate)
+	floorWithHole("Floor2", -78, -12, KZ0, 90, FH, FH + 1, -40, -12, KZ0, -20, PLANKS, Enum.Material.WoodPlanks)
+	floorWithHole("Floor2", 12, 78, KZ0, 0, FH, FH + 1, 12, 40, KZ0, -20, PLANKS, Enum.Material.WoodPlanks)
 	for x = -39, -13, 2 do
 		box(inside, "Rail", x - 0.2, FH + 1, -20.4, x + 0.2, FH + 4, -20, WOOD_DARK, Enum.Material.Wood)
 		box(inside, "Rail", -x - 0.2, FH + 1, -20.4, -x + 0.2, FH + 4, -20, WOOD_DARK, Enum.Material.Wood)
@@ -7872,8 +7957,11 @@ function B.build()
 	bench(inside, CFrame.new(34, 0, 23), 10)
 	bench(inside, CFrame.new(34, 0, 37), 10)
 	B.points.priest = CFrame.new(40, 4, 48)
-	chandelier(inside, Vector3.new(36, 34, 20))
-	chandelier(inside, Vector3.new(36, 34, 44))
+	chandelier(inside, Vector3.new(36, 28, 18))
+	chandelier(inside, Vector3.new(36, 28, 42))
+	for z = 10, 50, 20 do
+		torch(inside, Vector3.new(13.4, 10, z), Vector3.new(1, 0, 0))
+	end
 	window(inside, Vector3.new(79, 24, 30), Vector3.new(1, 0, 0), 5, 12)
 
 	-- ---- казино (восток, z 60..90, первый этаж)
@@ -7951,9 +8039,6 @@ function B.build()
 	local secret = Instance.new("Model")
 	secret.Name = "SecretPassage"
 	local D = -27
-	terrain:FillBlock(CFrame.new(0, D / 2, 142), Vector3.new(6, -D + 1, 6), Enum.Material.Air)
-	terrain:FillBlock(CFrame.new(-66, D + 5, 142), Vector3.new(140, 10, 6), Enum.Material.Air)
-	terrain:FillBlock(CFrame.new(-132, D / 2, 142), Vector3.new(6, -D + 2, 6), Enum.Material.Air)
 	local function shaft(x)
 		box(secret, "ShaftWall", x - 4, D, 138, x + 4, 0, 139, STONE_DARK, Enum.Material.Slate)
 		box(secret, "ShaftWall", x - 4, D, 145, x + 4, 0, 146, STONE_DARK, Enum.Material.Slate)
@@ -7986,6 +8071,7 @@ function B.build()
 	for _, w in { { -137, -136, 137, 147 }, { -128, -127, 137, 147 }, { -137, -127, 137, 138 }, { -137, -127, 146, 147 } } do
 		box(secret, "ExitWell", w[1], -1, w[3], w[2], 2.5, w[4], STONE_DARK, Enum.Material.Cobblestone)
 	end
+	slab(secret, "ExitCap", -138, -126, 135, 149, -1, 0.2, -135, -129, 139, 145, rgb(110, 106, 100), Enum.Material.Cobblestone)
 	secret.Parent = inside
 	B.points.tunnel = CFrame.new(-20, D + 3, 142)
 	B.points.tunnelExit = CFrame.new(-132, 4, 152)
@@ -8035,14 +8121,8 @@ function B.build()
 	-- ---- темница под двором (вход по лестнице в западной части двора)
 	local dungeon = Instance.new("Model")
 	dungeon.Name = "Dungeon"
-	terrain:FillBlock(CFrame.new(-55, -10.5, -90), Vector3.new(46, 21, 92), Enum.Material.Air)
 	box(dungeon, "DungeonFloor", -78, -21, -136, -32, -20, -44, STONE_DARK, Enum.Material.Cobblestone)
-	floorWithHole("DungeonCeiling", -78, -32, -136, -44, -1, 0, -46, -38, -70, -44, STONE_DARK, Enum.Material.Slate)
-	for _, d in inside:GetChildren() do
-		if d.Name == "DungeonCeiling" then
-			d.Parent = dungeon
-		end
-	end
+	slab(dungeon, "DungeonCeiling", -78, -32, -136, -44, -2, -1, -46, -38, -70, -44, STONE_DARK, Enum.Material.Slate)
 	box(dungeon, "DungeonWall", -79, -21, -137, -78, 0, -43, STONE_DARK, Enum.Material.Slate)
 	box(dungeon, "DungeonWall", -32, -21, -137, -31, 0, -43, STONE_DARK, Enum.Material.Slate)
 	box(dungeon, "DungeonWall", -79, -21, -137, -31, 0, -136, STONE_DARK, Enum.Material.Slate)
@@ -8050,7 +8130,7 @@ function B.build()
 	box(dungeon, "DungeonWall", -38, -21, -44, -31, 0, -43, STONE_DARK, Enum.Material.Slate)
 	for i = 0, 19 do
 		local z = -44 - i * 1.3
-		box(dungeon, "DungeonStep", -46, -20, z - 1.3, -38, -i - 1, z, STONE_DARK, Enum.Material.Slate)
+		box(dungeon, "DungeonStep", -46, -20, z - 1.3, -38, math.min(-i - 1, -0.95), z, STONE_DARK, Enum.Material.Slate)
 	end
 	-- перила вокруг проёма во дворе
 	box(yard, "HoleRail", -46.6, 0, -70.6, -46, 3.2, -44, WOOD_DARK, Enum.Material.Wood)
@@ -8076,20 +8156,54 @@ function B.build()
 	end
 	dungeon.Parent = root
 	B.points.dungeon = CFrame.new(-45, -17, -100)
+	-- деревянные панели внизу внутренних стен и карниз, как в старых особняках
+	local panels = Instance.new("Model")
+	panels.Name = "Panels"
+	for _, w in inside:GetChildren() do
+		if w:IsA("BasePart") and w.Name == "Wall" then
+			local bottom = w.Position.Y - w.Size.Y / 2
+			if (math.abs(bottom) &lt; 0.5 or math.abs(bottom - 21) &lt; 0.5) and w.Size.Y &lt;= 40 then
+				local alongX = w.Size.X &gt; w.Size.Z
+				local len = if alongX then w.Size.X else w.Size.Z
+				local t = if alongX then w.Size.Z else w.Size.X
+				if len &gt; 1.5 and w.Size.Y &gt; 6 then
+					for _, side in { -1, 1 } do
+						local off = (t / 2 + 0.12) * side
+						local pos = Vector3.new(w.Position.X, bottom + 2.3, w.Position.Z) + (if alongX then Vector3.new(0, 0, off) else Vector3.new(off, 0, 0))
+						local size = if alongX then Vector3.new(len, 4.6, 0.24) else Vector3.new(0.24, 4.6, len)
+						part(panels, { Name = "Wainscot", Size = size, CFrame = CFrame.new(pos), Color = WOOD_DARK, Material = Enum.Material.Wood, CanCollide = false })
+						local trim = if alongX then Vector3.new(len, 0.35, 0.4) else Vector3.new(0.4, 0.35, len)
+						part(panels, { Name = "Trim", Size = trim, CFrame = CFrame.new(pos + Vector3.new(0, 2.4, 0)), Color = GOLD:Lerp(WOOD, 0.6), Material = Enum.Material.Wood, CanCollide = false })
+						local cornice = if alongX then Vector3.new(len, 0.6, 0.6) else Vector3.new(0.6, 0.6, len)
+						part(panels, { Name = "Cornice", Size = cornice, CFrame = CFrame.new(Vector3.new(pos.X, bottom + w.Size.Y - 0.3, pos.Z)), Color = STONE_DARK, Material = Enum.Material.Slate, CanCollide = false })
+					end
+				end
+			end
+		end
+	end
+	-- балки под потолками коридора и второго этажа
+	for z = 4, 88, 8 do
+		box(inside, "Beam", -12, FH - 1.2, z - 0.5, 12, FH, z + 0.5, WOOD_DARK, Enum.Material.Wood)
+	end
+	for z = -26, 88, 8 do
+		box(inside, "Beam", -78, 38.8, z - 0.5, -12, 40, z + 0.5, WOOD_DARK, Enum.Material.Wood)
+	end
+	panels.Parent = inside
 	outer.Parent = root
 	inside.Parent = root
 	yard.Parent = root
 
 	-- атмосфера: тёплый полумрак, как в хоррор-играх, но без страха
-	Lighting.Ambient = rgb(52, 46, 42)
-	Lighting.OutdoorAmbient = rgb(110, 105, 100)
-	Lighting.Brightness = 1.6
+	Lighting.Ambient = rgb(78, 70, 64)
+	Lighting.OutdoorAmbient = rgb(128, 126, 122)
+	Lighting.Brightness = 2
+	Lighting.ExposureCompensation = 0.25
 	Lighting.EnvironmentDiffuseScale = 0.4
 	Lighting.EnvironmentSpecularScale = 0.4
 	Lighting.GlobalShadows = true
 	local cc = Lighting:FindFirstChild("CastleColor") or Instance.new("ColorCorrectionEffect")
 	cc.Name = "CastleColor"
-	cc.TintColor = rgb(255, 238, 220)
+	cc.TintColor = rgb(255, 246, 236)
 	cc.Contrast = 0.08
 	cc.Saturation = 0.05
 	cc.Parent = Lighting
@@ -12919,7 +13033,8 @@ function AdminPanel.mount(app)
 	-- небольшая, но удобная для пальца кнопка рядом с верхней панелью Roblox
 	local btn = Ui.button(gui, "", nil, {
 		Size = UDim2.fromOffset(64, 30),
-		Position = UDim2.fromOffset(inset.Max.X + 8, math.max(4, inset.Min.Y + (inset.Height - 30) / 2)),
+		-- справа вверху: слева кнопки Roblox, там кнопка пряталась под ними
+		Position = UDim2.new(1, -76, 0, math.max(6, inset.Min.Y + (inset.Height - 30) / 2)),
 		TextSize = 13,
 		Font = Ui.FONT_BOLD,
 		TextColor3 = Ui.C.gold,
