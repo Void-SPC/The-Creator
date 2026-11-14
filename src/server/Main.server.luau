@@ -1,5 +1,5 @@
 --!nonstrict
--- Точка входа сервера «The Castle»: замок (RP) и отдельный режим «Мафия»
+-- Точка входа сервера «The Castle»: замок (RP) и отдельный режим «Маньяк»
 
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
@@ -11,12 +11,13 @@ local Adapter = require(script.Parent.DataStoreAdapter)
 local ProjectStore = require(script.Parent.Core.ProjectStore)
 local Access = require(script.Parent.Access)
 local CurrencyService = require(script.Parent.CurrencyService)
-local MafiaGame = require(script.Parent.Mafia.MafiaGame)
+local ManiacGame = require(script.Parent.Maniac.ManiacGame)
 local CastleGame = require(script.Parent.Castle.CastleGame)
 local Admin = require(script.Parent.Castle.Admin)
 
 -- сеть создаётся до всего остального, чтобы клиенты могли подключиться сразу
 Remotes.event("Castle")
+Remotes.event("Maniac")
 
 local adapter = Adapter.create()
 local store = ProjectStore.new(adapter, { jobId = if game.JobId ~= "" then game.JobId else HttpService:GenerateGUID(false) })
@@ -24,9 +25,9 @@ local store = ProjectStore.new(adapter, { jobId = if game.JobId ~= "" then game.
 CurrencyService.init(store)
 CastleGame.init(store)
 Admin.init()
--- переход между замком и мафией: игрок в один момент только в одном режиме,
+-- переход между замком и «Маньяком»: игрок в один момент только в одном режиме,
 -- чат и сообщения на экране у режимов раздельные
-MafiaGame.init({
+ManiacGame.init({
 	beforeJoin = function(p)
 		CastleGame.leave(p)
 		CastleGame.addToGeneral(p, false)
@@ -35,6 +36,12 @@ MafiaGame.init({
 		CastleGame.addToGeneral(p, true)
 	end,
 })
+
+CastleGame.beforeEnter = function(p)
+	if ManiacGame.inGame(p) then
+		ManiacGame.leave(p)
+	end
+end
 
 Players.PlayerRemoving:Connect(function(p)
 	Access.forget(p)

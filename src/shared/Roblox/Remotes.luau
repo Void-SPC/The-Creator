@@ -6,8 +6,8 @@ local RunService = game:GetService("RunService")
 
 local Remotes = {}
 
-local FUNCTIONS = { "Request", "MafiaRequest", "CastleRequest", "AdminRequest" }
-local EVENTS = { "Mafia", "Castle" }
+local FUNCTIONS = { "Request", "CastleRequest", "AdminRequest", "ManiacRequest" }
+local EVENTS = { "Castle", "Maniac" }
 
 local folder: Folder
 

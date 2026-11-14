@@ -12,7 +12,7 @@ local Lang = require(Shared.Lang)
 local Menu = require(script.Parent.Castle.Menu)
 local CastleClient = require(script.Parent.Castle.CastleClient)
 local AdminPanel = require(script.Parent.Castle.AdminPanel)
-local MafiaClient = require(script.Parent.Mafia.MafiaClient)
+local ManiacClient = require(script.Parent.Maniac.ManiacClient)
 
 local player = Players.LocalPlayer
 
@@ -27,10 +27,9 @@ local app: any = {
 	playerGui = player:WaitForChild("PlayerGui"),
 	lang = "en",
 	settings = { volume = 1, music = 0.6, footsteps = true, bob = 0.8, sensitivity = 1, fov = 75, shadows = true, effects = true },
-	-- режим для MafiaClient: витрины больше нет, из мафии всегда можно выйти в меню
 	mode = { creator = false, showcase = nil },
 	castle = nil,
-	mafia = nil,
+	maniac = nil,
 	onLangChanged = {},
 }
 
@@ -118,26 +117,27 @@ function app:backToMenu()
 	self.menu:setVisible(true)
 end
 
-function app:openMafia()
+-- «Маньяк»: отдельный режим со своей картой, чатом и сообщениями
+function app:openManiac()
 	if self.castle then
 		self.castle:destroy()
 		self.castle = nil
 	end
 	self.menu:setVisible(false)
-	self.mafia = MafiaClient.new(self)
 	local ok, res = pcall(function()
-		return Remotes.fn("MafiaRequest"):InvokeServer("Join")
+		return Remotes.fn("ManiacRequest"):InvokeServer("Join")
 	end)
 	if not ok or not res or not res.ok then
-		self:leaveMafia()
+		self.menu:setVisible(true)
+		return
 	end
+	self.maniac = ManiacClient.new(self)
 end
 
--- вызывается из MafiaClient кнопкой «Выйти из мафии»
-function app:leaveMafia()
-	if self.mafia then
-		self.mafia:destroy()
-		self.mafia = nil
+function app:leaveManiac()
+	if self.maniac then
+		self.maniac:destroy()
+		self.maniac = nil
 	end
 	workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
 	self.menu:setVisible(true)

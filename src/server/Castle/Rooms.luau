@@ -3,6 +3,7 @@
 -- каждый 32-studs участок стены, в стороне от середины, где двери и окна. Центр комнаты
 -- свободен для ковра и стола, поэтому предметы не налезают друг на друга и на проходы
 
+local MAT = require(game:GetService("ReplicatedStorage").Workshop.Shared.Materials)
 local Props = require(script.Parent.Props)
 
 local Rooms = {}
@@ -12,45 +13,45 @@ local P, C = Props.P, Props.C
 
 -- Стили: обои, пол, низ стены. Пол везде каменный, дерево только в отделке
 Rooms.STYLE = {
-	hall = { paper = rgb(92, 40, 42), floor = rgb(150, 140, 126), mat = Enum.Material.Marble, rug = rgb(120, 22, 30) },
-	grand_hall = { paper = rgb(110, 96, 74), floor = rgb(196, 188, 176), mat = Enum.Material.Marble, rug = rgb(120, 22, 30) },
-	throne = { paper = rgb(120, 30, 36), floor = rgb(206, 198, 186), mat = Enum.Material.Marble, rug = rgb(140, 20, 28) },
-	bedroom = { paper = rgb(52, 74, 62), floor = rgb(128, 120, 110), mat = Enum.Material.Slate, rug = rgb(110, 40, 40) },
-	guest_suite = { paper = rgb(66, 58, 90), floor = rgb(128, 120, 110), mat = Enum.Material.Slate, rug = rgb(60, 50, 100) },
-	study = { paper = rgb(60, 48, 36), floor = rgb(120, 112, 102), mat = Enum.Material.Slate, rug = rgb(90, 30, 30) },
-	sitting = { paper = rgb(110, 84, 54), floor = rgb(150, 140, 126), mat = Enum.Material.Marble, rug = rgb(40, 60, 90) },
-	lounge = { paper = rgb(70, 34, 50), floor = rgb(150, 140, 126), mat = Enum.Material.Marble, rug = rgb(90, 30, 60) },
-	music = { paper = rgb(44, 58, 84), floor = rgb(176, 168, 156), mat = Enum.Material.Marble, rug = rgb(120, 22, 30) },
-	reading = { paper = rgb(56, 70, 50), floor = rgb(120, 112, 102), mat = Enum.Material.Slate, rug = rgb(40, 70, 50) },
-	trophy = { paper = rgb(80, 30, 30), floor = rgb(110, 104, 98), mat = Enum.Material.Slate, rug = rgb(60, 40, 30) },
-	gallery = { paper = rgb(36, 50, 70), floor = rgb(196, 188, 176), mat = Enum.Material.Marble, rug = rgb(120, 22, 30) },
-	nursery = { paper = rgb(150, 170, 186), floor = rgb(176, 168, 156), mat = Enum.Material.Marble, rug = rgb(200, 150, 170) },
-	wardrobe = { paper = rgb(100, 70, 90), floor = rgb(150, 140, 126), mat = Enum.Material.Marble, rug = rgb(110, 50, 80) },
-	bath = { paper = rgb(170, 190, 196), floor = rgb(220, 218, 212), mat = Enum.Material.Marble, rug = rgb(70, 110, 140) },
-	kitchen = { paper = rgb(168, 150, 120), floor = rgb(120, 110, 98), mat = Enum.Material.Cobblestone, rug = nil },
-	dining = { paper = rgb(100, 28, 32), floor = rgb(150, 140, 126), mat = Enum.Material.Marble, rug = rgb(120, 22, 30) },
-	servants = { paper = rgb(140, 128, 108), floor = rgb(110, 104, 98), mat = Enum.Material.Slate, rug = rgb(100, 80, 60) },
-	barracks = { paper = rgb(96, 90, 82), floor = rgb(100, 96, 90), mat = Enum.Material.Slate, rug = nil },
-	training = { paper = rgb(110, 104, 96), floor = rgb(120, 114, 106), mat = Enum.Material.Slate, rug = nil },
-	chapel = { paper = rgb(200, 190, 170), floor = rgb(206, 198, 186), mat = Enum.Material.Marble, rug = rgb(120, 22, 30) },
-	chapel_small = { paper = rgb(200, 190, 170), floor = rgb(206, 198, 186), mat = Enum.Material.Marble, rug = rgb(120, 22, 30) },
-	shop = { paper = rgb(126, 100, 62), floor = rgb(150, 140, 126), mat = Enum.Material.Marble, rug = rgb(60, 80, 40) },
-	casino = { paper = rgb(60, 20, 50), floor = rgb(40, 34, 40), mat = Enum.Material.Marble, rug = rgb(110, 20, 60) },
-	stairs = { paper = rgb(92, 40, 42), floor = rgb(150, 140, 126), mat = Enum.Material.Marble, rug = rgb(120, 22, 30) },
-	stairs_down = { paper = rgb(80, 74, 66), floor = rgb(120, 114, 106), mat = Enum.Material.Slate, rug = nil },
-	landing = { paper = rgb(92, 40, 42), floor = rgb(150, 140, 126), mat = Enum.Material.Marble, rug = rgb(120, 22, 30) },
-	observatory = { paper = rgb(30, 34, 60), floor = rgb(120, 112, 102), mat = Enum.Material.Slate, rug = rgb(30, 40, 80) },
-	treasury = { paper = rgb(110, 84, 30), floor = rgb(196, 188, 176), mat = Enum.Material.Marble, rug = rgb(120, 22, 30) },
-	council = { paper = rgb(40, 46, 66), floor = rgb(150, 140, 126), mat = Enum.Material.Marble, rug = rgb(120, 22, 30) },
-	map_room = { paper = rgb(90, 80, 56), floor = rgb(150, 140, 126), mat = Enum.Material.Marble, rug = rgb(60, 50, 30) },
-	royal_dining = { paper = rgb(100, 28, 32), floor = rgb(196, 188, 176), mat = Enum.Material.Marble, rug = rgb(120, 22, 30) },
-	king = { paper = rgb(110, 22, 30), floor = rgb(206, 198, 186), mat = Enum.Material.Marble, rug = rgb(150, 20, 28) },
-	queen = { paper = rgb(84, 46, 100), floor = rgb(206, 198, 186), mat = Enum.Material.Marble, rug = rgb(110, 50, 130) },
-	storeroom = { paper = rgb(90, 86, 80), floor = rgb(96, 92, 88), mat = Enum.Material.Cobblestone, rug = nil },
-	guardroom = { paper = rgb(90, 86, 80), floor = rgb(96, 92, 88), mat = Enum.Material.Cobblestone, rug = nil },
-	prison_guard = { paper = rgb(90, 86, 80), floor = rgb(96, 92, 88), mat = Enum.Material.Cobblestone, rug = nil },
-	cellar = { paper = rgb(84, 70, 60), floor = rgb(96, 88, 80), mat = Enum.Material.Cobblestone, rug = nil },
-	storage = { paper = rgb(90, 86, 80), floor = rgb(96, 92, 88), mat = Enum.Material.Cobblestone, rug = nil },
+	hall = { paper = rgb(92, 40, 42), wall = MAT.Plaster, floor = rgb(150, 140, 126), mat = MAT.Marble, rug = rgb(120, 22, 30) },
+	grand_hall = { paper = rgb(200, 188, 166), wall = MAT.Limestone, floor = rgb(196, 188, 176), mat = MAT.Marble, rug = rgb(120, 22, 30) },
+	throne = { paper = rgb(120, 30, 36), wall = MAT.Plaster, floor = rgb(206, 198, 186), mat = MAT.Marble, rug = rgb(140, 20, 28) },
+	bedroom = { paper = rgb(52, 74, 62), wall = MAT.Plaster, floor = rgb(128, 120, 110), mat = MAT.Slate, rug = rgb(110, 40, 40) },
+	guest_suite = { paper = rgb(66, 58, 90), wall = MAT.Plaster, floor = rgb(128, 120, 110), mat = MAT.Slate, rug = rgb(60, 50, 100) },
+	study = { paper = rgb(104, 70, 46), wall = MAT.WoodPlanks, floor = rgb(120, 112, 102), mat = MAT.Granite, rug = rgb(90, 30, 30) },
+	sitting = { paper = rgb(110, 84, 54), wall = MAT.Plaster, floor = rgb(150, 140, 126), mat = MAT.Granite, rug = rgb(40, 60, 90) },
+	lounge = { paper = rgb(70, 34, 50), wall = MAT.Plaster, floor = rgb(150, 140, 126), mat = MAT.Granite, rug = rgb(90, 30, 60) },
+	music = { paper = rgb(44, 58, 84), wall = MAT.Plaster, floor = rgb(176, 168, 156), mat = MAT.Marble, rug = rgb(120, 22, 30) },
+	reading = { paper = rgb(96, 64, 42), wall = MAT.WoodPlanks, floor = rgb(120, 112, 102), mat = MAT.Slate, rug = rgb(40, 70, 50) },
+	trophy = { paper = rgb(130, 72, 56), wall = MAT.Brick, floor = rgb(110, 104, 98), mat = MAT.Slate, rug = rgb(60, 40, 30) },
+	gallery = { paper = rgb(36, 50, 70), wall = MAT.Plaster, floor = rgb(196, 188, 176), mat = MAT.Marble, rug = rgb(120, 22, 30) },
+	nursery = { paper = rgb(150, 170, 186), wall = MAT.Plaster, floor = rgb(176, 168, 156), mat = MAT.Marble, rug = rgb(200, 150, 170) },
+	wardrobe = { paper = rgb(100, 70, 90), wall = MAT.Plaster, floor = rgb(150, 140, 126), mat = MAT.Marble, rug = rgb(110, 50, 80) },
+	bath = { paper = rgb(196, 214, 218), wall = MAT.CeramicTiles, floor = rgb(220, 218, 212), mat = MAT.CeramicTiles, rug = rgb(70, 110, 140) },
+	kitchen = { paper = rgb(150, 92, 70), wall = MAT.Brick, floor = rgb(120, 110, 98), mat = MAT.CeramicTiles, rug = nil },
+	dining = { paper = rgb(100, 28, 32), wall = MAT.Plaster, floor = rgb(150, 140, 126), mat = MAT.Marble, rug = rgb(120, 22, 30) },
+	servants = { paper = rgb(140, 128, 108), wall = MAT.Plaster, floor = rgb(110, 104, 98), mat = MAT.Slate, rug = rgb(100, 80, 60) },
+	barracks = { paper = rgb(118, 92, 80), wall = MAT.Brick, floor = rgb(100, 96, 90), mat = MAT.Cobblestone, rug = nil },
+	training = { paper = rgb(176, 166, 148), wall = MAT.Limestone, floor = rgb(120, 114, 106), mat = MAT.Pavement, rug = nil },
+	chapel = { paper = rgb(214, 204, 184), wall = MAT.Limestone, floor = rgb(206, 198, 186), mat = MAT.Marble, rug = rgb(120, 22, 30) },
+	chapel_small = { paper = rgb(214, 204, 184), wall = MAT.Limestone, floor = rgb(206, 198, 186), mat = MAT.Marble, rug = rgb(120, 22, 30) },
+	shop = { paper = rgb(120, 84, 54), wall = MAT.WoodPlanks, floor = rgb(150, 140, 126), mat = MAT.Limestone, rug = rgb(60, 80, 40) },
+	casino = { paper = rgb(60, 20, 50), wall = MAT.Plaster, floor = rgb(40, 34, 40), mat = MAT.Marble, rug = rgb(110, 20, 60) },
+	stairs = { paper = rgb(92, 40, 42), wall = MAT.Plaster, floor = rgb(150, 140, 126), mat = MAT.Marble, rug = rgb(120, 22, 30) },
+	stairs_down = { paper = rgb(80, 74, 66), wall = MAT.Cobblestone, floor = rgb(120, 114, 106), mat = MAT.Slate, rug = nil },
+	landing = { paper = rgb(92, 40, 42), wall = MAT.Plaster, floor = rgb(150, 140, 126), mat = MAT.Marble, rug = rgb(120, 22, 30) },
+	observatory = { paper = rgb(30, 34, 60), wall = MAT.Plaster, floor = rgb(120, 112, 102), mat = MAT.Slate, rug = rgb(30, 40, 80) },
+	treasury = { paper = rgb(200, 186, 150), wall = MAT.Marble, floor = rgb(196, 188, 176), mat = MAT.Marble, rug = rgb(120, 22, 30) },
+	council = { paper = rgb(98, 66, 44), wall = MAT.WoodPlanks, floor = rgb(150, 140, 126), mat = MAT.Marble, rug = rgb(120, 22, 30) },
+	map_room = { paper = rgb(110, 76, 50), wall = MAT.WoodPlanks, floor = rgb(150, 140, 126), mat = MAT.Granite, rug = rgb(60, 50, 30) },
+	royal_dining = { paper = rgb(100, 28, 32), wall = MAT.Plaster, floor = rgb(196, 188, 176), mat = MAT.Marble, rug = rgb(120, 22, 30) },
+	king = { paper = rgb(110, 22, 30), wall = MAT.Plaster, floor = rgb(206, 198, 186), mat = MAT.Marble, rug = rgb(150, 20, 28) },
+	queen = { paper = rgb(84, 46, 100), wall = MAT.Plaster, floor = rgb(206, 198, 186), mat = MAT.Marble, rug = rgb(110, 50, 130) },
+	storeroom = { paper = rgb(90, 86, 80), floor = rgb(96, 92, 88), mat = MAT.Cobblestone, rug = nil },
+	guardroom = { paper = rgb(90, 86, 80), floor = rgb(96, 92, 88), mat = MAT.Cobblestone, rug = nil },
+	prison_guard = { paper = rgb(90, 86, 80), floor = rgb(96, 92, 88), mat = MAT.Cobblestone, rug = nil },
+	cellar = { paper = rgb(84, 70, 60), floor = rgb(96, 88, 80), mat = MAT.Cobblestone, rug = nil },
+	storage = { paper = rgb(90, 86, 80), floor = rgb(96, 92, 88), mat = MAT.Cobblestone, rug = nil },
 }
 Rooms.STYLE.default = Rooms.STYLE.hall
 
@@ -268,7 +269,7 @@ D.study = function(parent, room, ctx)
 	if slot then
 		Props.plant(parent, at(slot, 1.8))
 	end
-	local book = P(parent, "BookProp", Vector3.new(1.2, 0.3, 0.9), center(room) * CFrame.new(1.2, 3.52, 1.2), rgb(110, 30, 30), Enum.Material.Fabric)
+	local book = P(parent, "BookProp", Vector3.new(1.2, 0.3, 0.9), center(room) * CFrame.new(1.2, 3.52, 1.2), rgb(110, 30, 30), MAT.Leather)
 	ctx.prompt(book, "book")
 	lights(parent, room)
 	sconces(parent, room, 2)
@@ -419,7 +420,7 @@ D.reading = function(parent, room, ctx)
 			Props.bookshelf(parent, at(slot, 2), 6, 13, room.id * 7 + k)
 		end
 	end
-	local book = P(parent, "BookProp", Vector3.new(1.2, 0.3, 0.9), c * CFrame.new(0.8, 1.86, 0.4), rgb(40, 60, 110), Enum.Material.Fabric)
+	local book = P(parent, "BookProp", Vector3.new(1.2, 0.3, 0.9), c * CFrame.new(0.8, 1.86, 0.4), rgb(40, 60, 110), MAT.Leather)
 	ctx.prompt(book, "book")
 	lights(parent, room)
 	sconces(parent, room, 2)
@@ -487,7 +488,7 @@ D.nursery = function(parent, room, ctx)
 	local c = center(room)
 	occupy(room, c, 4, 3)
 	for k = 0, 5 do
-		Props.P(parent, "ToyBlock", Vector3.new(1, 1, 1), c * CFrame.new(-1.5 + (k % 3), 0.5 + math.floor(k / 3), (k % 2) * 0.3) * CFrame.Angles(0, k * 0.3, 0), Color3.fromHSV(k / 6, 0.7, 0.9), Enum.Material.SmoothPlastic)
+		Props.P(parent, "ToyBlock", Vector3.new(1, 1, 1), c * CFrame.new(-1.5 + (k % 3), 0.5 + math.floor(k / 3), (k % 2) * 0.3) * CFrame.Angles(0, k * 0.3, 0), Color3.fromHSV(k / 6, 0.7, 0.9), MAT.SmoothPlastic)
 	end
 	lights(parent, room)
 	sconces(parent, room, 2)
@@ -510,12 +511,12 @@ D.wardrobe = function(parent, room, ctx)
 	-- вешалка с платьями
 	local c = center(room)
 	occupy(room, c * CFrame.new(0, 0, -2), 9, 9)
-	P(parent, "Rail", Vector3.new(8, 0.25, 0.25), c * CFrame.new(0, 6.5, 0), Props.GOLD, Enum.Material.Metal)
+	P(parent, "Rail", Vector3.new(8, 0.25, 0.25), c * CFrame.new(0, 6.5, 0), Props.GOLD, MAT.Metal)
 	for _, x in { -3.8, 3.8 } do
-		P(parent, "RailPost", Vector3.new(0.3, 6.5, 0.3), c * CFrame.new(x, 3.25, 0), Props.GOLD, Enum.Material.Metal)
+		P(parent, "RailPost", Vector3.new(0.3, 6.5, 0.3), c * CFrame.new(x, 3.25, 0), Props.GOLD, MAT.Metal)
 	end
 	for k = 0, 5 do
-		P(parent, "Gown", Vector3.new(0.6, 4, 2), c * CFrame.new(-3 + k * 1.2, 4.2, 0), Color3.fromHSV(k * 0.15, 0.5, 0.6), Enum.Material.Fabric)
+		P(parent, "Gown", Vector3.new(0.6, 4, 2), c * CFrame.new(-3 + k * 1.2, 4.2, 0), Color3.fromHSV(k * 0.15, 0.5, 0.6), MAT.SmoothPlastic)
 	end
 	local chest = Props.chest(parent, c * CFrame.new(0, 0, -5))
 	ctx.prompt(chest:FindFirstChild("Box"), "shop", 0, 10)
@@ -545,7 +546,7 @@ D.bath = function(parent, room, ctx)
 	if slot then
 		local m = Props.dresser(parent, at(slot, 1.8), 5, 2)
 		for k = 0, 2 do
-			P(m, "Towel", Vector3.new(1.6, 0.3, 1.2), at(slot, 1.8, CFrame.new(-1 + k, 3.5, 0)), rgb(240, 240, 236), Enum.Material.Fabric)
+			P(m, "Towel", Vector3.new(1.6, 0.3, 1.2), at(slot, 1.8, CFrame.new(-1 + k, 3.5, 0)), rgb(240, 240, 236), MAT.SmoothPlastic)
 		end
 	end
 	lights(parent, room)
@@ -568,12 +569,12 @@ D.kitchen = function(parent, room, ctx)
 	end
 	occupy(room, c, 22, 6)
 	local _, top = Props.prepTable(parent, c * CFrame.new(-6, 0, 0))
-	local bread = P(parent, "BreadLoaves", Vector3.new(2.2, 0.8, 1.2), c * CFrame.new(-8.2, top + 0.4, 0.6), rgb(196, 140, 70), Enum.Material.Sand)
+	local bread = P(parent, "BreadLoaves", Vector3.new(2.2, 0.8, 1.2), c * CFrame.new(-8.2, top + 0.4, 0.6), rgb(196, 140, 70), MAT.Sand)
 	ctx.prompt(bread, "bread")
 	Props.prepTable(parent, c * CFrame.new(6, 0, 0))
-	local basket = C(parent, "AppleBasket", 0.9, 1.8, c * CFrame.new(7.8, top + 0.45, 0.6), rgb(150, 110, 60), Enum.Material.Fabric)
+	local basket = C(parent, "AppleBasket", 0.9, 1.8, c * CFrame.new(7.8, top + 0.45, 0.6), rgb(150, 110, 60), MAT.Wood)
 	for k = 0, 4 do
-		Props.S(parent, "Apple", 0.55, c * CFrame.new(7.4 + (k % 3) * 0.4, top + 1, 0.3 + math.floor(k / 3) * 0.5), rgb(190, 40, 40), Enum.Material.SmoothPlastic, { CanCollide = false })
+		Props.S(parent, "Apple", 0.55, c * CFrame.new(7.4 + (k % 3) * 0.4, top + 1, 0.3 + math.floor(k / 3) * 0.5), rgb(190, 40, 40), MAT.SmoothPlastic, { CanCollide = false })
 	end
 	ctx.prompt(basket, "apple")
 	local k = 0
@@ -652,7 +653,7 @@ D.servants = function(parent, room, ctx)
 		for _, d in m:GetChildren() do
 			if d.Name == "Blade" then
 				d.Color = rgb(150, 110, 60)
-				d.Material = Enum.Material.Wood
+				d.Material = MAT.Wood
 			end
 		end
 		ctx.prompt(m:FindFirstChild("Back"), "broom")
@@ -692,7 +693,7 @@ D.barracks = function(parent, room, ctx)
 		elseif k == 2 then
 			local m = Props.chest(parent, at(slot, 2))
 			ctx.prompt(m:FindFirstChild("Box"), "cuffs")
-			P(parent, "ShacklesHook", Vector3.new(2, 0.3, 0.3), onWall(slot, 6), Props.IRON, Enum.Material.Metal)
+			P(parent, "ShacklesHook", Vector3.new(2, 0.3, 0.3), onWall(slot, 6), Props.IRON, MAT.Metal)
 		elseif k % 3 == 0 then
 			Props.armor(parent, at(slot, 2.6))
 			Props.banner(parent, onWall(slot, 15), 6)
@@ -706,7 +707,7 @@ end
 
 D.training = function(parent, room, ctx)
 	local c = center(room)
-	P(parent, "Mat", Vector3.new(18, 0.2, 18), c * CFrame.new(0, 0.1, 0), rgb(110, 96, 70), Enum.Material.Fabric)
+	P(parent, "Mat", Vector3.new(18, 0.2, 18), c * CFrame.new(0, 0.1, 0), rgb(110, 96, 70), MAT.Leather)
 	occupy(room, c, 16, 6)
 	ctx.points.dummies = ctx.points.dummies or {}
 	table.insert(ctx.points.dummies, c * CFrame.new(-5, 3, 0))
@@ -723,9 +724,9 @@ D.training = function(parent, room, ctx)
 			else
 				-- мишень для стрельбы
 				local cf = at(slot, 1)
-				P(parent, "TargetStand", Vector3.new(0.4, 5, 0.4), cf * CFrame.new(0, 2.5, 0.3), Props.WOOD, Enum.Material.Wood)
+				P(parent, "TargetStand", Vector3.new(0.4, 5, 0.4), cf * CFrame.new(0, 2.5, 0.3), Props.WOOD, MAT.Wood)
 				for r = 0, 3 do
-					C(parent, "Target", 0.2 + r * 0.02, 4 - r, cf * CFrame.new(0, 5, -r * 0.06) * CFrame.Angles(math.pi / 2, 0, 0), if r % 2 == 0 then rgb(230, 225, 210) else rgb(170, 30, 30), Enum.Material.Fabric)
+					C(parent, "Target", 0.2 + r * 0.02, 4 - r, cf * CFrame.new(0, 5, -r * 0.06) * CFrame.Angles(math.pi / 2, 0, 0), if r % 2 == 0 then rgb(230, 225, 210) else rgb(170, 30, 30), MAT.SmoothPlastic)
 				end
 			end
 		end
@@ -814,13 +815,13 @@ D.treasury = function(parent, room, ctx)
 	for k = 0, 3 do
 		local a = k / 4 * math.pi * 2
 		local p = c * CFrame.new(math.cos(a) * 6, 0, math.sin(a) * 6)
-		P(parent, "Pedestal", Vector3.new(2, 3.4, 2), p * CFrame.new(0, 1.7, 0), rgb(220, 214, 204), Enum.Material.Marble)
+		P(parent, "Pedestal", Vector3.new(2, 3.4, 2), p * CFrame.new(0, 1.7, 0), rgb(220, 214, 204), MAT.Marble)
 		if k % 2 == 0 then
-			C(parent, "CrownBand", 0.6, 1.4, p * CFrame.new(0, 3.7, 0), Props.GOLD, Enum.Material.Metal)
-			Props.S(parent, "Jewel", 0.4, p * CFrame.new(0, 4.2, 0), rgb(200, 30, 50), Enum.Material.Neon)
+			C(parent, "CrownBand", 0.6, 1.4, p * CFrame.new(0, 3.7, 0), Props.GOLD, MAT.Metal)
+			Props.S(parent, "Jewel", 0.4, p * CFrame.new(0, 4.2, 0), rgb(200, 30, 50), MAT.Neon)
 		else
 			for g = 0, 3 do
-				P(parent, "GoldBar", Vector3.new(1, 0.4, 0.5), p * CFrame.new(0, 3.6 + g * 0.4, (g % 2) * 0.2 - 0.1), Props.GOLD, Enum.Material.Metal)
+				P(parent, "GoldBar", Vector3.new(1, 0.4, 0.5), p * CFrame.new(0, 3.6 + g * 0.4, (g % 2) * 0.2 - 0.1), Props.GOLD, MAT.Metal)
 			end
 		end
 	end
@@ -845,8 +846,8 @@ D.council = function(parent, room, ctx)
 	rugCenter(parent, room, st)
 	local c = center(room)
 	occupy(room, c, 22, 22)
-	C(parent, "RoundTable", 0.5, 16, c * CFrame.new(0, 3.2, 0), Props.WOOD, Enum.Material.Wood)
-	C(parent, "TableBase", 3, 3, c * CFrame.new(0, 1.5, 0), Props.WOOD_DARK, Enum.Material.Wood)
+	C(parent, "RoundTable", 0.5, 16, c * CFrame.new(0, 3.2, 0), Props.WOOD, MAT.Wood)
+	C(parent, "TableBase", 3, 3, c * CFrame.new(0, 1.5, 0), Props.WOOD_DARK, MAT.Wood)
 	for k = 0, 9 do
 		local a = k / 10 * math.pi * 2
 		local cp = (c * CFrame.new(math.cos(a) * 9.5, 0, math.sin(a) * 9.5)).Position
@@ -905,9 +906,9 @@ local function royal(parent, room, ctx, color, isKing)
 		elseif k == 3 then
 			Props.desk(parent, at(slot, 2.6))
 		elseif k == 4 and isKing then
-			local stand = P(parent, "ScepterStand", Vector3.new(1.6, 4, 1.6), at(slot, 1.6, CFrame.new(0, 2, 0)), rgb(220, 214, 204), Enum.Material.Marble)
-			P(parent, "Scepter", Vector3.new(0.3, 3, 0.3), at(slot, 1.6, CFrame.new(0, 5.5, 0)), Props.GOLD, Enum.Material.Metal, { CanCollide = false })
-			Props.S(parent, "Gem", 0.6, at(slot, 1.6, CFrame.new(0, 7.2, 0)), rgb(200, 30, 50), Enum.Material.Neon, { CanCollide = false })
+			local stand = P(parent, "ScepterStand", Vector3.new(1.6, 4, 1.6), at(slot, 1.6, CFrame.new(0, 2, 0)), rgb(220, 214, 204), MAT.Marble)
+			P(parent, "Scepter", Vector3.new(0.3, 3, 0.3), at(slot, 1.6, CFrame.new(0, 5.5, 0)), Props.GOLD, MAT.Metal, { CanCollide = false })
+			Props.S(parent, "Gem", 0.6, at(slot, 1.6, CFrame.new(0, 7.2, 0)), rgb(200, 30, 50), MAT.Neon, { CanCollide = false })
 			ctx.prompt(stand, "scepter")
 		elseif k == 5 then
 			Props.armor(parent, at(slot, 2.6))
@@ -982,22 +983,22 @@ D.cellar = function(parent, room, ctx)
 		-- стеллаж с лежащими бочками в два яруса и бутылками сбоку
 		local cf = at(slot, 3)
 		local rack = Props.model(parent, "WineRack")
-		P(rack, "Shelf", Vector3.new(5, 0.4, 3), cf * CFrame.new(0, 3.2, 0), Props.WOOD_DARK, Enum.Material.Wood)
-		P(rack, "Top", Vector3.new(5, 0.4, 3), cf * CFrame.new(0, 6.6, 0), Props.WOOD_DARK, Enum.Material.Wood)
+		P(rack, "Shelf", Vector3.new(5, 0.4, 3), cf * CFrame.new(0, 3.2, 0), Props.WOOD_DARK, MAT.Wood)
+		P(rack, "Top", Vector3.new(5, 0.4, 3), cf * CFrame.new(0, 6.6, 0), Props.WOOD_DARK, MAT.Wood)
 		for _, x in { -2.3, 2.3 } do
-			P(rack, "Post", Vector3.new(0.4, 6.8, 3), cf * CFrame.new(x, 3.4, 0), Props.WOOD_DARK, Enum.Material.Wood)
+			P(rack, "Post", Vector3.new(0.4, 6.8, 3), cf * CFrame.new(x, 3.4, 0), Props.WOOD_DARK, MAT.Wood)
 		end
 		Props.barrel(rack, cf * CFrame.new(0, -0.1, 0), true)
 		Props.barrel(rack, cf * CFrame.new(0, 3.3, 0), true)
 		for k = 0, 2 do
-			C(rack, "Bottle", 1.1, 0.32, cf * CFrame.new(-1.5 + k * 1.5, 7.35, 0), rgb(40, 70, 40), Enum.Material.Glass, { CanCollide = false })
+			C(rack, "Bottle", 1.1, 0.32, cf * CFrame.new(-1.5 + k * 1.5, 7.35, 0), rgb(40, 70, 40), MAT.Glass, { CanCollide = false })
 		end
 	end
 	local c = center(room)
 	occupy(room, c, 7, 4)
 	Props.table(parent, c, 6, 3)
 	for k = 0, 4 do
-		C(parent, "Bottle", 1.2, 0.35, c * CFrame.new(-2 + k, 4, 0), rgb(40, 70, 40), Enum.Material.Glass)
+		C(parent, "Bottle", 1.2, 0.35, c * CFrame.new(-2 + k, 4, 0), rgb(40, 70, 40), MAT.Glass)
 	end
 	for _, cell in room.cells do
 		Props.ceilingLamp(parent, Vector3.new(cell.x, room.y + room.h - 3.5, cell.z), 2.5)
@@ -1013,7 +1014,7 @@ D.guardroom = function(parent, room, ctx)
 		Props.chair(parent, c * CFrame.new(s * 4, 0, 0) * CFrame.Angles(0, s * math.pi / 2, 0))
 	end
 	Props.candle(parent, (c * CFrame.new(0, 3.35, 0)).Position)
-	P(parent, "Keys", Vector3.new(0.8, 0.1, 0.5), c * CFrame.new(1, 3.4, 0.5), Props.GOLD, Enum.Material.Metal)
+	P(parent, "Keys", Vector3.new(0.8, 0.1, 0.5), c * CFrame.new(1, 3.4, 0.5), Props.GOLD, MAT.Metal)
 	local s = slots(room)
 	for k = 1, 4 do
 		local slot = take(s, 6.8, 3)
@@ -1068,12 +1069,12 @@ D.grand_hall = function(parent, room, ctx)
 		end
 	end
 	-- доска ролей у входа
-	local board = P(parent, "RoleBoard", Vector3.new(8, 6, 0.4), c * CFrame.new(-14, 5, -d / 2 + 9) * CFrame.Angles(0, math.pi, 0), Props.WOOD, Enum.Material.WoodPlanks)
+	local board = P(parent, "RoleBoard", Vector3.new(8, 6, 0.4), c * CFrame.new(-14, 5, -d / 2 + 9) * CFrame.Angles(0, math.pi, 0), Props.WOOD, MAT.WoodPlanks)
 	for _, x in { -3.6, 3.6 } do
-		P(parent, "BoardLeg", Vector3.new(0.4, 8, 0.4), c * CFrame.new(-14 + x, 4, -d / 2 + 9), Props.WOOD_DARK, Enum.Material.Wood)
+		P(parent, "BoardLeg", Vector3.new(0.4, 8, 0.4), c * CFrame.new(-14 + x, 4, -d / 2 + 9), Props.WOOD_DARK, MAT.Wood)
 	end
 	for k = 0, 5 do
-		P(parent, "Notice", Vector3.new(1.6, 2, 0.05), c * CFrame.new(-16.5 + (k % 3) * 2.4, 5.8 - math.floor(k / 3) * 2.4, -d / 2 + 8.75), rgb(240, 230, 200), Enum.Material.SmoothPlastic)
+		P(parent, "Notice", Vector3.new(1.6, 2, 0.05), c * CFrame.new(-16.5 + (k % 3) * 2.4, 5.8 - math.floor(k / 3) * 2.4, -d / 2 + 8.75), rgb(240, 230, 200), MAT.SmoothPlastic)
 	end
 	ctx.prompt(board, "roles", 0, 12)
 	Props.bench(parent, c * CFrame.new(14, 0, -d / 2 + 9), 8)
@@ -1081,9 +1082,23 @@ D.grand_hall = function(parent, room, ctx)
 end
 
 -- клетка коридора: дорожка, бра, картины, столики, доспехи
-function Rooms.hallCell(parent, cell, room, ctx, alongX: boolean)
-	local cf = CFrame.new(cell.x, room.y, cell.z) * (if alongX then CFrame.Angles(0, math.pi / 2, 0) else CFrame.new())
-	Props.runner(parent, cf, 6, 32, Rooms.STYLE.hall.rug)
+function Rooms.hallCell(parent, cell, room, ctx, nb)
+	-- дорожка тянется к каждой соседней клетке коридора, на перекрёстках куски сходятся
+	local pieces = 0
+	for _, d in { { "px", 1, 0 }, { "nx", -1, 0 }, { "pz", 0, 1 }, { "nz", 0, -1 } } do
+		if nb[d[1]] then
+			pieces += 1
+			local dir = Vector3.new(d[2], 0, d[3])
+			local from = Vector3.new(cell.x, room.y, cell.z) - dir * 3
+			local to = Vector3.new(cell.x, room.y, cell.z) + dir * 16
+			local mid = (from + to) / 2
+			local cf = CFrame.lookAt(mid, mid + dir) * CFrame.new(0, (if d[2] ~= 0 then 0.005 else 0.01), 0)
+			Props.runner(parent, cf, 6, 19, Rooms.STYLE.hall.rug)
+		end
+	end
+	if pieces == 0 then
+		Props.runner(parent, CFrame.new(cell.x, room.y, cell.z), 6, 30, Rooms.STYLE.hall.rug)
+	end
 	Props.ceilingLamp(parent, Vector3.new(cell.x, room.y + room.h - 3, cell.z), 2.5)
 	local _ = ctx
 end
@@ -1102,11 +1117,11 @@ function Rooms.hallWalls(parent, room, seed)
 				Props.painting(parent, cf * CFrame.new(0, 8.5, -0.3), 5, 4, i)
 			elseif k == 2 then
 				-- консольный столик с вазой
-				P(parent, "Console", Vector3.new(4, 0.3, 1.4), cf * CFrame.new(0, 3, -1), Props.WOOD, Enum.Material.Wood)
+				P(parent, "Console", Vector3.new(4, 0.3, 1.4), cf * CFrame.new(0, 3, -1), Props.WOOD, MAT.Wood)
 				for _, x in { -1.7, 1.7 } do
-					P(parent, "ConsoleLeg", Vector3.new(0.25, 2.85, 0.25), cf * CFrame.new(x, 1.43, -1), Props.WOOD_DARK, Enum.Material.Wood)
+					P(parent, "ConsoleLeg", Vector3.new(0.25, 2.85, 0.25), cf * CFrame.new(x, 1.43, -1), Props.WOOD_DARK, MAT.Wood)
 				end
-				C(parent, "Vase", 1.4, 0.8, cf * CFrame.new(0, 3.85, -1), Color3.fromHSV((i * 0.17) % 1, 0.45, 0.6), Enum.Material.Glass)
+				C(parent, "Vase", 1.4, 0.8, cf * CFrame.new(0, 3.85, -1), Color3.fromHSV((i * 0.17) % 1, 0.45, 0.6), MAT.Glass)
 				Props.painting(parent, cf * CFrame.new(0, 8.5, -0.3), 5, 4, i + 1)
 			elseif k == 3 then
 				Props.painting(parent, cf * CFrame.new(0, 8, -0.3), 4, 6, i + 2)

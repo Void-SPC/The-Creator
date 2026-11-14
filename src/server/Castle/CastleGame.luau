@@ -2,6 +2,7 @@
 -- Игра «The Castle»: роли, король и трон, голод и жажда, инвентарь, оружие и темница,
 -- стража короля, казино, магазин, тайный ход, времена года. Все права проверяются здесь
 
+local MAT = require(game:GetService("ReplicatedStorage").Workshop.Shared.Materials)
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local TweenService = game:GetService("TweenService")
@@ -264,19 +265,19 @@ end
 G.dress = dress
 
 local ITEM_LOOK = {
-	bread = { size = Vector3.new(1.2, 0.6, 0.8), color = Color3.fromRGB(196, 140, 70), mat = Enum.Material.Sand },
+	bread = { size = Vector3.new(1.2, 0.6, 0.8), color = Color3.fromRGB(196, 140, 70), mat = MAT.Sand },
 	apple = { size = Vector3.new(0.7, 0.7, 0.7), color = Color3.fromRGB(190, 40, 40), shape = Enum.PartType.Ball },
 	meat = { size = Vector3.new(1.2, 0.7, 0.7), color = Color3.fromRGB(140, 70, 40) },
 	soup = { size = Vector3.new(0.5, 1.2, 1.2), color = Color3.fromRGB(150, 100, 60), shape = Enum.PartType.Cylinder },
 	cake = { size = Vector3.new(1, 0.7, 1), color = Color3.fromRGB(250, 220, 230) },
-	water = { size = Vector3.new(1.2, 0.6, 0.6), color = Color3.fromRGB(80, 140, 200), shape = Enum.PartType.Cylinder, mat = Enum.Material.Glass },
-	juice = { size = Vector3.new(1.2, 0.6, 0.6), color = Color3.fromRGB(240, 150, 40), shape = Enum.PartType.Cylinder, mat = Enum.Material.Glass },
-	spoon = { size = Vector3.new(0.15, 1.3, 0.25), color = Color3.fromRGB(200, 200, 210), mat = Enum.Material.Metal },
-	broom = { size = Vector3.new(0.2, 4.5, 0.2), color = Color3.fromRGB(120, 85, 50), mat = Enum.Material.Wood, extra = "broom" },
-	book = { size = Vector3.new(1, 0.3, 1.3), color = Color3.fromRGB(110, 40, 40), mat = Enum.Material.Fabric },
-	scepter = { size = Vector3.new(0.25, 3, 0.25), color = Color3.fromRGB(214, 172, 80), mat = Enum.Material.Metal, extra = "scepter" },
-	sword = { size = Vector3.new(0.25, 4, 0.5), color = Color3.fromRGB(200, 202, 210), mat = Enum.Material.Metal, extra = "sword" },
-	cuffs = { size = Vector3.new(0.8, 0.3, 0.8), color = Color3.fromRGB(70, 66, 62), mat = Enum.Material.Metal, shape = Enum.PartType.Cylinder },
+	water = { size = Vector3.new(1.2, 0.6, 0.6), color = Color3.fromRGB(80, 140, 200), shape = Enum.PartType.Cylinder, mat = MAT.Glass },
+	juice = { size = Vector3.new(1.2, 0.6, 0.6), color = Color3.fromRGB(240, 150, 40), shape = Enum.PartType.Cylinder, mat = MAT.Glass },
+	spoon = { size = Vector3.new(0.15, 1.3, 0.25), color = Color3.fromRGB(200, 200, 210), mat = MAT.Metal },
+	broom = { size = Vector3.new(0.2, 4.5, 0.2), color = Color3.fromRGB(120, 85, 50), mat = MAT.Wood, extra = "broom" },
+	book = { size = Vector3.new(1, 0.3, 1.3), color = Color3.fromRGB(110, 40, 40), mat = MAT.Fabric },
+	scepter = { size = Vector3.new(0.25, 3, 0.25), color = Color3.fromRGB(214, 172, 80), mat = MAT.Metal, extra = "scepter" },
+	sword = { size = Vector3.new(0.25, 4, 0.5), color = Color3.fromRGB(200, 202, 210), mat = MAT.Metal, extra = "sword" },
+	cuffs = { size = Vector3.new(0.8, 0.3, 0.8), color = Color3.fromRGB(70, 66, 62), mat = MAT.Metal, shape = Enum.PartType.Cylinder },
 }
 
 local onActivate -- объявлено ниже
@@ -293,7 +294,7 @@ local function makeTool(p: Player, item: string, slot: number): Tool
 	h.Name = "Handle"
 	h.Size = look.size
 	h.Color = look.color
-	h.Material = look.mat or Enum.Material.SmoothPlastic
+	h.Material = look.mat or MAT.SmoothPlastic
 	if look.shape then
 		h.Shape = look.shape
 	end
@@ -305,7 +306,7 @@ local function makeTool(p: Player, item: string, slot: number): Tool
 		local guard = Instance.new("Part")
 		guard.Size = Vector3.new(1, 0.2, 0.3)
 		guard.Color = Color3.fromRGB(214, 172, 80)
-		guard.Material = Enum.Material.Metal
+		guard.Material = MAT.Metal
 		guard.CanCollide = false
 		guard.Massless = true
 		guard.CFrame = h.CFrame * CFrame.new(0, -1.3, 0)
@@ -319,7 +320,7 @@ local function makeTool(p: Player, item: string, slot: number): Tool
 		gem.Shape = Enum.PartType.Ball
 		gem.Size = Vector3.new(0.6, 0.6, 0.6)
 		gem.Color = Color3.fromRGB(200, 30, 50)
-		gem.Material = Enum.Material.Neon
+		gem.Material = MAT.Neon
 		gem.CanCollide = false
 		gem.Massless = true
 		gem.CFrame = h.CFrame * CFrame.new(0, 1.6, 0)
@@ -332,7 +333,7 @@ local function makeTool(p: Player, item: string, slot: number): Tool
 		local b = Instance.new("Part")
 		b.Size = Vector3.new(1.2, 1, 0.4)
 		b.Color = Color3.fromRGB(200, 170, 100)
-		b.Material = Enum.Material.Grass
+		b.Material = MAT.Grass
 		b.CanCollide = false
 		b.Massless = true
 		b.CFrame = h.CFrame * CFrame.new(0, -2.6, 0)
@@ -596,6 +597,10 @@ function G.setPassage(open: boolean)
 	if open then
 		Builder.hatch.Transparency = 1
 		Builder.hatch.CanCollide = false
+		for _, r in Builder.hatchRails or {} do
+			r.Transparency = r:GetAttribute("BaseTransparency") or 0
+			r.CanCollide = true
+		end
 	end
 	local t = TweenService:Create(v, TweenInfo.new(2.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), { Value = if open then 1 else 0 })
 	t:Play()
@@ -603,6 +608,10 @@ function G.setPassage(open: boolean)
 	if not open then
 		Builder.hatch.Transparency = 0
 		Builder.hatch.CanCollide = true
+		for _, r in Builder.hatchRails or {} do
+			r.Transparency = 1
+			r.CanCollide = false
+		end
 	end
 	v:Destroy()
 	passageBusy = false
@@ -854,6 +863,9 @@ end
 G.addToGeneral = addToGeneral
 
 function G.enter(p: Player)
+	if G.beforeEnter then
+		G.beforeEnter(p)
+	end
 	local info = state.players[p]
 	local prof = G.profiles[p] or { owned = {}, worn = {} }
 	if not info then
@@ -931,6 +943,212 @@ local function canPassage(p: Player): boolean
 end
 G.canPassage = canPassage
 
+-- ---------------------------------------------------------------------------
+-- мебель: сесть, сыграть, спрятаться, обыскать, погреться и т. д.
+
+local hiddenIn: { [Player]: BasePart } = {}
+local occupiedBy: { [BasePart]: Player } = {}
+local searched: { [string]: number } = {}
+
+function G.unhide(p: Player)
+	local part = hiddenIn[p]
+	if not part then
+		return
+	end
+	hiddenIn[p] = nil
+	occupiedBy[part] = nil
+	p:SetAttribute("HiddenEye", nil)
+	local r = rootOf(p)
+	if r then
+		r.Anchored = false
+		local out = part.CFrame * CFrame.new(0, -part.Size.Y / 2 + 3, -(part.Size.Z / 2 + 2.5))
+		p.Character:PivotTo(CFrame.lookAt(out.Position, out.Position + part.CFrame.LookVector))
+	end
+end
+
+function G.hide(p: Player, part: BasePart)
+	if hiddenIn[p] then
+		G.unhide(p)
+		return
+	end
+	if occupiedBy[part] then
+		toast(p, "Occupied")
+		return
+	end
+	local r = rootOf(p)
+	if not r then
+		return
+	end
+	hiddenIn[p] = part
+	occupiedBy[part] = p
+	local hum = humOf(p)
+	if hum and hum.SeatPart then
+		hum.Sit = false
+	end
+	p.Character:PivotTo(part.CFrame * CFrame.new(0, -part.Size.Y / 2 + 3, 0))
+	r.Anchored = true
+	-- камера смотрит сквозь щель между дверцами
+	p:SetAttribute("HiddenEye", part.CFrame * CFrame.new(0, 1.2, -part.Size.Z / 2 + 0.3))
+	playSound(part, SOUND.click, 0.5)
+end
+G.hiddenIn = hiddenIn
+
+local NOTES = { 0, 4, 7, 12, 7, 4, 5, 9, 12, 9, 7, 4, 2, 0 }
+
+function G.wireFurniture(prompts)
+	local seatsWired = {}
+	prompts("sit", function(p, pr)
+		local seat = pr.Parent
+		local hum = humOf(p)
+		if not hum or not seat:IsA("Seat") or seat.Occupant then
+			return
+		end
+		if not seatsWired[seat] then
+			seatsWired[seat] = true
+			seat:GetPropertyChangedSignal("Occupant"):Connect(function()
+				if not seat.Occupant then
+					seat.Disabled = true
+				end
+			end)
+		end
+		seat.Disabled = false
+		seat:Sit(hum)
+	end)
+	prompts("piano", function(p, pr)
+		local key = "piano" .. pr.Parent:GetFullName()
+		if (searched[key] or 0) > os.clock() then
+			return
+		end
+		searched[key] = os.clock() + 6
+		task.spawn(function()
+			for _, n in NOTES do
+				local s = Instance.new("Sound")
+				s.SoundId = SOUND.chime
+				s.PlaybackSpeed = 0.7 * 2 ^ (n / 12)
+				s.Volume = 0.5
+				s.RollOffMaxDistance = 60
+				s.Parent = pr.Parent
+				s:Play()
+				Debris:AddItem(s, 3)
+				task.wait(0.32)
+			end
+		end)
+		local _ = p
+	end)
+	prompts("hide", function(p, pr)
+		G.hide(p, pr.Parent)
+	end)
+	local function search(p, pr, chest)
+		local key = p.UserId .. pr.Parent:GetFullName()
+		if (searched[key] or 0) > os.clock() then
+			toast(p, "Nothing")
+			return
+		end
+		searched[key] = os.clock() + (if chest then 300 else 120)
+		local roll = math.random()
+		if roll < (if chest then 0.6 else 0.35) then
+			local gold = if chest then math.random(5, 15) else math.random(1, 4)
+			CurrencyService.add(p, gold)
+			send(p, { type = "found", gold = gold })
+			playSound(pr.Parent, SOUND.coin, 0.5)
+		elseif roll < 0.7 then
+			local items = { "apple", "bread", "book", "spoon", "water", "juice", "cake" }
+			local item = items[math.random(1, #items)]
+			if G.giveItem(p, item, true) then
+				send(p, { type = "found", item = item })
+			else
+				toast(p, "InventoryFull")
+			end
+		else
+			toast(p, "Nothing")
+		end
+	end
+	prompts("drawer", function(p, pr)
+		search(p, pr, false)
+	end)
+	prompts("chest", function(p, pr)
+		search(p, pr, true)
+	end)
+	local function heal(p, n)
+		local hum = humOf(p)
+		if hum then
+			hum.Health = math.min(hum.MaxHealth, hum.Health + n)
+		end
+	end
+	prompts("warm", function(p)
+		if cooldown(p, "warm", 10) then
+			heal(p, 10)
+			toast(p, "Warm")
+		end
+	end)
+	prompts("spin", function(p, pr)
+		if cooldown(p, "spin", 3) then
+			local part = pr.Parent
+			local start = part.CFrame
+			local v = Instance.new("NumberValue")
+			v.Changed:Connect(function(a)
+				part.CFrame = start * CFrame.Angles(0, a, 0)
+			end)
+			local t = TweenService:Create(v, TweenInfo.new(2.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Value = math.pi * 4 })
+			t:Play()
+			t.Completed:Connect(function()
+				part.CFrame = start
+				v:Destroy()
+			end)
+		end
+	end)
+	prompts("clock", function(p, pr)
+		local t = Lighting.ClockTime
+		send(p, { type = "toast", key = "TimeFormat", args = { math.floor(t), math.floor((t % 1) * 60) } })
+		playSound(pr.Parent, SOUND.chime, 0.4)
+	end)
+	prompts("bath", function(p)
+		if cooldown(p, "bath", 20) then
+			heal(p, 25)
+			local info = state.players[p]
+			if info then
+				info.drink = math.min(Rules.MAX, info.drink + 10)
+				sync(p)
+			end
+			toast(p, "Bath")
+		end
+	end)
+	prompts("barrel", function(p)
+		G.giveItem(p, "juice")
+	end)
+	prompts("sack", function(p)
+		G.giveItem(p, "bread")
+	end)
+	prompts("telescope", function(p)
+		toast(p, "Stars")
+	end)
+	prompts("map", function(p)
+		toast(p, "MapStudy")
+	end)
+	prompts("pray", function(p)
+		if cooldown(p, "pray", 30) then
+			heal(p, 15)
+			toast(p, "Prayer")
+		end
+	end)
+	prompts("lamp", function(_p, pr)
+		local bulb = pr.Parent
+		local l = bulb:FindFirstChildOfClass("PointLight")
+		if l then
+			l.Enabled = not l.Enabled
+			bulb.Material = if l.Enabled then MAT.Neon else MAT.Glass
+			bulb.Color = if l.Enabled then Color3.fromRGB(255, 220, 170) else Color3.fromRGB(120, 110, 96)
+		end
+	end)
+	Players.PlayerRemoving:Connect(function(p)
+		local part = hiddenIn[p]
+		if part then
+			occupiedBy[part] = nil
+			hiddenIn[p] = nil
+		end
+	end)
+end
+
 local function sitOnThrone(p: Player)
 	local hum = humOf(p)
 	local seat = Builder.throneSeat
@@ -962,7 +1180,16 @@ local function wirePrompts()
 		else
 			local p = Players:GetPlayerFromCharacter(seat.Occupant.Parent)
 			if p ~= state.king then
-				seat.Occupant.Sit = false
+				local occ = seat.Occupant
+				occ.Sit = false
+				seat.Disabled = true
+				task.defer(function()
+					if p then
+						teleport(p, Builder.throneHome * CFrame.new(0, 0, -10))
+						toast(p, "OnlyKing")
+					end
+				end)
+				local _ = occ
 			end
 		end
 	end)
@@ -1025,6 +1252,7 @@ local function wirePrompts()
 	prompts("roles", function(p)
 		send(p, { type = "open", panel = "roles" })
 	end)
+	G.wireFurniture(prompts)
 	prompts("shop", function(p)
 		send(p, { type = "open", panel = "shop" })
 	end)
@@ -1377,7 +1605,7 @@ function G.init(projectStore)
 					sc.CanCollide = false
 					sc.Size = Vector3.new(0.35, 4.5, 0.35)
 					sc.Color = Color3.fromRGB(196, 194, 190)
-					sc.Material = Enum.Material.Marble
+					sc.Material = MAT.Marble
 					sc.CFrame = hand.CFrame * CFrame.new(0, 0.3, -0.4)
 					sc.Parent = m
 				end
@@ -1425,6 +1653,12 @@ function G.init(projectStore)
 					return
 				end
 				table.clear(i.inv)
+				local hidePart = hiddenIn[p]
+				if hidePart then
+					occupiedBy[hidePart] = nil
+					hiddenIn[p] = nil
+					p:SetAttribute("HiddenEye", nil)
+				end
 				i.backpackItem = false
 				if state.king == p then
 					i.role = "peasant"

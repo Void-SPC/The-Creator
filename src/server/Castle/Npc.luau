@@ -2,6 +2,7 @@
 -- NPC замка: стражники короля (идут за королём, по приказу атакуют игрока),
 -- тренировочный манекен, который отвечает ударом, и парящая статуя жреца с книгой
 
+local MAT = require(game:GetService("ReplicatedStorage").Workshop.Shared.Materials)
 local Players = game:GetService("Players")
 local PathfindingService = game:GetService("PathfindingService")
 local TweenService = game:GetService("TweenService")
@@ -72,16 +73,16 @@ local function dressMinion(model: Model)
 	local torso = model:FindFirstChild("UpperTorso") :: BasePart?
 	local hand = model:FindFirstChild("RightHand") :: BasePart?
 	if head then
-		weldPart(model, head, { Name = "Helmet", Size = Vector3.new(1.35, 0.9, 1.35), Color = rgb(170, 172, 180), Material = Enum.Material.Metal }, CFrame.new(0, 0.35, 0))
-		weldPart(model, head, { Name = "Plume", Size = Vector3.new(0.25, 0.9, 1.1), Color = rgb(214, 172, 80), Material = Enum.Material.Fabric }, CFrame.new(0, 1.1, 0.1))
+		weldPart(model, head, { Name = "Helmet", Size = Vector3.new(1.35, 0.9, 1.35), Color = rgb(170, 172, 180), Material = MAT.Metal }, CFrame.new(0, 0.35, 0))
+		weldPart(model, head, { Name = "Plume", Size = Vector3.new(0.25, 0.9, 1.1), Color = rgb(214, 172, 80), Material = MAT.SmoothPlastic }, CFrame.new(0, 1.1, 0.1))
 	end
 	if torso then
-		weldPart(model, torso, { Name = "Tabard", Size = Vector3.new(1.7, 1.9, 0.15), Color = rgb(150, 20, 30), Material = Enum.Material.Fabric }, CFrame.new(0, -0.2, -0.55))
-		weldPart(model, torso, { Name = "Emblem", Size = Vector3.new(0.6, 0.6, 0.05), Color = rgb(214, 172, 80), Material = Enum.Material.Metal }, CFrame.new(0, 0.1, -0.65))
+		weldPart(model, torso, { Name = "Tabard", Size = Vector3.new(1.7, 1.9, 0.15), Color = rgb(150, 20, 30), Material = MAT.SmoothPlastic }, CFrame.new(0, -0.2, -0.55))
+		weldPart(model, torso, { Name = "Emblem", Size = Vector3.new(0.6, 0.6, 0.05), Color = rgb(214, 172, 80), Material = MAT.Metal }, CFrame.new(0, 0.1, -0.65))
 	end
 	if hand then
-		weldPart(model, hand, { Name = "Blade", Size = Vector3.new(0.2, 3.2, 0.4), Color = rgb(200, 202, 210), Material = Enum.Material.Metal }, CFrame.new(0, -0.3, -1.6) * CFrame.Angles(math.rad(90), 0, 0))
-		weldPart(model, hand, { Name = "Guard", Size = Vector3.new(0.9, 0.2, 0.2), Color = rgb(214, 172, 80), Material = Enum.Material.Metal }, CFrame.new(0, -0.3, 0))
+		weldPart(model, hand, { Name = "Blade", Size = Vector3.new(0.2, 3.2, 0.4), Color = rgb(200, 202, 210), Material = MAT.Metal }, CFrame.new(0, -0.3, -1.6) * CFrame.Angles(math.rad(90), 0, 0))
+		weldPart(model, hand, { Name = "Guard", Size = Vector3.new(0.9, 0.2, 0.2), Color = rgb(214, 172, 80), Material = MAT.Metal }, CFrame.new(0, -0.3, 0))
 	end
 end
 
@@ -277,15 +278,15 @@ function Npc.buildDummy(at: CFrame, parent: Instance)
 		x.Parent = m
 		return x
 	end
-	local root = p("HumanoidRootPart", Vector3.new(2, 2, 1), CFrame.new(0, 0, 0), rgb(150, 120, 80), Enum.Material.Fabric)
+	local root = p("HumanoidRootPart", Vector3.new(2, 2, 1), CFrame.new(0, 0, 0), rgb(150, 120, 80), MAT.Cardboard)
 	root.Transparency = 1
-	p("Post", Vector3.new(0.6, 6, 0.6), CFrame.new(0, -1, 0), rgb(90, 62, 40), Enum.Material.Wood)
-	p("Base", Vector3.new(3, 0.6, 3), CFrame.new(0, -3.7, 0), rgb(70, 50, 34), Enum.Material.Wood)
-	p("Torso", Vector3.new(2, 2.4, 1.1), CFrame.new(0, 0.6, 0), rgb(196, 168, 120), Enum.Material.Fabric)
-	local head = p("Head", Vector3.new(1.3, 1.3, 1.3), CFrame.new(0, 2.5, 0), rgb(196, 168, 120), Enum.Material.Fabric)
+	p("Post", Vector3.new(0.6, 6, 0.6), CFrame.new(0, -1, 0), rgb(90, 62, 40), MAT.Wood)
+	p("Base", Vector3.new(3, 0.6, 3), CFrame.new(0, -3.7, 0), rgb(70, 50, 34), MAT.Wood)
+	p("Torso", Vector3.new(2, 2.4, 1.1), CFrame.new(0, 0.6, 0), rgb(196, 168, 120), MAT.Cardboard)
+	local head = p("Head", Vector3.new(1.3, 1.3, 1.3), CFrame.new(0, 2.5, 0), rgb(196, 168, 120), MAT.Cardboard)
 	head.Shape = Enum.PartType.Ball
-	local arm = p("Arm", Vector3.new(3.6, 0.5, 0.5), CFrame.new(0, 1.2, -0.2), rgb(90, 62, 40), Enum.Material.Wood)
-	p("Target", Vector3.new(1.2, 1.2, 0.1), CFrame.new(0, 0.7, -0.6), rgb(170, 30, 30), Enum.Material.Fabric)
+	local arm = p("Arm", Vector3.new(3.6, 0.5, 0.5), CFrame.new(0, 1.2, -0.2), rgb(90, 62, 40), MAT.Wood)
+	p("Target", Vector3.new(1.2, 1.2, 0.1), CFrame.new(0, 0.7, -0.6), rgb(170, 30, 30), MAT.SmoothPlastic)
 	local hum = Instance.new("Humanoid")
 	hum.MaxHealth = 400
 	hum.Health = 400
@@ -348,7 +349,7 @@ function Npc.buildPriest(at: CFrame, parent: Instance)
 		x.Size = size
 		x.CFrame = at * cf
 		x.Color = color or STONE
-		x.Material = mat or Enum.Material.Marble
+		x.Material = mat or MAT.Marble
 		x.Anchored = true
 		x.CanCollide = false
 		x.Parent = m
@@ -369,8 +370,8 @@ function Npc.buildPriest(at: CFrame, parent: Instance)
 		p("Hand", Ball, Vector3.new(0.6, 0.6, 0.6), CFrame.new(s * 0.9, 5.1, -2.2))
 	end
 	-- раскрытая книга со светящимися страницами
-	p("Cover", nil, Vector3.new(2.6, 0.15, 1.7), CFrame.new(0, 5.3, -2.4) * CFrame.Angles(math.rad(-25), 0, 0), rgb(120, 40, 40), Enum.Material.Fabric)
-	local pages = p("Pages", nil, Vector3.new(2.4, 0.12, 1.5), CFrame.new(0, 5.42, -2.42) * CFrame.Angles(math.rad(-25), 0, 0), rgb(255, 236, 190), Enum.Material.Neon)
+	p("Cover", nil, Vector3.new(2.6, 0.15, 1.7), CFrame.new(0, 5.3, -2.4) * CFrame.Angles(math.rad(-25), 0, 0), rgb(120, 40, 40), MAT.Leather)
+	local pages = p("Pages", nil, Vector3.new(2.4, 0.12, 1.5), CFrame.new(0, 5.42, -2.42) * CFrame.Angles(math.rad(-25), 0, 0), rgb(255, 236, 190), MAT.Neon)
 	local light = Instance.new("PointLight")
 	light.Color = rgb(255, 220, 160)
 	light.Range = 16

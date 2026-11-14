@@ -112,25 +112,56 @@ local function onHead(part: BasePart, head: BasePart?): boolean
 	return false
 end
 
-local lastVisible, lastAt = nil, 0
+-- список деталей персонажа (голова или тело) пересчитывается, только когда что-то
+-- добавилось или пропало; прозрачность ставится каждый кадр, иначе стандартная камера
+-- Roblox возвращает её обратно и волосы появляются перед глазами
+local cacheChar, cacheList, dirty = nil, {}, true
+local function rebuild(char)
+	cacheList = {}
+	local head = char:FindFirstChild("Head") :: BasePart?
+	for _, d in char:GetDescendants() do
+		if d:IsA("BasePart") then
+			local isHead = onHead(d, head)
+			if not isHead then
+				local acc = d.Parent
+				if acc and acc:IsA("Accessory") then
+					for _, at in d:GetChildren() do
+						if at:IsA("Attachment") and (string.find(at.Name, "Hat") or string.find(at.Name, "Hair") or string.find(at.Name, "Face")) then
+							isHead = true
+						end
+					end
+				end
+			end
+			table.insert(cacheList, { d, isHead })
+		elseif d:IsA("Decal") then
+			local parent = d.Parent
+			table.insert(cacheList, { d, parent ~= nil and parent:IsA("BasePart") and onHead(parent, head) })
+		end
+	end
+	dirty = false
+end
 local function setCharacterVisible(visible: boolean)
 	local char = player.Character
 	if not char then
 		return
 	end
-	-- пересчёт не чаще 5 раз в секунду: новые вещи в руках подхватятся быстро
-	local now = os.clock()
-	if lastVisible == visible and now - lastAt < 0.2 then
-		return
+	if char ~= cacheChar then
+		cacheChar = char
+		dirty = true
+		char.DescendantAdded:Connect(function()
+			dirty = true
+		end)
+		char.DescendantRemoving:Connect(function()
+			dirty = true
+		end)
 	end
-	lastVisible, lastAt = visible, now
-	local head = char:FindFirstChild("Head") :: BasePart?
-	for _, d in char:GetDescendants() do
-		if d:IsA("BasePart") then
-			d.LocalTransparencyModifier = if visible or not onHead(d, head) then 0 else 1
-		elseif d:IsA("Decal") then
-			local parent = d.Parent
-			d.LocalTransparencyModifier = if visible or not (parent and parent:IsA("BasePart") and onHead(parent, head)) then 0 else 1
+	if dirty then
+		rebuild(char)
+	end
+	for _, e in cacheList do
+		local inst = e[1]
+		if inst.Parent then
+			(inst :: any).LocalTransparencyModifier = if visible or not e[2] then 0 else 1
 		end
 	end
 end

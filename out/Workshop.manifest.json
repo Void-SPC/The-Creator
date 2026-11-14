@@ -1,8 +1,8 @@
 {
   "file": "Workshop.rbxlx",
-  "version": "2.0.0",
-  "sha256": "a986b2287931cf094c27ece7ef10bde94a0309d205d2b28aadb366a891cf2173",
-  "bytes": 820881,
+  "version": "3.0.0",
+  "sha256": "230f503c7b11cd03e91894406411d1d6314e520b06b41a94c208562d451c22bc",
+  "bytes": 822013,
   "scripts": [
     {
       "path": "src/shared/AdminCommands.luau",
@@ -90,14 +90,14 @@
       "name": "Validator"
     },
     {
-      "path": "src/shared/MafiaRules.luau",
+      "path": "src/shared/ManiacRules.luau",
       "class": "ModuleScript",
-      "name": "MafiaRules"
+      "name": "ManiacRules"
     },
     {
-      "path": "src/shared/MafiaSounds.luau",
+      "path": "src/shared/Materials.luau",
       "class": "ModuleScript",
-      "name": "MafiaSounds"
+      "name": "Materials"
     },
     {
       "path": "src/shared/MathX.luau",
@@ -230,19 +230,14 @@
       "name": "DataStoreAdapter"
     },
     {
-      "path": "src/server/Mafia/MafiaGame.luau",
-      "class": "ModuleScript",
-      "name": "MafiaGame"
-    },
-    {
-      "path": "src/server/Mafia/Village.luau",
-      "class": "ModuleScript",
-      "name": "Village"
-    },
-    {
       "path": "src/server/Main.server.luau",
       "class": "Script",
       "name": "Main"
+    },
+    {
+      "path": "src/server/Maniac/ManiacGame.luau",
+      "class": "ModuleScript",
+      "name": "ManiacGame"
     },
     {
       "path": "src/server/Statue.luau",
@@ -290,14 +285,14 @@
       "name": "WeatherFx"
     },
     {
-      "path": "src/client/Mafia/MafiaClient.luau",
-      "class": "ModuleScript",
-      "name": "MafiaClient"
-    },
-    {
       "path": "src/client/Main.client.luau",
       "class": "LocalScript",
       "name": "Main"
+    },
+    {
+      "path": "src/client/Maniac/ManiacClient.luau",
+      "class": "ModuleScript",
+      "name": "ManiacClient"
     },
     {
       "path": "src/client/UI/Kit.luau",

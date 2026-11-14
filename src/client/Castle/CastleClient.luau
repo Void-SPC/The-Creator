@@ -581,6 +581,13 @@ function Client:onMessage(msg)
 		elseif msg.panel == "coin" then
 			self:openCoin()
 		end
+	elseif msg.type == "found" then
+		if msg.gold then
+			self:toast(self:T("FoundGold", msg.gold), Ui.C.good)
+			self:sound(Sounds.coin, 0.5)
+		elseif msg.item then
+			self:toast(self:T("FoundItem", self:T("item_" .. msg.item)), Ui.C.good)
+		end
 	elseif msg.type == "book" then
 		self:toast(self:T("Book" .. math.random(1, 3)), nil)
 	elseif msg.type == "fx" then
@@ -741,6 +748,16 @@ end
 
 function Client:watch()
 	self:watchDoors()
+	-- спрятался в шкафу: камера смотрит сквозь щель
+	local function hidden()
+		local eye = player:GetAttribute("HiddenEye")
+		if typeof(eye) == "CFrame" then
+			self.camera:enterInside(eye)
+		else
+			self.camera:restore()
+		end
+	end
+	table.insert(self.conns, player:GetAttributeChangedSignal("HiddenEye"):Connect(hidden))
 	local function upd()
 		self:refresh()
 	end

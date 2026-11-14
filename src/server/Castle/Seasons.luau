@@ -2,6 +2,7 @@
 -- Времена года и праздники замка: деревья (зимой без листьев), цвет травы, снег,
 -- украшения. Меняется командой админа, всё старое убирается перед новым
 
+local MAT = require(game:GetService("ReplicatedStorage").Workshop.Shared.Materials)
 local Lighting = game:GetService("Lighting")
 
 local Seasons = {}
@@ -38,42 +39,42 @@ end
 
 local function tree(pos: Vector3, look, rnd: Random)
 	local h = rnd:NextNumber(10, 15)
-	part({ Name = "Trunk", Shape = Enum.PartType.Cylinder, Size = Vector3.new(h, 1.6, 1.6), CFrame = CFrame.new(pos + Vector3.new(0, h / 2, 0)) * CFrame.Angles(0, 0, math.pi / 2), Color = rgb(90, 64, 44), Material = Enum.Material.Wood })
+	part({ Name = "Trunk", Shape = Enum.PartType.Cylinder, Size = Vector3.new(h, 1.6, 1.6), CFrame = CFrame.new(pos + Vector3.new(0, h / 2, 0)) * CFrame.Angles(0, 0, math.pi / 2), Color = rgb(90, 64, 44), Material = MAT.Wood })
 	if look.leaves then
 		for i = 1, 4 do
 			local d = rnd:NextNumber(5, 8)
 			local off = Vector3.new(rnd:NextNumber(-2.5, 2.5), h + rnd:NextNumber(-1, 2.5), rnd:NextNumber(-2.5, 2.5))
 			local c = look.leaves[rnd:NextInteger(1, #look.leaves)]
-			part({ Name = "Leaves", Shape = Enum.PartType.Ball, Size = Vector3.new(d, d, d), CFrame = CFrame.new(pos + off), Color = c, Material = Enum.Material.LeafyGrass, CanCollide = i == 1, CastShadow = true })
+			part({ Name = "Leaves", Shape = Enum.PartType.Ball, Size = Vector3.new(d, d, d), CFrame = CFrame.new(pos + off), Color = c, Material = MAT.LeafyGrass, CanCollide = i == 1, CastShadow = true })
 		end
 	else
 		-- голые ветки
 		for i = 1, 5 do
 			local a = i / 5 * math.pi * 2
 			local len = rnd:NextNumber(3, 5)
-			part({ Name = "Branch", Size = Vector3.new(0.5, len, 0.5), CFrame = CFrame.new(pos + Vector3.new(0, h - 1, 0)) * CFrame.Angles(0, a, math.rad(35)) * CFrame.new(0, len / 2, 0), Color = rgb(80, 58, 40), Material = Enum.Material.Wood, CanCollide = false })
+			part({ Name = "Branch", Size = Vector3.new(0.5, len, 0.5), CFrame = CFrame.new(pos + Vector3.new(0, h - 1, 0)) * CFrame.Angles(0, a, math.rad(35)) * CFrame.new(0, len / 2, 0), Color = rgb(80, 58, 40), Material = MAT.Wood, CanCollide = false })
 		end
 		if look.snow then
-			part({ Name = "SnowCap", Shape = Enum.PartType.Ball, Size = Vector3.new(2.4, 1.2, 2.4), CFrame = CFrame.new(pos + Vector3.new(0, h + 0.2, 0)), Color = rgb(250, 252, 255), Material = Enum.Material.Snow, CanCollide = false })
+			part({ Name = "SnowCap", Shape = Enum.PartType.Ball, Size = Vector3.new(2.4, 1.2, 2.4), CFrame = CFrame.new(pos + Vector3.new(0, h + 0.2, 0)), Color = rgb(250, 252, 255), Material = MAT.Snow, CanCollide = false })
 		end
 	end
 	if look.fallen then
 		for _ = 1, 6 do
 			local c = look.leaves[rnd:NextInteger(1, #look.leaves)]
-			part({ Name = "FallenLeaf", Size = Vector3.new(0.8, 0.05, 0.6), CFrame = CFrame.new(pos + Vector3.new(rnd:NextNumber(-5, 5), 0.05, rnd:NextNumber(-5, 5))) * CFrame.Angles(0, rnd:NextNumber(0, 6.28), 0), Color = c, Material = Enum.Material.Fabric, CanCollide = false })
+			part({ Name = "FallenLeaf", Size = Vector3.new(0.8, 0.05, 0.6), CFrame = CFrame.new(pos + Vector3.new(rnd:NextNumber(-5, 5), 0.05, rnd:NextNumber(-5, 5))) * CFrame.Angles(0, rnd:NextNumber(0, 6.28), 0), Color = c, Material = MAT.Fabric, CanCollide = false })
 		end
 	end
 	if look.flowers then
 		for _ = 1, 5 do
 			local c = Color3.fromHSV(rnd:NextNumber(), 0.6, 1)
-			part({ Name = "Flower", Shape = Enum.PartType.Ball, Size = Vector3.new(0.6, 0.6, 0.6), CFrame = CFrame.new(pos + Vector3.new(rnd:NextNumber(-4, 4), 0.4, rnd:NextNumber(-4, 4))), Color = c, Material = Enum.Material.SmoothPlastic, CanCollide = false })
+			part({ Name = "Flower", Shape = Enum.PartType.Ball, Size = Vector3.new(0.6, 0.6, 0.6), CFrame = CFrame.new(pos + Vector3.new(rnd:NextNumber(-4, 4), 0.4, rnd:NextNumber(-4, 4))), Color = c, Material = MAT.SmoothPlastic, CanCollide = false })
 		end
 	end
 end
 
 local function pumpkin(pos: Vector3, glow: boolean)
-	local p = part({ Name = "Pumpkin", Shape = Enum.PartType.Ball, Size = Vector3.new(2.6, 2, 2.6), CFrame = CFrame.new(pos + Vector3.new(0, 1, 0)), Color = rgb(230, 120, 30), Material = Enum.Material.SmoothPlastic })
-	part({ Name = "Stem", Size = Vector3.new(0.3, 0.7, 0.3), CFrame = CFrame.new(pos + Vector3.new(0, 2.2, 0)), Color = rgb(70, 90, 40), Material = Enum.Material.Wood, CanCollide = false })
+	local p = part({ Name = "Pumpkin", Shape = Enum.PartType.Ball, Size = Vector3.new(2.6, 2, 2.6), CFrame = CFrame.new(pos + Vector3.new(0, 1, 0)), Color = rgb(230, 120, 30), Material = MAT.SmoothPlastic })
+	part({ Name = "Stem", Size = Vector3.new(0.3, 0.7, 0.3), CFrame = CFrame.new(pos + Vector3.new(0, 2.2, 0)), Color = rgb(70, 90, 40), Material = MAT.Wood, CanCollide = false })
 	if glow then
 		local l = Instance.new("PointLight")
 		l.Color = rgb(255, 140, 40)
@@ -84,17 +85,17 @@ local function pumpkin(pos: Vector3, glow: boolean)
 end
 
 local function newYearTree(pos: Vector3)
-	part({ Name = "Trunk", Size = Vector3.new(2, 4, 2), CFrame = CFrame.new(pos + Vector3.new(0, 2, 0)), Color = rgb(90, 64, 44), Material = Enum.Material.Wood })
+	part({ Name = "Trunk", Size = Vector3.new(2, 4, 2), CFrame = CFrame.new(pos + Vector3.new(0, 2, 0)), Color = rgb(90, 64, 44), Material = MAT.Wood })
 	for k = 0, 5 do
 		local r = 16 - k * 2.5
-		part({ Name = "Fir", Shape = Enum.PartType.Cylinder, Size = Vector3.new(3, r, r), CFrame = CFrame.new(pos + Vector3.new(0, 5 + k * 3, 0)) * CFrame.Angles(0, 0, math.pi / 2), Color = rgb(30, 90, 50), Material = Enum.Material.LeafyGrass })
+		part({ Name = "Fir", Shape = Enum.PartType.Cylinder, Size = Vector3.new(3, r, r), CFrame = CFrame.new(pos + Vector3.new(0, 5 + k * 3, 0)) * CFrame.Angles(0, 0, math.pi / 2), Color = rgb(30, 90, 50), Material = MAT.LeafyGrass })
 		for j = 0, 7 - k do
 			local a = j / (8 - k) * math.pi * 2 + k
-			local b = part({ Name = "Ornament", Shape = Enum.PartType.Ball, Size = Vector3.new(0.9, 0.9, 0.9), CFrame = CFrame.new(pos + Vector3.new(math.cos(a) * r / 2, 4.2 + k * 3, math.sin(a) * r / 2)), Color = Color3.fromHSV((j * 0.13 + k * 0.2) % 1, 0.8, 1), Material = Enum.Material.Neon, CanCollide = false })
+			local b = part({ Name = "Ornament", Shape = Enum.PartType.Ball, Size = Vector3.new(0.9, 0.9, 0.9), CFrame = CFrame.new(pos + Vector3.new(math.cos(a) * r / 2, 4.2 + k * 3, math.sin(a) * r / 2)), Color = Color3.fromHSV((j * 0.13 + k * 0.2) % 1, 0.8, 1), Material = MAT.Neon, CanCollide = false })
 			local _ = b
 		end
 	end
-	local star = part({ Name = "Star", Shape = Enum.PartType.Ball, Size = Vector3.new(2.2, 2.2, 2.2), CFrame = CFrame.new(pos + Vector3.new(0, 23.5, 0)), Color = rgb(255, 220, 90), Material = Enum.Material.Neon, CanCollide = false })
+	local star = part({ Name = "Star", Shape = Enum.PartType.Ball, Size = Vector3.new(2.2, 2.2, 2.2), CFrame = CFrame.new(pos + Vector3.new(0, 23.5, 0)), Color = rgb(255, 220, 90), Material = MAT.Neon, CanCollide = false })
 	local l = Instance.new("PointLight")
 	l.Color = rgb(255, 220, 140)
 	l.Range = 30
@@ -102,12 +103,12 @@ local function newYearTree(pos: Vector3)
 	l.Parent = star
 	for k = 0, 5 do
 		local a = k / 6 * math.pi * 2
-		part({ Name = "Gift", Size = Vector3.new(2, 1.6, 2), CFrame = CFrame.new(pos + Vector3.new(math.cos(a) * 9, 0.8, math.sin(a) * 9)) * CFrame.Angles(0, a, 0), Color = Color3.fromHSV(k / 6, 0.7, 0.9), Material = Enum.Material.SmoothPlastic })
+		part({ Name = "Gift", Size = Vector3.new(2, 1.6, 2), CFrame = CFrame.new(pos + Vector3.new(math.cos(a) * 9, 0.8, math.sin(a) * 9)) * CFrame.Angles(0, a, 0), Color = Color3.fromHSV(k / 6, 0.7, 0.9), Material = MAT.SmoothPlastic })
 	end
 end
 
 local function balloon(pos: Vector3, c: Color3)
-	part({ Name = "Balloon", Shape = Enum.PartType.Ball, Size = Vector3.new(2, 2.4, 2), CFrame = CFrame.new(pos), Color = c, Material = Enum.Material.SmoothPlastic, CanCollide = false })
+	part({ Name = "Balloon", Shape = Enum.PartType.Ball, Size = Vector3.new(2, 2.4, 2), CFrame = CFrame.new(pos), Color = c, Material = MAT.SmoothPlastic, CanCollide = false })
 	part({ Name = "String", Size = Vector3.new(0.05, 6, 0.05), CFrame = CFrame.new(pos - Vector3.new(0, 4, 0)), Color = rgb(240, 240, 240), CanCollide = false })
 end
 
@@ -125,14 +126,14 @@ function Seasons.apply(season: string, trees: { Vector3 })
 		tree(pos, look, rnd)
 	end
 	pcall(function()
-		terrain:SetMaterialColor(Enum.Material.Grass, look.grass)
-		terrain:SetMaterialColor(Enum.Material.Mud, if look.snow then rgb(220, 225, 232) else rgb(90, 70, 50))
-		terrain:SetMaterialColor(Enum.Material.Cobblestone, if look.snow then rgb(200, 205, 212) else rgb(130, 126, 120))
+		terrain:SetMaterialColor(MAT.Grass, look.grass)
+		terrain:SetMaterialColor(MAT.Mud, if look.snow then rgb(220, 225, 232) else rgb(90, 70, 50))
+		terrain:SetMaterialColor(MAT.Cobblestone, if look.snow then rgb(200, 205, 212) else rgb(130, 126, 120))
 	end)
 	if look.snow then
 		-- снежные шапки на зубцах и сугробы во дворе
 		for i = 1, 30 do
-			part({ Name = "Snowdrift", Shape = Enum.PartType.Ball, Size = Vector3.new(rnd:NextNumber(4, 8), 1.2, rnd:NextNumber(4, 8)), CFrame = CFrame.new(rnd:NextNumber(-160, 160), 0.1, rnd:NextNumber(-168, -120)), Color = rgb(250, 252, 255), Material = Enum.Material.Snow, CanCollide = false })
+			part({ Name = "Snowdrift", Shape = Enum.PartType.Ball, Size = Vector3.new(rnd:NextNumber(4, 8), 1.2, rnd:NextNumber(4, 8)), CFrame = CFrame.new(rnd:NextNumber(-160, 160), 0.1, rnd:NextNumber(-168, -120)), Color = rgb(250, 252, 255), Material = MAT.Snow, CanCollide = false })
 			local _ = i
 		end
 	end
@@ -146,7 +147,7 @@ function Seasons.apply(season: string, trees: { Vector3 })
 		end
 		-- паутина в углах двора и летучие мыши
 		for k = 0, 7 do
-			local bat = part({ Name = "Bat", Size = Vector3.new(2, 0.2, 0.8), CFrame = CFrame.new(math.cos(k) * 60, 60 + k * 3, -140 + math.sin(k) * 40), Color = rgb(20, 18, 22), Material = Enum.Material.SmoothPlastic, CanCollide = false })
+			local bat = part({ Name = "Bat", Size = Vector3.new(2, 0.2, 0.8), CFrame = CFrame.new(math.cos(k) * 60, 60 + k * 3, -140 + math.sin(k) * 40), Color = rgb(20, 18, 22), Material = MAT.SmoothPlastic, CanCollide = false })
 			local _ = bat
 		end
 	end
@@ -154,7 +155,7 @@ function Seasons.apply(season: string, trees: { Vector3 })
 		newYearTree(Vector3.new(110, 0, -140))
 		for z = -160, 160, 16 do
 			for _, x in { -169, 169 } do
-				local p = part({ Name = "Garland", Shape = Enum.PartType.Ball, Size = Vector3.new(0.8, 0.8, 0.8), CFrame = CFrame.new(x, 20, z), Color = Color3.fromHSV(((z + 160) / 320) % 1, 0.8, 1), Material = Enum.Material.Neon, CanCollide = false })
+				local p = part({ Name = "Garland", Shape = Enum.PartType.Ball, Size = Vector3.new(0.8, 0.8, 0.8), CFrame = CFrame.new(x, 20, z), Color = Color3.fromHSV(((z + 160) / 320) % 1, 0.8, 1), Material = MAT.Neon, CanCollide = false })
 				local _ = p
 			end
 		end
