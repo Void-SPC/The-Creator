@@ -1,8 +1,8 @@
 {
   "file": "Workshop.rbxlx",
-  "version": "1.0.1",
-  "sha256": "c528395b5c26e9fb6291454cf51d6e84c32223c6b6a37550b336134ec0b3d9ef",
-  "bytes": 673604,
+  "version": "2.0.0",
+  "sha256": "a986b2287931cf094c27ece7ef10bde94a0309d205d2b28aadb366a891cf2173",
+  "bytes": 820881,
   "scripts": [
     {
       "path": "src/shared/AdminCommands.luau",
@@ -13,6 +13,11 @@
       "path": "src/shared/Anim.luau",
       "class": "ModuleScript",
       "name": "Anim"
+    },
+    {
+      "path": "src/shared/CastleLayout.luau",
+      "class": "ModuleScript",
+      "name": "CastleLayout"
     },
     {
       "path": "src/shared/CastleRules.luau",
@@ -188,6 +193,16 @@
       "path": "src/server/Castle/Outfits.luau",
       "class": "ModuleScript",
       "name": "Outfits"
+    },
+    {
+      "path": "src/server/Castle/Props.luau",
+      "class": "ModuleScript",
+      "name": "Props"
+    },
+    {
+      "path": "src/server/Castle/Rooms.luau",
+      "class": "ModuleScript",
+      "name": "Rooms"
     },
     {
       "path": "src/server/Castle/Seasons.luau",

@@ -87,14 +87,50 @@ function CameraController:look(dx: number, dy: number)
 	end
 end
 
+-- Голова и всё, что на ней (волосы, шляпы, корона), скрыты от первого лица,
+-- а тело, руки, ноги и предметы в руках видны — можно посмотреть вниз на свой скин
+local function onHead(part: BasePart, head: BasePart?): boolean
+	if not head then
+		return false
+	end
+	if part == head then
+		return true
+	end
+	for _, w in part:GetChildren() do
+		if (w:IsA("Weld") or w:IsA("WeldConstraint") or w:IsA("Motor6D")) and ((w :: any).Part0 == head or (w :: any).Part1 == head) then
+			return true
+		end
+	end
+	local acc = part.Parent
+	if acc and acc:IsA("Accessory") then
+		local h = acc:FindFirstChild("Handle")
+		local weld = h and h:FindFirstChild("AccessoryWeld")
+		if weld and ((weld :: any).Part1 == head or (weld :: any).Part0 == head) then
+			return true
+		end
+	end
+	return false
+end
+
+local lastVisible, lastAt = nil, 0
 local function setCharacterVisible(visible: boolean)
 	local char = player.Character
 	if not char then
 		return
 	end
+	-- пересчёт не чаще 5 раз в секунду: новые вещи в руках подхватятся быстро
+	local now = os.clock()
+	if lastVisible == visible and now - lastAt < 0.2 then
+		return
+	end
+	lastVisible, lastAt = visible, now
+	local head = char:FindFirstChild("Head") :: BasePart?
 	for _, d in char:GetDescendants() do
-		if d:IsA("BasePart") or d:IsA("Decal") then
-			(d :: any).LocalTransparencyModifier = if visible then 0 else 1
+		if d:IsA("BasePart") then
+			d.LocalTransparencyModifier = if visible or not onHead(d, head) then 0 else 1
+		elseif d:IsA("Decal") then
+			local parent = d.Parent
+			d.LocalTransparencyModifier = if visible or not (parent and parent:IsA("BasePart") and onHead(parent, head)) then 0 else 1
 		end
 	end
 end
@@ -194,7 +230,7 @@ function CameraController:update(dt: number)
 	self.viewYaw += dy * k
 	self.viewPitch += (self.pitch - self.viewPitch) * k
 	local headY = if hum.RigType == Enum.HumanoidRigType.R6 then 1.5 else hum.HipHeight * 0.75
-	local eye = hrp.Position + Vector3.new(0, headY, 0)
+	local eye = hrp.Position + Vector3.new(0, headY, 0) + CFrame.fromOrientation(0, self.viewYaw, 0).LookVector * 0.45
 	local rot = CFrame.fromOrientation(self.viewPitch, self.viewYaw, 0) * CFrame.Angles(0, 0, self.roll)
 	cam.CFrame = CFrame.new(eye) * rot * CFrame.new(offset)
 	-- персонаж поворачивается вслед за взглядом

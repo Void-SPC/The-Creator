@@ -132,36 +132,36 @@ function Seasons.apply(season: string, trees: { Vector3 })
 	if look.snow then
 		-- снежные шапки на зубцах и сугробы во дворе
 		for i = 1, 30 do
-			part({ Name = "Snowdrift", Shape = Enum.PartType.Ball, Size = Vector3.new(rnd:NextNumber(4, 8), 1.2, rnd:NextNumber(4, 8)), CFrame = CFrame.new(rnd:NextNumber(-74, 74), 0.1, rnd:NextNumber(-146, -34)), Color = rgb(250, 252, 255), Material = Enum.Material.Snow, CanCollide = false })
+			part({ Name = "Snowdrift", Shape = Enum.PartType.Ball, Size = Vector3.new(rnd:NextNumber(4, 8), 1.2, rnd:NextNumber(4, 8)), CFrame = CFrame.new(rnd:NextNumber(-160, 160), 0.1, rnd:NextNumber(-168, -120)), Color = rgb(250, 252, 255), Material = Enum.Material.Snow, CanCollide = false })
 			local _ = i
 		end
 	end
 	if look.pumpkins then
 		for i = 0, 15 do
-			local x = if i % 2 == 0 then -12 else 12
-			pumpkin(Vector3.new(x, 0, -146 + i * 7), true)
+			local x = if i % 2 == 0 then -30 else 30
+			pumpkin(Vector3.new(x, 0, -168 + i * 3), true)
 		end
 		for _, pos in trees do
 			pumpkin(pos + Vector3.new(3, 0, 2), false)
 		end
 		-- паутина в углах двора и летучие мыши
 		for k = 0, 7 do
-			local bat = part({ Name = "Bat", Size = Vector3.new(2, 0.2, 0.8), CFrame = CFrame.new(math.cos(k) * 40, 50 + k * 3, -90 + math.sin(k) * 40), Color = rgb(20, 18, 22), Material = Enum.Material.SmoothPlastic, CanCollide = false })
+			local bat = part({ Name = "Bat", Size = Vector3.new(2, 0.2, 0.8), CFrame = CFrame.new(math.cos(k) * 60, 60 + k * 3, -140 + math.sin(k) * 40), Color = rgb(20, 18, 22), Material = Enum.Material.SmoothPlastic, CanCollide = false })
 			local _ = bat
 		end
 	end
 	if look.tree then
-		newYearTree(Vector3.new(0, 0, -60))
-		for z = -146, -40, 12 do
-			for _, x in { -76, 76 } do
-				local p = part({ Name = "Garland", Shape = Enum.PartType.Ball, Size = Vector3.new(0.8, 0.8, 0.8), CFrame = CFrame.new(x * 0.98, 18, z), Color = Color3.fromHSV(((z + 146) / 106) % 1, 0.8, 1), Material = Enum.Material.Neon, CanCollide = false })
+		newYearTree(Vector3.new(110, 0, -140))
+		for z = -160, 160, 16 do
+			for _, x in { -169, 169 } do
+				local p = part({ Name = "Garland", Shape = Enum.PartType.Ball, Size = Vector3.new(0.8, 0.8, 0.8), CFrame = CFrame.new(x, 20, z), Color = Color3.fromHSV(((z + 160) / 320) % 1, 0.8, 1), Material = Enum.Material.Neon, CanCollide = false })
 				local _ = p
 			end
 		end
 	end
 	if look.balloons then
 		for k = 0, 19 do
-			balloon(Vector3.new(math.cos(k) * 30, 14 + (k % 4) * 3, -90 + math.sin(k * 1.7) * 40), Color3.fromHSV(k / 20, 0.7, 1))
+			balloon(Vector3.new(math.cos(k) * 50, 16 + (k % 4) * 3, -142 + math.sin(k * 1.7) * 22), Color3.fromHSV(k / 20, 0.7, 1))
 		end
 	end
 	f.Parent = workspace

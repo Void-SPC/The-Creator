@@ -2,6 +2,7 @@ local Shared = game:GetService("ReplicatedStorage").Workshop.Shared
 local Rules = require(Shared.CastleRules)
 local Lang = require(Shared.Lang)
 local AdminCommands = require(Shared.AdminCommands)
+local Layout = require(Shared.CastleLayout)
 
 return function(T)
 	T.suite("Castle")
@@ -112,6 +113,36 @@ return function(T)
 		for _, key in { "Book1", "Book2", "Book3", "OrderHint", "Appointed", "JailedNo", "MaxGuards" } do
 			T.ok(Lang.en.H[key] and Lang.ru.H[key], key)
 		end
+	end)
+
+	T.test("castle plan: every room can be reached", function()
+		local total = 0
+		for _, level in Layout.ORDER do
+			local plan = Layout.build(level)
+			local start
+			for id, r in plan.rooms do
+				if r.kind == "hall" or r.kind == "prison_guard" then
+					start = id
+				end
+			end
+			local seen = Layout.reachable(plan, start)
+			if level == "U" then
+				for id, r in plan.rooms do
+					if r.kind == "library" then
+						for k in Layout.reachable(plan, id) do
+							seen[k] = true
+						end
+					end
+				end
+			end
+			for id, r in plan.rooms do
+				total += 1
+				if r.kind ~= "prison" and r.kind ~= "sewer" then
+					T.ok(seen[id], level .. " " .. r.kind .. " " .. r.i0 .. "," .. r.j0)
+				end
+			end
+		end
+		T.ok(total >= 60, tostring(total))
 	end)
 
 	T.test("admin panel has about fifty commands", function()

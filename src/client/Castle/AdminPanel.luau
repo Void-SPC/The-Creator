@@ -128,23 +128,45 @@ function AdminPanel.mount(app)
 		Ui.corner(search, 6)
 		Ui.stroke(search)
 		search.Parent = content
+		-- разделы: мир, игроки, порядок, веселье, силы Бога
+		local tabs = Ui.frame(content, { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, Ui.TAP), LayoutOrder = 1, ZIndex = 43 })
+		local tl = Ui.list(tabs, 4, true)
+		tl.HorizontalAlignment = Enum.HorizontalAlignment.Center
+		local current = "world"
+		local tabButtons = {}
 		local buttons = {}
+		local function filter()
+			local q = Util.lower(search.Text)
+			for cmd, b in buttons do
+				local match = q ~= "" and (string.find(string.lower(cmd.en), q, 1, true) ~= nil or string.find(Util.lower(cmd.ru), q, 1, true) ~= nil or string.find(cmd.id, q, 1, true) ~= nil)
+				b.Visible = if q ~= "" then match else cmd.cat == current
+			end
+			for cat, tb in tabButtons do
+				Ui.setActive(tb, cat == current and q == "")
+			end
+		end
+		local n = #Commands.CATEGORIES
+		for i, cat in Commands.CATEGORIES do
+			local tb = Ui.button(tabs, app.T("cat_" .. cat), function()
+				current = cat
+				search.Text = ""
+				filter()
+			end, { Size = UDim2.new(1 / n, -4, 1, 0), LayoutOrder = i, TextSize = 13, ZIndex = 44, TextColor3 = if cat == "god" then Ui.C.gold else Ui.C.text })
+			tabButtons[cat] = tb
+		end
 		for i, cmd in Commands.LIST do
 			local b = Ui.button(content, title(cmd), function()
 				start(cmd)
-			end, { LayoutOrder = i, ZIndex = 43, TextXAlignment = Enum.TextXAlignment.Left })
+			end, { LayoutOrder = 10 + i, ZIndex = 43, TextXAlignment = Enum.TextXAlignment.Left })
 			Ui.pad(b, 10)
-			if cmd.target == "none" then
+			if cmd.cat == "god" then
 				b.TextColor3 = Ui.C.gold
+				b.BackgroundColor3 = Color3.fromRGB(60, 46, 26)
 			end
 			buttons[cmd] = b
 		end
-		search:GetPropertyChangedSignal("Text"):Connect(function()
-			local q = Util.lower(search.Text)
-			for cmd, b in buttons do
-				b.Visible = q == "" or string.find(string.lower(cmd.en), q, 1, true) ~= nil or string.find(Util.lower(cmd.ru), q, 1, true) ~= nil or string.find(cmd.id, q, 1, true) ~= nil
-			end
-		end)
+		search:GetPropertyChangedSignal("Text"):Connect(filter)
+		filter()
 	end)
 end
 

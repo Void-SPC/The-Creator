@@ -4,6 +4,7 @@
 
 local Players = game:GetService("Players")
 local TextChatService = game:GetService("TextChatService")
+local Debris = game:GetService("Debris")
 
 local Shared = game:GetService("ReplicatedStorage").Workshop.Shared
 local Commands = require(Shared.AdminCommands)
@@ -102,6 +103,12 @@ local function num(arg, lo, hi, default)
 		return default
 	end
 	return math.clamp(n, lo, hi)
+end
+
+local function fxAll(kind: string)
+	for p in G.state.players do
+		Remotes.event("Castle"):FireClient(p, { type = "fx", kind = kind })
+	end
 end
 
 -- команды для всего замка
@@ -243,6 +250,140 @@ local WORLD = {
 			info.food, info.drink = Rules.MAX, Rules.MAX
 			G.sync(p)
 		end
+		return true
+	end,
+	-- силы Бога для всего замка
+	divine_voice = function(admin, arg)
+		if type(arg) ~= "string" or #arg == 0 or #arg > 200 then
+			return false
+		end
+		local ok, filtered = pcall(function()
+			local r = game:GetService("TextService"):FilterStringAsync(arg, admin.UserId)
+			return r:GetNonChatStringForBroadcastAsync()
+		end)
+		if not ok then
+			return false
+		end
+		fxAll("voice")
+		G.announce(nil, filtered)
+		return true
+	end,
+	earthquake = function()
+		fxAll("quake")
+		return true
+	end,
+	meteors = function()
+		task.spawn(function()
+			for _ = 1, 24 do
+				local p = Instance.new("Part")
+				p.Shape = Enum.PartType.Ball
+				p.Size = Vector3.new(3, 3, 3)
+				p.Material = Enum.Material.Neon
+				p.Color = Color3.fromRGB(255, 140, 60)
+				p.CanCollide = false
+				p.CanQuery = false
+				p.Position = Vector3.new(math.random(-150, 150), 220, math.random(-170, 170))
+				p.AssemblyLinearVelocity = Vector3.new(math.random(-30, 30), -160, math.random(-30, 30))
+				local f = Instance.new("Fire")
+				f.Size = 6
+				f.Parent = p
+				p.Parent = workspace
+				Debris:AddItem(p, 4)
+				task.wait(0.25)
+			end
+		end)
+		return true
+	end,
+	gold_rain = function()
+		task.spawn(function()
+			for _ = 1, 40 do
+				local c = Instance.new("Part")
+				c.Shape = Enum.PartType.Cylinder
+				c.Size = Vector3.new(0.3, 1.6, 1.6)
+				c.Material = Enum.Material.Neon
+				c.Color = Color3.fromRGB(255, 210, 90)
+				c.Position = Vector3.new(math.random(-60, 60), 60, math.random(-170, -125))
+				local taken = false
+				c.Touched:Connect(function(hit)
+					local who = Players:GetPlayerFromCharacter(hit.Parent)
+					if who and not taken and G.state.players[who] then
+						taken = true
+						CurrencyService.add(who, 5)
+						c:Destroy()
+					end
+				end)
+				c.Parent = workspace
+				Debris:AddItem(c, 40)
+				task.wait(0.15)
+			end
+		end)
+		return true
+	end,
+	gravity_low = function()
+		workspace.Gravity = 60
+		return true
+	end,
+	gravity_normal = function()
+		workspace.Gravity = 196.2
+		return true
+	end,
+	darkness = function()
+		G.setClock(0)
+		G.setWeather("Fog")
+		return true
+	end,
+	dawn = function()
+		G.setClock(6.6)
+		G.setWeather("Clear")
+		fxAll("dawn")
+		return true
+	end,
+	freeze_all = function(admin)
+		for p in G.state.players do
+			local r = root(p)
+			if r and p ~= admin then
+				r.Anchored = true
+			end
+		end
+		return true
+	end,
+	thaw_all = function()
+		for p in G.state.players do
+			local r = root(p)
+			if r then
+				r.Anchored = false
+			end
+		end
+		return true
+	end,
+	bring_all = function(admin)
+		local r = root(admin)
+		if not r then
+			return false
+		end
+		local k = 0
+		for p in G.state.players do
+			if p ~= admin then
+				k += 1
+				local a = k * 0.7
+				G.teleport(p, r.CFrame * CFrame.new(math.cos(a) * 6, 0, math.sin(a) * 6))
+			end
+		end
+		return true
+	end,
+	shield_all = function()
+		for p in G.state.players do
+			if p.Character then
+				local ff = Instance.new("ForceField")
+				ff.Name = "AdminEffect"
+				ff.Parent = p.Character
+				Debris:AddItem(ff, 30)
+			end
+		end
+		return true
+	end,
+	rainbow = function()
+		fxAll("rainbow")
 		return true
 	end,
 }
@@ -485,6 +626,97 @@ local PLAYER = {
 			e.Parent = workspace
 			r.AssemblyLinearVelocity = Vector3.new(0, 60, 0)
 		end
+	end,
+	-- силы Бога для одного игрока
+	smite = function(_, p)
+		local r = root(p)
+		if not r then
+			return
+		end
+		local bolt = Instance.new("Part")
+		bolt.Anchored = true
+		bolt.CanCollide = false
+		bolt.Material = Enum.Material.Neon
+		bolt.Color = Color3.fromRGB(220, 230, 255)
+		bolt.Size = Vector3.new(1.2, 300, 1.2)
+		bolt.CFrame = CFrame.new(r.Position + Vector3.new(0, 150, 0))
+		bolt.Parent = workspace
+		Debris:AddItem(bolt, 0.4)
+		fxAll("lightning")
+		local h = hum(p)
+		if h and not Access.isCreator(p) then
+			h.Health = 0
+		end
+	end,
+	bless = function(_, p)
+		local h = hum(p)
+		if h then
+			h.Health = h.MaxHealth
+			h.WalkSpeed = 26
+			task.delay(20, function()
+				if h.Parent then
+					h.WalkSpeed = 16
+				end
+			end)
+		end
+		local info = G.state.players[p]
+		if info then
+			info.food, info.drink = Rules.MAX, Rules.MAX
+			G.sync(p)
+		end
+		effect(p, "Sparkles", { SparkleColor = Color3.fromRGB(255, 240, 160) })
+	end,
+	levitate = function(_, p)
+		local r = root(p)
+		if not r then
+			return
+		end
+		local att = Instance.new("Attachment")
+		att.Parent = r
+		local lv = Instance.new("LinearVelocity")
+		lv.Attachment0 = att
+		lv.MaxForce = 1e6
+		lv.VectorVelocity = Vector3.new(0, 8, 0)
+		lv.Parent = r
+		Debris:AddItem(lv, 4)
+		Debris:AddItem(att, 4)
+	end,
+	holy_light = function(_, p)
+		local r = root(p)
+		if not r then
+			return
+		end
+		local beam = Instance.new("Part")
+		beam.Shape = Enum.PartType.Cylinder
+		beam.Anchored = true
+		beam.CanCollide = false
+		beam.CanQuery = false
+		beam.Material = Enum.Material.Neon
+		beam.Color = Color3.fromRGB(255, 244, 200)
+		beam.Transparency = 0.45
+		beam.Size = Vector3.new(400, 8, 8)
+		beam.CFrame = CFrame.new(r.Position + Vector3.new(0, 196, 0)) * CFrame.Angles(0, 0, math.pi / 2)
+		local l = Instance.new("PointLight")
+		l.Range = 30
+		l.Brightness = 3
+		l.Color = Color3.fromRGB(255, 240, 200)
+		l.Parent = beam
+		beam.Parent = workspace
+		Debris:AddItem(beam, 8)
+		local h = hum(p)
+		if h then
+			h.Health = h.MaxHealth
+		end
+	end,
+	resurrect = function(_, p)
+		local r = root(p)
+		local where = if r then r.CFrame else nil
+		p:LoadCharacter()
+		if where then
+			task.wait(0.3)
+			G.teleport(p, where + Vector3.new(0, 3, 0))
+		end
+		effect(p, "Sparkles", { SparkleColor = Color3.fromRGB(255, 240, 160) })
 	end,
 }
 

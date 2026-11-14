@@ -125,6 +125,7 @@ function Client:buildHud()
 	self.drinkFill, self.drinkLabel = bar(box, 3, Ui.C.drink)
 	self.roleLabel = Ui.label(box, "", { TextSize = 14, Font = Ui.FONT_BOLD, TextColor3 = Ui.C.gold, LayoutOrder = 4, Size = UDim2.new(1, 0, 0, 18) })
 	self.goldLabel = Ui.label(box, "", { TextSize = 14, TextColor3 = Ui.C.text, LayoutOrder = 5, Size = UDim2.new(1, 0, 0, 18) })
+	self.jailLabel = Ui.label(box, "", { TextSize = 14, Font = Ui.FONT_BOLD, TextColor3 = Ui.C.red, LayoutOrder = 6, Size = UDim2.new(1, 0, 0, 18), Visible = false })
 	-- кнопки справа: компактные, чтобы не закрывать обзор
 	local right = Ui.frame(gui, { BackgroundTransparency = 1, Size = UDim2.fromOffset(110, 200), Position = UDim2.new(1, -122, 0, top) })
 	Ui.list(right, 6)
@@ -160,13 +161,21 @@ function Client:localizePrompts()
 	if not castle then
 		return
 	end
-	for _, d in castle:GetDescendants() do
+	local function one(d)
 		if d:IsA("ProximityPrompt") then
 			local kind = d:GetAttribute("Kind")
 			if kind then
 				d.ActionText = self:T("p_" .. kind)
 			end
 		end
+	end
+	for _, d in castle:GetDescendants() do
+		one(d)
+	end
+	if not self.promptConn then
+		-- мир подгружается частями по мере движения игрока
+		self.promptConn = castle.DescendantAdded:Connect(one)
+		table.insert(self.conns, self.promptConn)
 	end
 end
 
@@ -187,6 +196,13 @@ function Client:refresh()
 	local gold = stats and stats:FindFirstChild("Gold")
 	self.goldLabel.Text = string.format("%s  %d", self:T("Gold"), if gold then gold.Value else 0)
 	self.kingBtn.Visible = role == "king"
+	local until_ = player:GetAttribute("JailUntil")
+	if until_ then
+		self.jailLabel.Visible = true
+		self.jailLabel.Text = self:T("JailFormat", math.max(0, until_ - os.time()))
+	else
+		self.jailLabel.Visible = false
+	end
 end
 
 function Client:refreshInventory()
@@ -583,6 +599,45 @@ function Client:fx(kind: string)
 		end)
 		return
 	end
+	if kind == "quake" then
+		local t0 = os.clock()
+		pcall(function()
+			RunService:UnbindFromRenderStep("CastleQuake")
+		end)
+		RunService:BindToRenderStep("CastleQuake", Enum.RenderPriority.Camera.Value + 5, function()
+			local e = os.clock() - t0
+			if e > 5 then
+				RunService:UnbindFromRenderStep("CastleQuake")
+				return
+			end
+			local a = (1 - e / 5) * 0.35
+			local cam = workspace.CurrentCamera
+			cam.CFrame = cam.CFrame * CFrame.new(math.random() * a - a / 2, math.random() * a - a / 2, 0)
+		end)
+		self:sound(Sounds.thunder, 1)
+		return
+	elseif kind == "rainbow" or kind == "dawn" or kind == "voice" then
+		local cc = Instance.new("ColorCorrectionEffect")
+		cc.Parent = Lighting
+		local t0 = os.clock()
+		local dur = if kind == "rainbow" then 12 else 3
+		local conn
+		conn = game:GetService("RunService").RenderStepped:Connect(function()
+			local e = os.clock() - t0
+			if e > dur then
+				conn:Disconnect()
+				cc:Destroy()
+				return
+			end
+			if kind == "rainbow" then
+				cc.TintColor = Color3.fromHSV((e * 0.25) % 1, 0.35, 1)
+			else
+				cc.Brightness = 0.5 * (1 - e / dur)
+				cc.TintColor = Color3.fromRGB(255, 240, 200)
+			end
+		end)
+		return
+	end
 	if not self.app.settings.effects then
 		return
 	end
@@ -635,11 +690,61 @@ function Client:fx(kind: string)
 	end
 end
 
+-- Двери: створки поворачиваются на петлях, когда игрок рядом (только у себя на экране)
+function Client:watchDoors()
+	local CollectionService = game:GetService("CollectionService")
+	local doors = {}
+	local function add(m)
+		local leaves = {}
+		for _, l in m:GetChildren() do
+			if l:IsA("Model") and l.Name == "Leaf" then
+				table.insert(leaves, { model = l, base = l:GetPivot(), dir = l:GetAttribute("Dir") or 1, angle = 0 })
+			end
+		end
+		local jamb = m:FindFirstChild("Head")
+		if jamb then
+			doors[m] = { leaves = leaves, pos = jamb.Position }
+		end
+	end
+	for _, m in CollectionService:GetTagged("CastleDoor") do
+		add(m)
+	end
+	table.insert(self.conns, CollectionService:GetInstanceAddedSignal("CastleDoor"):Connect(function(m)
+		task.defer(add, m)
+	end))
+	table.insert(self.conns, CollectionService:GetInstanceRemovedSignal("CastleDoor"):Connect(function(m)
+		doors[m] = nil
+	end))
+	table.insert(self.conns, RunService.RenderStepped:Connect(function(dt)
+		local char = player.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if not root then
+			return
+		end
+		for _, d in doors do
+			local dist = (d.pos - root.Position).Magnitude
+			if dist < 60 then
+				local want = if dist < 13 then math.rad(85) else 0
+				for _, lf in d.leaves do
+					if math.abs(lf.angle - want) > 0.001 then
+						lf.angle += (want - lf.angle) * math.min(1, dt * 7)
+						if math.abs(lf.angle - want) < 0.01 then
+							lf.angle = want
+						end
+						lf.model:PivotTo(lf.base * CFrame.Angles(0, lf.angle * lf.dir, 0))
+					end
+				end
+			end
+		end
+	end))
+end
+
 function Client:watch()
+	self:watchDoors()
 	local function upd()
 		self:refresh()
 	end
-	for _, a in { "Food", "Drink", "CastleRole" } do
+	for _, a in { "Food", "Drink", "CastleRole", "JailUntil" } do
 		table.insert(self.conns, player:GetAttributeChangedSignal(a):Connect(upd))
 	end
 	for _, a in { "Inv", "Slots" } do

@@ -50,7 +50,7 @@ local store: any
 local npcFolder: Folder
 local decor: Folder
 local kingStatue: Model? = nil
-local dummy
+local dummies = {}
 
 -- ---------------------------------------------------------------------------
 -- сообщения клиентам (каждый переводит ключи на свой язык)
@@ -114,7 +114,11 @@ local function teleport(p: Player, cf: CFrame)
 	if r then
 		r.AssemblyLinearVelocity = Vector3.zero
 	end
-	char:PivotTo(cf + Vector3.new(math.random(-2, 2), 0, math.random(-2, 2)))
+	-- при потоковой загрузке мира сначала подгружаем место назначения
+	pcall(function()
+		p:RequestStreamAroundAsync(cf.Position, 3)
+	end)
+	char:PivotTo(cf + Vector3.new(math.random(-1, 1), 0, math.random(-1, 1)))
 end
 G.teleport = teleport
 
@@ -503,7 +507,10 @@ end
 -- ---------------------------------------------------------------------------
 -- темница
 
-function G.jail(p: Player)
+G.SENTENCE = 180 -- секунд в тюрьме; работа сокращает срок
+G.WORK_CUT = 15
+
+function G.jail(p: Player, seconds: number?)
 	local info = state.players[p]
 	if not info or info.jailed then
 		return false
@@ -518,6 +525,8 @@ function G.jail(p: Player)
 	cell = cell or math.random(1, #Builder.cells)
 	state.cells[cell] = p
 	info.jailed = cell
+	info.jailUntil = os.time() + (seconds or G.SENTENCE)
+	p:SetAttribute("JailUntil", info.jailUntil)
 	if info.role == "king" then
 		G.setRole(p, "peasant")
 	end
@@ -541,10 +550,28 @@ function G.free(p: Player, toYard: boolean?)
 	end
 	state.cells[info.jailed] = nil
 	info.jailed = nil
+	info.jailUntil = nil
+	p:SetAttribute("JailUntil", nil)
 	teleport(p, if toYard then Builder.points.yard else Builder.points.dungeon)
 	toast(p, "FreedMsg")
 	sync(p)
 	return true
+end
+
+-- работа узника: срок короче, немного золота
+function G.work(p: Player)
+	local info = state.players[p]
+	if not info or not info.jailed then
+		toast(p, "WorkOnlyPrisoners")
+		return
+	end
+	info.jailUntil = (info.jailUntil or os.time()) - G.WORK_CUT
+	p:SetAttribute("JailUntil", info.jailUntil)
+	CurrencyService.add(p, 1)
+	playSound(rootOf(p), SOUND.click, 0.6)
+	if info.jailUntil <= os.time() then
+		G.free(p)
+	end
 end
 
 -- ---------------------------------------------------------------------------
@@ -563,7 +590,7 @@ function G.setPassage(open: boolean)
 	local v = Instance.new("NumberValue")
 	v.Value = if open then 0 else 1
 	v.Changed:Connect(function(a)
-		throne:PivotTo(home + Vector3.new(9 * a, 0, 0))
+		throne:PivotTo(home + (Builder.throneSlide or Vector3.new(14, 0, 0)) * a)
 	end)
 	playSound(Builder.throneSeat, SOUND.stone, 1)
 	if open then
@@ -590,7 +617,7 @@ function G.setGates(open: boolean)
 	local base = g:GetAttribute("BaseY") or g.Position.Y
 	g:SetAttribute("BaseY", base)
 	playSound(g, SOUND.stone, 1)
-	TweenService:Create(g, TweenInfo.new(2.5, Enum.EasingStyle.Sine), { CFrame = CFrame.new(g.Position.X, base + (if open then 20 else 0), g.Position.Z) }):Play()
+	TweenService:Create(g, TweenInfo.new(2.5, Enum.EasingStyle.Sine), { CFrame = CFrame.new(g.Position.X, base + (if open then (Builder.gateLift or 20) else 0), g.Position.Z) }):Play()
 end
 
 -- ---------------------------------------------------------------------------
@@ -658,13 +685,17 @@ local function attackFrom(p: Player, range: number, damage: number)
 	for _, m in Npc.minions do
 		consider(m.model, "minion")
 	end
-	if dummy then
-		consider(dummy.model, "dummy")
+	for _, d in dummies do
+		consider(d.model, "dummy")
 	end
 	for _, t in best do
 		if t.kind == "dummy" then
 			t.hum.Health = math.max(1, t.hum.Health - damage)
-			dummy.onHit(p.Character)
+			for _, d in dummies do
+				if d.model == t.model then
+					d.onHit(p.Character)
+				end
+			end
 		elseif t.kind == "minion" then
 			t.hum:TakeDamage(damage)
 		elseif state.world.pvp then
@@ -1003,16 +1034,30 @@ local function wirePrompts()
 	prompts("coin", function(p)
 		send(p, { type = "open", panel = "coin" })
 	end)
-	prompts("cell", function(p, pr)
+	-- ворота тюрьмы: проходит только стража, король и военачальник
+	prompts("prisongate", function(p)
 		local info = state.players[p]
+		if info.jailed then
+			toast(p, "JailedNo")
+			return
+		end
 		if info.role ~= "king" and info.role ~= "commander" and info.role ~= "guard" then
 			toast(p, "NotForRole")
 			return
 		end
-		local idx = pr.Parent:GetAttribute("Cell")
-		local prisoner = idx and state.cells[idx]
-		if prisoner then
-			G.free(prisoner)
+		local r = rootOf(p)
+		if not r then
+			return
+		end
+		local inside = Builder.points.prisonInside
+		local outside = Builder.points.prisonOutside
+		local isInside = (r.Position - inside.Position).Magnitude < (r.Position - outside.Position).Magnitude
+		playSound(r, SOUND.stone, 0.6)
+		teleport(p, if isInside then outside else inside)
+	end)
+	prompts("work", function(p)
+		if cooldown(p, "work", 3) then
+			G.work(p)
 		end
 	end)
 end
@@ -1315,7 +1360,9 @@ function G.init(projectStore)
 	state.gates = false
 	G.setGates(true)
 	wirePrompts()
-	dummy = Npc.buildDummy(Builder.points.dummy, decor)
+	for _, cf in Builder.points.dummies or {} do
+		table.insert(dummies, Npc.buildDummy(cf, decor))
+	end
 	Npc.buildPriest(Builder.points.priest, decor)
 	-- статуи создателей у трона, по умолчанию во дворе статуя владельца
 	task.spawn(function()
@@ -1364,6 +1411,10 @@ function G.init(projectStore)
 		info.food, info.drink = Rules.MAX, Rules.MAX
 		local hum = char:WaitForChild("Humanoid", 5) :: Humanoid?
 		task.wait(0.2)
+		-- срок не закончился: узник появляется снова в тюрьме
+		if info.jailed and Builder.cells[info.jailed] then
+			teleport(p, Builder.cells[info.jailed].inside)
+		end
 		dress(p)
 		rebuildTools(p)
 		sync(p)
@@ -1372,10 +1423,6 @@ function G.init(projectStore)
 				local i = state.players[p]
 				if not i then
 					return
-				end
-				if i.jailed then
-					state.cells[i.jailed] = nil
-					i.jailed = nil
 				end
 				table.clear(i.inv)
 				i.backpackItem = false
@@ -1436,8 +1483,19 @@ function G.init(projectStore)
 						end
 					end
 					sync(p)
+					-- срок вышел — на свободу; сбежавшего узника возвращаем
+					if info.jailed then
+						if (info.jailUntil or 0) <= os.time() then
+							G.free(p)
+						else
+							local r = rootOf(p)
+							if r and (r.Position.X > -47 or r.Position.X < -113 or r.Position.Z < -17 or r.Position.Z > 113 or r.Position.Y > 0 or r.Position.Y < -25) then
+								teleport(p, Builder.cells[info.jailed].inside)
+							end
+						end
+					end
 				end
-				if tick % 60 == 0 then
+				if tick % 60 == 0 and not info.jailed then
 					local pay = ({ king = 15, queen = 12, commander = 10, guard = 8, cook = 7, servant = 7, librarian = 7, peasant = 5 })[info.role] or 5
 					CurrencyService.add(p, pay)
 				end

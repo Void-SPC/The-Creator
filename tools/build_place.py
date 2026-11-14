@@ -18,7 +18,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "1.0.1"
+VERSION = "2.0.0"
 
 
 class Builder:
@@ -93,13 +93,16 @@ def build(dest: Path):
     b.prop(wp, "float", "FallenPartsDestroyHeight", -500)
     # предпросмотр редактора и сессии игры стоят далеко друг от друга; стриминг выключен,
     # чтобы клиент получал нужные модели целиком
-    b.prop(wp, "bool", "StreamingEnabled", False)
+    # замок огромный: на телефоне подгружается только то, что рядом
+    b.prop(wp, "bool", "StreamingEnabled", True)
+    b.prop(wp, "int", "StreamingMinRadius", 96)
+    b.prop(wp, "int", "StreamingTargetRadius", 320)
     # лобби лежит в файле, чтобы игрок появился на полу ещё до запуска скриптов
     lobby, _ = b.item(ws, "Model", "WsLobby")
     _, fp = b.item(lobby, "Part", "Floor")
     b.prop(fp, "bool", "Anchored", True)
     b.vec3(fp, "size", (12, 1, 12))
-    b.cframe(fp, "CFrame", (0, -0.5, -132))
+    b.cframe(fp, "CFrame", (0, -0.5, -160))
     b.prop(fp, "float", "Transparency", 1)
     b.prop(fp, "Color3uint8", "Color3uint8", 0xFF000000 | (46 << 16) | (50 << 8) | 58)
     _, sp = b.item(lobby, "SpawnLocation", "Spawn")
@@ -109,12 +112,14 @@ def build(dest: Path):
     b.prop(sp, "float", "Transparency", 1)
     b.prop(sp, "float", "Duration", 0)
     b.vec3(sp, "size", (8, 1, 8))
-    b.cframe(sp, "CFrame", (0, 0.5, -132))
+    b.cframe(sp, "CFrame", (0, 0.5, -160))
 
     _, lp = b.item(b.root, "Lighting", "Lighting")
     b.prop(lp, "float", "Brightness", 1)
     b.prop(lp, "float", "ClockTime", 0)
     b.prop(lp, "bool", "GlobalShadows", True)
+    # освещение Future: тёплые лампы и тени в комнатах (на слабых телефонах Roblox упрощает сам)
+    b.prop(lp, "token", "Technology", 4)
     b.color3(lp, "Ambient", (0.16, 0.16, 0.19))
 
     rep, _ = b.item(b.root, "ReplicatedStorage", "ReplicatedStorage")

@@ -1,73 +1,47 @@
 --!nonstrict
--- Постройка замка «The Castle». Около 160 × 300 studs, стены 60, главная башня 140
--- (примерно 50 метров, если считать человека ростом 5 studs). Всё собирается кодом:
--- камень, тёмное дерево, красный ковёр, факелы, окна, мебель, у которой есть функция
+-- Постройка «The Castle». Замок стоит на парящем каменном острове посреди пустоты.
+-- Главное здание 224 × 224 studs: подземный ярус и три этажа, на каждом сетка 7 × 7
+-- клеток по 32 studs (план — CastleLayout). Стены, двери, окна, полы и потолки строятся
+-- по плану, комнаты обставляются модулем Rooms. Отдельно строятся тронный зал с тайным
+-- ходом, огромная подземная библиотека, тюрьма с работами, двор и крепостная стена
 
 local Lighting = game:GetService("Lighting")
 
+local Shared = game:GetService("ReplicatedStorage").Workshop.Shared
+local Layout = require(Shared.CastleLayout)
+local Props = require(script.Parent.Props)
+local Rooms = require(script.Parent.Rooms)
+
 local B = {}
 
-local terrain = workspace.Terrain
+local rgb = Props.rgb
+local P, C, S = Props.P, Props.C, Props.S
+local M = Enum.Material
 
-local function rgb(r, g, b)
-	return Color3.fromRGB(r, g, b)
-end
+local CELL, N, H = Layout.C, Layout.N, Layout.H
+local HALF = Layout.HALF -- 112
+local ISLAND = 176
+local LV = Layout.LEVELS
+local ROOF = LV.F2 + H -- 54
 
-local STONE = rgb(150, 145, 136)
-local STONE_DARK = rgb(108, 103, 97)
-local FLOOR = rgb(132, 124, 112)
-local PLANKS = rgb(118, 82, 52)
-local WOOD = rgb(92, 62, 40)
-local WOOD_DARK = rgb(60, 40, 28)
-local CARPET = rgb(140, 24, 32)
-local GOLD = rgb(214, 172, 80)
+local FACADE = rgb(150, 144, 134)
+local FACADE_DARK = rgb(108, 103, 97)
+local CEIL = rgb(214, 204, 188)
+local ROCK = rgb(92, 84, 76)
 
 local root: Folder
-local prompts = {} -- имя -> список ProximityPrompt (функции подключает CastleGame)
+local prompts = {}
 B.prompts = prompts
 B.points = {}
 
-local function part(parent: Instance, props): BasePart
-	local p = Instance.new(props.Class or "Part")
-	p.Anchored = true
-	p.TopSurface = Enum.SurfaceType.Smooth
-	p.BottomSurface = Enum.SurfaceType.Smooth
-	for k, v in props do
-		if k ~= "Class" and k ~= "Sphere" then
-			(p :: any)[k] = v
-		end
-	end
-	if props.Sphere then
-		local m = Instance.new("SpecialMesh")
-		m.MeshType = Enum.MeshType.Sphere
-		m.Parent = p
-	end
-	p.Parent = parent
-	return p
-end
-B.part = part
-
-local function box(parent, name, x0, y0, z0, x1, y1, z1, color, mat, extra)
-	local props = {
-		Name = name,
-		Size = Vector3.new(math.abs(x1 - x0), math.abs(y1 - y0), math.abs(z1 - z0)),
-		CFrame = CFrame.new((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2),
-		Color = color or STONE,
-		Material = mat or Enum.Material.Slate,
-	}
-	if extra then
-		for k, v in extra do
-			props[k] = v
-		end
-	end
-	return part(parent, props)
-end
-
 -- Кнопка взаимодействия; kind — смысл (CastleGame вешает действие по kind)
-local function prompt(at: BasePart, kind: string, text: string, holdTime: number?, dist: number?)
+local function prompt(at: Instance?, kind: string, holdTime: number?, dist: number?)
+	if not at then
+		return nil
+	end
 	local p = Instance.new("ProximityPrompt")
 	p.Name = kind
-	p.ActionText = text
+	p.ActionText = ""
 	p.ObjectText = ""
 	p.HoldDuration = holdTime or 0
 	p.MaxActivationDistance = dist or 9
@@ -80,264 +54,1160 @@ local function prompt(at: BasePart, kind: string, text: string, holdTime: number
 end
 B.prompt = prompt
 
--- Стена вдоль X (z фиксирован) с проёмами gaps = { {центрX, ширина, высота} }
-local function wallX(parent, z, x0, x1, y0, h, gaps, t, color, mat)
-	t = t or 2
-	local cuts = {}
-	for _, g in gaps or {} do
-		table.insert(cuts, { g[1] - g[2] / 2, g[1] + g[2] / 2, g[3] })
+local function box(parent, name, x0, y0, z0, x1, y1, z1, color, mat, extra)
+	if math.abs(x1 - x0) < 0.01 or math.abs(y1 - y0) < 0.01 or math.abs(z1 - z0) < 0.01 then
+		return nil
 	end
-	table.sort(cuts, function(a, b)
-		return a[1] < b[1]
-	end)
-	local x = x0
-	for _, c in cuts do
-		if c[1] > x then
-			box(parent, "Wall", x, y0, z - t / 2, c[1], y0 + h, z + t / 2, color, mat)
-		end
-		if c[3] < h then
-			box(parent, "Wall", c[1], y0 + c[3], z - t / 2, c[2], y0 + h, z + t / 2, color, mat)
-		end
-		x = c[2]
-	end
-	if x < x1 then
-		box(parent, "Wall", x, y0, z - t / 2, x1, y0 + h, z + t / 2, color, mat)
-	end
+	return P(parent, name, Vector3.new(math.abs(x1 - x0), math.abs(y1 - y0), math.abs(z1 - z0)), CFrame.new((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), color, mat or M.Slate, extra)
 end
+B.box = box
 
-local function wallZ(parent, x, z0, z1, y0, h, gaps, t, color, mat)
-	t = t or 2
-	local cuts = {}
-	for _, g in gaps or {} do
-		table.insert(cuts, { g[1] - g[2] / 2, g[1] + g[2] / 2, g[3] })
+-- плита с прямоугольными дырами { x0, x1, z0, z1 } (не пересекающимися)
+local function slab(parent, name, x0, x1, z0, z1, y0, y1, holes, color, mat, extra)
+	if not holes or #holes == 0 then
+		return box(parent, name, x0, y0, z0, x1, y1, z1, color, mat, extra)
 	end
-	table.sort(cuts, function(a, b)
-		return a[1] < b[1]
-	end)
-	local z = z0
-	for _, c in cuts do
-		if c[1] > z then
-			box(parent, "Wall", x - t / 2, y0, z, x + t / 2, y0 + h, c[1], color, mat)
+	local xs = { x0, x1 }
+	for _, h in holes do
+		table.insert(xs, math.clamp(h[1], x0, x1))
+		table.insert(xs, math.clamp(h[2], x0, x1))
+	end
+	table.sort(xs)
+	for k = 1, #xs - 1 do
+		local a, b = xs[k], xs[k + 1]
+		if b - a > 0.01 then
+			local mid = (a + b) / 2
+			local zs = { { z0, z1 } }
+			for _, h in holes do
+				if mid > h[1] and mid < h[2] then
+					local nz = {}
+					for _, seg in zs do
+						if h[4] <= seg[1] or h[3] >= seg[2] then
+							table.insert(nz, seg)
+						else
+							if h[3] > seg[1] then
+								table.insert(nz, { seg[1], h[3] })
+							end
+							if h[4] < seg[2] then
+								table.insert(nz, { h[4], seg[2] })
+							end
+						end
+					end
+					zs = nz
+				end
+			end
+			for _, seg in zs do
+				box(parent, name, a, y0, seg[1], b, y1, seg[2], color, mat, extra)
+			end
 		end
-		if c[3] < h then
-			box(parent, "Wall", x - t / 2, y0 + c[3], c[1], x + t / 2, y0 + h, c[2], color, mat)
-		end
-		z = c[2]
 	end
-	if z < z1 then
-		box(parent, "Wall", x - t / 2, y0, z, x + t / 2, y0 + h, z1, color, mat)
-	end
+	return nil
 end
+B.slab = slab
 
--- Факел: держатель, палка и живой огонь с тёплым светом
-local function torch(parent, pos: Vector3, outward: Vector3)
-	local m = Instance.new("Model")
-	m.Name = "Torch"
-	local cf = CFrame.lookAt(pos, pos + outward)
-	part(m, { Name = "Bracket", Size = Vector3.new(0.5, 0.5, 1.2), CFrame = cf * CFrame.new(0, 0, -0.6), Color = rgb(40, 38, 36), Material = Enum.Material.Metal, CanCollide = false })
-	local stick = part(m, { Name = "Stick", Size = Vector3.new(0.35, 2, 0.35), CFrame = cf * CFrame.new(0, 0.5, -1.2) * CFrame.Angles(math.rad(-20), 0, 0), Color = WOOD_DARK, Material = Enum.Material.Wood, CanCollide = false })
-	local head = part(m, { Name = "Flame", Size = Vector3.new(0.5, 0.5, 0.5), CFrame = stick.CFrame * CFrame.new(0, 1.1, 0), Color = rgb(255, 150, 60), Material = Enum.Material.Neon, CanCollide = false })
+-- Стена в плоскости: axis "x" — плоскость X = plane (стена тянется вдоль Z), "z" — наоборот.
+-- holes: { c, w, bottom, top } — проёмы вдоль стены
+local function rect(parent, name, axis, plane, thick, a0, a1, y0, y1, holes, color, mat, extra)
+	local function piece(a, b, ya, yb)
+		if b - a < 0.01 or yb - ya < 0.01 then
+			return
+		end
+		if axis == "x" then
+			box(parent, name, plane - thick / 2, ya, a, plane + thick / 2, yb, b, color, mat, extra)
+		else
+			box(parent, name, a, ya, plane - thick / 2, b, yb, plane + thick / 2, color, mat, extra)
+		end
+	end
+	local hs = {}
+	for _, h in holes or {} do
+		table.insert(hs, h)
+	end
+	table.sort(hs, function(p, q)
+		return p[1] < q[1]
+	end)
+	local a = a0
+	for _, h in hs do
+		local h0, h1 = math.max(a0, h[1] - h[2] / 2), math.min(a1, h[1] + h[2] / 2)
+		piece(a, h0, y0, y1)
+		piece(h0, h1, y0, math.min(y1, h[3]))
+		piece(h0, h1, math.max(y0, h[4]), y1)
+		a = h1
+	end
+	piece(a, a1, y0, y1)
+end
+B.rect = rect
+
+-- Факел на стене. cf — точка на стене, LookVector от стены
+local function torch(parent, cf: CFrame)
+	local m = Props.model(parent, "Torch")
+	P(m, "Bracket", Vector3.new(0.5, 0.5, 1.2), cf * CFrame.new(0, 0, -0.6), Props.IRON, M.Metal, { CanCollide = false })
+	local stick = P(m, "Stick", Vector3.new(0.35, 2, 0.35), cf * CFrame.new(0, 0.5, -1.2) * CFrame.Angles(math.rad(-20), 0, 0), Props.WOOD_DARK, M.Wood, { CanCollide = false })
+	local head = P(m, "Flame", Vector3.new(0.5, 0.5, 0.5), stick.CFrame * CFrame.new(0, 1.1, 0), rgb(255, 150, 60), M.Neon, { CanCollide = false })
 	local fire = Instance.new("Fire")
 	fire.Size = 2.5
 	fire.Heat = 6
 	fire.Color = rgb(255, 140, 50)
 	fire.SecondaryColor = rgb(255, 60, 20)
 	fire.Parent = head
-	local light = Instance.new("PointLight")
-	light.Color = rgb(255, 160, 80)
-	light.Range = 20
-	light.Brightness = 1.6
-	light.Shadows = false
-	light.Parent = head
-	head:SetAttribute("TorchLight", true)
-	m.Parent = parent
+	Props.light(head, 20, 1.5, rgb(255, 160, 80))
+	return m
+end
+B.torch = torch
+
+-- ---------------------------------------------------------------------------
+-- клетки и план
+
+local function cellCenter(i, j)
+	return (i - 3) * CELL, (j - 3) * CELL
 end
 
--- Окно: каменный проём, рама с переплётом, стекло, подоконник
-local function window(parent, pos: Vector3, outward: Vector3, w: number?, h: number?)
-	w, h = w or 4, h or 7
-	local cf = CFrame.lookAt(pos, pos + outward)
-	part(parent, { Name = "Sill", Size = Vector3.new(w + 1, 0.5, 2.6), CFrame = cf * CFrame.new(0, -h / 2 - 0.25, 0), Color = STONE_DARK, Material = Enum.Material.Slate })
-	part(parent, { Name = "Arch", Size = Vector3.new(w + 1, 0.8, 2.6), CFrame = cf * CFrame.new(0, h / 2 + 0.4, 0), Color = STONE_DARK, Material = Enum.Material.Slate })
-	part(parent, { Name = "Glass", Size = Vector3.new(w, h, 0.3), CFrame = cf, Color = rgb(170, 200, 230), Material = Enum.Material.Glass, Transparency = 0.45, CastShadow = false })
-	part(parent, { Name = "Mullion", Size = Vector3.new(0.25, h, 0.45), CFrame = cf, Color = WOOD_DARK, Material = Enum.Material.Wood })
-	part(parent, { Name = "Transom", Size = Vector3.new(w, 0.25, 0.45), CFrame = cf * CFrame.new(0, h * 0.15, 0), Color = WOOD_DARK, Material = Enum.Material.Wood })
-end
-
-local function carpet(parent, x0, z0, x1, z1, y)
-	box(parent, "Carpet", x0, y, z0, x1, y + 0.12, z1, CARPET, Enum.Material.Carpet)
-	-- золотая кайма
-	box(parent, "Trim", x0 - 0.4, y, z0, x0, y + 0.13, z1, GOLD, Enum.Material.Fabric)
-	box(parent, "Trim", x1, y, z0, x1 + 0.4, y + 0.13, z1, GOLD, Enum.Material.Fabric)
-end
-
-local function pillar(parent, x, z, y0, h, r)
-	part(parent, { Name = "Pillar", Shape = Enum.PartType.Cylinder, Size = Vector3.new(h, r * 2, r * 2), CFrame = CFrame.new(x, y0 + h / 2, z) * CFrame.Angles(0, 0, math.pi / 2), Color = rgb(150, 144, 136), Material = Enum.Material.Marble })
-	part(parent, { Name = "Base", Size = Vector3.new(r * 2.6, 1, r * 2.6), CFrame = CFrame.new(x, y0 + 0.5, z), Color = STONE_DARK, Material = Enum.Material.Slate })
-	part(parent, { Name = "Capital", Size = Vector3.new(r * 2.6, 1, r * 2.6), CFrame = CFrame.new(x, y0 + h - 0.5, z), Color = STONE_DARK, Material = Enum.Material.Slate })
-end
-
-local function banner(parent, pos: Vector3, outward: Vector3, h: number)
-	local cf = CFrame.lookAt(pos, pos + outward)
-	part(parent, { Name = "Banner", Size = Vector3.new(4, h, 0.2), CFrame = cf * CFrame.new(0, -h / 2, 0.3), Color = rgb(120, 20, 30), Material = Enum.Material.Fabric, CanCollide = false })
-	part(parent, { Name = "Rod", Size = Vector3.new(5, 0.3, 0.3), CFrame = cf * CFrame.new(0, 0, 0.3), Color = GOLD, Material = Enum.Material.Metal, CanCollide = false })
-	part(parent, { Name = "Emblem", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.25, 2.4, 2.4), CFrame = cf * CFrame.new(0, -h * 0.4, 0.15) * CFrame.Angles(0, math.pi / 2, 0), Color = GOLD, Material = Enum.Material.Metal, CanCollide = false })
-end
-
-local function chandelier(parent, pos: Vector3)
-	local m = Instance.new("Model")
-	m.Name = "Chandelier"
-	part(m, { Name = "Chain", Size = Vector3.new(0.2, 6, 0.2), CFrame = CFrame.new(pos + Vector3.new(0, 3, 0)), Color = rgb(40, 38, 36), Material = Enum.Material.Metal, CanCollide = false })
-	part(m, { Name = "Ring", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.4, 7, 7), CFrame = CFrame.new(pos) * CFrame.Angles(0, 0, math.pi / 2), Color = rgb(50, 46, 40), Material = Enum.Material.Metal, CanCollide = false })
-	for k = 0, 7 do
-		local a = k / 8 * math.pi * 2
-		local c = part(m, { Name = "Candle", Size = Vector3.new(0.3, 0.8, 0.3), CFrame = CFrame.new(pos + Vector3.new(math.cos(a) * 3.3, 0.6, math.sin(a) * 3.3)), Color = rgb(255, 220, 160), Material = Enum.Material.Neon, CanCollide = false })
-		local _ = c
+local plans = {}
+local function roomAt(level, i, j)
+	if i < 0 or i > 6 or j < 0 or j > 6 then
+		return "out", false
 	end
-	local core = part(m, { Name = "Glow", Size = Vector3.new(0.5, 0.5, 0.5), CFrame = CFrame.new(pos), Transparency = 1, CanCollide = false })
-	local l = Instance.new("PointLight")
-	l.Range = 34
-	l.Brightness = 1.8
-	l.Color = rgb(255, 200, 140)
-	l.Parent = core
-	m.Parent = parent
-end
-
-local function bed(parent, cf: CFrame, blanket: Color3)
-	part(parent, { Name = "BedFrame", Size = Vector3.new(4.5, 1.4, 8), CFrame = cf * CFrame.new(0, 0.7, 0), Color = WOOD, Material = Enum.Material.Wood })
-	part(parent, { Name = "Headboard", Size = Vector3.new(4.5, 3.4, 0.5), CFrame = cf * CFrame.new(0, 1.7, 3.8), Color = WOOD_DARK, Material = Enum.Material.Wood })
-	part(parent, { Name = "Mattress", Size = Vector3.new(4.1, 0.7, 7.4), CFrame = cf * CFrame.new(0, 1.75, -0.1), Color = rgb(235, 230, 220), Material = Enum.Material.Fabric })
-	local b = part(parent, { Name = "Blanket", Size = Vector3.new(4.2, 0.3, 4.6), CFrame = cf * CFrame.new(0, 2.2, -1.3), Color = blanket, Material = Enum.Material.Fabric })
-	part(parent, { Name = "Pillow", Size = Vector3.new(3, 0.5, 1.4), CFrame = cf * CFrame.new(0, 2.3, 2.8), Color = rgb(245, 245, 245), Material = Enum.Material.Fabric })
-	prompt(b, "rest", "", 1.5)
-	return b
-end
-
-local function table_(parent, cf: CFrame, w, d)
-	part(parent, { Name = "TableTop", Size = Vector3.new(w, 0.5, d), CFrame = cf * CFrame.new(0, 3.2, 0), Color = WOOD, Material = Enum.Material.WoodPlanks })
-	for _, sx in { -1, 1 } do
-		for _, sz in { -1, 1 } do
-			part(parent, { Name = "Leg", Size = Vector3.new(0.6, 3, 0.6), CFrame = cf * CFrame.new(sx * (w / 2 - 0.6), 1.5, sz * (d / 2 - 0.6)), Color = WOOD_DARK, Material = Enum.Material.Wood })
-		end
+	local id = plans[level].grid[i][j]
+	if id == "void" then
+		-- пустая клетка над залом двойной высоты принадлежит залу снизу
+		local gid = plans.G.grid[i][j]
+		return plans.G.rooms[gid], true
 	end
+	return plans[level].rooms[id], false
 end
 
-local function bench(parent, cf: CFrame, w)
-	part(parent, { Name = "Bench", Size = Vector3.new(w, 0.5, 1.6), CFrame = cf * CFrame.new(0, 1.9, 0), Color = WOOD, Material = Enum.Material.WoodPlanks })
-	for _, sx in { -1, 1 } do
-		part(parent, { Name = "Leg", Size = Vector3.new(0.5, 1.7, 1.4), CFrame = cf * CFrame.new(sx * (w / 2 - 0.5), 0.85, 0), Color = WOOD_DARK, Material = Enum.Material.Wood })
+-- полоса лестницы внутри клетки: на первом этаже вдоль западной стены (подъём на север),
+-- на втором — вдоль восточной (подъём на юг); спуски — у наружной стены
+local function stairStrip(level, cx, cz, kind)
+	local west = (level == "G" and kind == "stairs") or (kind == "stairs_down" and cx < 0)
+	-- у наружной стены (толщина 2) полоса отодвинута, чтобы ступени не входили в стену
+	local inset = if math.abs(cx) > 90 then 1.5 else 0
+	if west then
+		return cx - 15.5 + inset, cx - 9.5 + inset, true
 	end
+	return cx + 9.5 - inset, cx + 15.5 - inset, false
 end
 
-local BOOK_COLORS = { rgb(120, 30, 30), rgb(40, 70, 120), rgb(50, 90, 50), rgb(140, 100, 40), rgb(80, 40, 90), rgb(160, 140, 110) }
-local function bookshelf(parent, cf: CFrame, w, h, seed)
-	part(parent, { Name = "Shelf", Size = Vector3.new(w, h, 0.4), CFrame = cf * CFrame.new(0, h / 2, 0.9), Color = WOOD_DARK, Material = Enum.Material.Wood })
-	for _, sx in { -1, 1 } do
-		part(parent, { Name = "Side", Size = Vector3.new(0.4, h, 2.2), CFrame = cf * CFrame.new(sx * w / 2, h / 2, 0), Color = WOOD_DARK, Material = Enum.Material.Wood })
-	end
-	local rows = math.floor(h / 2.6)
-	for r = 0, rows - 1 do
-		local y = 0.3 + r * 2.6
-		part(parent, { Name = "Board", Size = Vector3.new(w, 0.3, 2.2), CFrame = cf * CFrame.new(0, y, 0), Color = WOOD, Material = Enum.Material.Wood })
-		-- книги блоками разной высоты, чтобы полка не выглядела пустой и не тяжелела
-		local x = -w / 2 + 0.4
-		local k = seed + r * 7
-		while x < w / 2 - 1 do
-			local bw = 0.9 + (k % 3) * 0.5
-			local bh = 1.5 + (k % 4) * 0.2
-			part(parent, { Name = "Books", Size = Vector3.new(bw, bh, 1.6), CFrame = cf * CFrame.new(x + bw / 2, y + 0.15 + bh / 2, 0.1), Color = BOOK_COLORS[k % #BOOK_COLORS + 1], Material = Enum.Material.Fabric, CanCollide = false })
-			x += bw + 0.08
-			k += 1
-		end
-	end
-end
-
--- плита с прямоугольной дырой (для люка и лестниц); пустые куски пропускаются
-local function slab(parent, name, x0, x1, z0, z1, y0, y1, hx0, hx1, hz0, hz1, color, mat)
-	local function piece(a0, b0, a1, b1)
-		if a1 - a0 > 0.01 and b1 - b0 > 0.01 then
-			box(parent, name, a0, y0, b0, a1, y1, b1, color, mat)
-		end
-	end
-	piece(x0, z0, x1, hz0)
-	piece(x0, hz1, x1, z1)
-	piece(x0, hz0, hx0, hz1)
-	piece(hx1, hz0, x1, hz1)
-end
-
-local function stairs(parent, x0, x1, z0, y0, rise, run, steps, dir, color)
-	-- dir = +1 вверх по оси Z, -1 вниз по оси Z
-	for i = 0, steps - 1 do
-		local z = z0 + dir * (i + 0.5) * run
-		box(parent, "Step", x0, y0, z - run / 2, x1, y0 + (i + 1) * rise, z + run / 2, color or STONE_DARK, Enum.Material.Slate)
+local function buildFlight(parent, x0, x1, zTop, zDir, yTop, yBottom, steps, color)
+	-- ступени от верхнего края (zTop, yTop) по направлению zDir, каждая 1.5 в длину
+	local rise = (yTop - yBottom) / steps
+	for k = 0, steps - 1 do
+		local za = zTop + zDir * k * 1.5
+		local zb = za + zDir * 1.5
+		local top = yTop - k * rise
+		box(parent, "Step", x0, yBottom, math.min(za, zb), x1, top, math.max(za, zb), color, M.Marble)
+		box(parent, "StepCarpet", x0 + 0.8, top, math.min(za, zb) + 0.05, x1 - 0.8, top + 0.08, math.max(za, zb) - 0.05, rgb(120, 22, 30), M.Fabric, { CanCollide = false })
 	end
 end
 
 -- ---------------------------------------------------------------------------
--- Рельеф: остров с замком, ров с водой по кругу, трава вокруг
+-- остров в пустоте
 
--- Остров замка (|x| < 84, |z| < 156) целиком из деталей, рельефа на нём нет совсем,
--- поэтому он не вылезает сквозь полы. Рельеф только снаружи: луг и ров с водой.
--- Все границы кратны 4: так вода и трава ложатся ровно, без наплывов
-local ISLAND_X, ISLAND_Z = 84, 156
-local MOAT = 32
-B.ISLAND_X, B.ISLAND_Z, B.MOAT = ISLAND_X, ISLAND_Z, MOAT
-
-local function landscape()
-	terrain:Clear()
-	terrain.WaterColor = rgb(46, 84, 92)
-	terrain.WaterTransparency = 0.55
-	terrain.WaterReflectance = 0.35
-	terrain.WaterWaveSize = 0.08
-	terrain.WaterWaveSpeed = 6
-	-- луг вокруг: плиты по 256, чтобы не превысить лимиты одной операции
-	for x = -512, 511, 256 do
-		for z = -512, 511, 256 do
-			terrain:FillBlock(CFrame.new(x + 128, -8, z + 128), Vector3.new(256, 16, 256), Enum.Material.Grass)
+local function island(parent)
+	local m = Props.model(parent, "Island")
+	local ground = rgb(120, 116, 110)
+	local grotto = { 147, 157, 93, 99 }
+	slab(m, "Ground", -ISLAND, ISLAND, -ISLAND, -HALF, -2, 0, nil, ground, M.Cobblestone)
+	slab(m, "Ground", -ISLAND, ISLAND, HALF, ISLAND, -2, 0, nil, ground, M.Cobblestone)
+	slab(m, "Ground", -ISLAND, -HALF, -HALF, HALF, -2, 0, nil, ground, M.Cobblestone)
+	slab(m, "Ground", HALF, ISLAND, -HALF, HALF, -2, 0, { grotto }, ground, M.Cobblestone)
+	-- скальная «юбка» по краю и толща под двором
+	for _, s in { { -ISLAND, ISLAND, -ISLAND, -ISLAND + 6 }, { -ISLAND, ISLAND, ISLAND - 6, ISLAND }, { -ISLAND, -ISLAND + 6, -ISLAND, ISLAND }, { ISLAND - 6, ISLAND, -ISLAND, ISLAND } } do
+		box(m, "Cliff", s[1], -26, s[3], s[2], -2, s[4], ROCK, M.Rock)
+	end
+	slab(m, "Bedrock", -ISLAND, ISLAND, -ISLAND, ISLAND, -60, -26, { { -HALF, HALF, -HALF, HALF } }, ROCK, M.Rock)
+	box(m, "Bedrock", -HALF, -60, -HALF, HALF, -56, HALF, ROCK, M.Rock)
+	-- низ острова: сужающиеся каменные пласты, как парящая скала
+	local layers = { { 330, -60, -74 }, { 280, -74, -90 }, { 220, -90, -108 }, { 160, -108, -126 }, { 104, -126, -144 }, { 56, -144, -160 }, { 20, -160, -172 } }
+	for k, l in ipairs(layers) do
+		local w = l[1]
+		P(m, "Underside", Vector3.new(w, l[2] - l[3], w * 0.92), CFrame.new(math.sin(k) * 6, (l[2] + l[3]) / 2, math.cos(k) * 6) * CFrame.Angles(0, k * 0.4, 0), ROCK:Lerp(rgb(60, 54, 50), k / 8), M.Rock)
+		for q = 0, 5 do
+			local a = q / 6 * math.pi * 2 + k
+			local r = w * 0.42
+			P(m, "Crag", Vector3.new(w * 0.22, (l[2] - l[3]) * 1.4, w * 0.18), CFrame.new(math.cos(a) * r, l[3] + 2, math.sin(a) * r) * CFrame.Angles(0.3, a, 0.2), ROCK:Lerp(rgb(70, 64, 58), (q % 3) / 3), M.Rock)
 		end
 	end
-	local mx, mz = ISLAND_X + MOAT, ISLAND_Z + MOAT
-	-- ров: снимаем луг, кладём дно и воду ниже края берега
-	terrain:FillBlock(CFrame.new(0, -8, 0), Vector3.new(mx * 2, 16, mz * 2), Enum.Material.Air)
-	terrain:FillBlock(CFrame.new(0, -14, 0), Vector3.new(mx * 2, 4, mz * 2), Enum.Material.Mud)
-	terrain:FillBlock(CFrame.new(0, -8, 0), Vector3.new(mx * 2, 8, mz * 2), Enum.Material.Water)
-	-- остров пустой: его занимают детали фундамента
-	terrain:FillBlock(CFrame.new(0, -8, 0), Vector3.new(ISLAND_X * 2, 16, ISLAND_Z * 2), Enum.Material.Air)
-	-- колодец выхода из тайного хода за рвом
-	terrain:FillBlock(CFrame.new(-132, -8, 142), Vector3.new(8, 16, 12), Enum.Material.Air)
+	-- корни и мох по краям
+	for q = 0, 23 do
+		local a = q / 24 * math.pi * 2
+		local r = ISLAND - 2
+		local x, z = math.clamp(math.cos(a) * r * 1.4, -r, r), math.clamp(math.sin(a) * r * 1.4, -r, r)
+		P(m, "Root", Vector3.new(0.8, 10 + (q % 4) * 4, 0.8), CFrame.new(x, -31 - (q % 4) * 2, z) * CFrame.Angles(0.1 * (q % 3), 0, 0.1), rgb(70, 52, 36), M.Wood, { CanCollide = false })
+	end
+	return m
 end
 
--- Фундамент острова: каменные стенки по краю (видны над водой) и закрытое дно
-local function foundation(parent)
-	local X, Z, Y0 = ISLAND_X, ISLAND_Z, -31
-	local c, m = rgb(110, 106, 100), Enum.Material.Cobblestone
-	box(parent, "Foundation", X - 3, Y0, -Z, X, 0, Z, c, m)
-	box(parent, "Foundation", -X, Y0, -Z, -X + 3, 0, 138, c, m)
-	box(parent, "Foundation", -X, Y0, 146, -X + 3, 0, Z, c, m)
-	box(parent, "Foundation", -X, -16, 138, -X + 3, 0, 146, c, m)
-	box(parent, "Foundation", -X, Y0, -Z, X, 0, -Z + 3, c, m)
-	box(parent, "Foundation", -X, Y0, Z - 3, X, 0, Z, c, m)
-	box(parent, "IslandBottom", -X, Y0 - 1, -Z, X, Y0, Z, rgb(60, 58, 56), Enum.Material.Slate)
-	-- каменный край внешнего берега рва
-	local mx, mz = X + MOAT, Z + MOAT
-	local e = rgb(120, 116, 108)
-	box(parent, "Embankment", mx, -16, -mz - 2, mx + 2, 0.2, mz + 2, e, m)
-	box(parent, "Embankment", -mx - 2, -16, -mz - 2, -mx, 0.2, mz + 2, e, m)
-	box(parent, "Embankment", -mx, -16, mz, mx, 0.2, mz + 2, e, m)
-	box(parent, "Embankment", -mx, -16, -mz - 2, -8, 0.2, -mz, e, m)
-	box(parent, "Embankment", 8, -16, -mz - 2, mx, 0.2, -mz, e, m)
-	-- дорога от моста и фонари вдоль неё
-	box(parent, "Road", -7, -0.2, -330, 7, 0.15, -mz - 2, rgb(128, 120, 108), Enum.Material.Cobblestone)
-	for z = -mz - 12, -320, -22 do
-		for _, x in { -9.5, 9.5 } do
-			box(parent, "LampPost", x - 0.3, 0, z - 0.3, x + 0.3, 9, z + 0.3, rgb(40, 38, 36), Enum.Material.Metal)
-			local lamp = box(parent, "Lamp", x - 0.7, 9, z - 0.7, x + 0.7, 10.6, z + 0.7, rgb(255, 200, 120), Enum.Material.Neon)
-			local l = Instance.new("PointLight")
-			l.Range = 22
-			l.Brightness = 1.4
-			l.Color = rgb(255, 190, 120)
-			l.Parent = lamp
+-- ---------------------------------------------------------------------------
+-- стены, двери, окна, отделка
+
+local function faceDecor(parent, axis, plane, normal, a0, a1, y0, y1, style, holes, opts)
+	-- plane — поверхность стены, normal (+1/-1) — куда смотрит комната
+	if style.bare then
+		return
+	end
+	local function layer(thick, ya, yb, color, mat, name)
+		if yb <= ya then
+			return
 		end
+		rect(parent, name, axis, plane + normal * thick / 2, thick, a0, a1, ya, yb, holes, color, mat, { CanCollide = false, CanQuery = false })
+	end
+	local paperFrom = y0
+	if opts.wainscot then
+		layer(0.25, y0, y0 + 4.4, Props.WOOD_DARK, M.Wood, "Wainscot")
+		layer(0.42, y0 + 4.4, y0 + 4.8, Props.WOOD, M.Wood, "ChairRail")
+		layer(0.32, y0, y0 + 0.6, rgb(36, 24, 18), M.Wood, "Baseboard")
+		paperFrom = y0 + 4.8
+	end
+	layer(0.1, paperFrom, y1, style.paper, M.Fabric, "Wallpaper")
+	if opts.cornice then
+		layer(0.6, y1 - 1.2, y1, CEIL:Lerp(rgb(0, 0, 0), 0.12), M.SmoothPlastic, "Cornice")
+	end
+end
+
+local function styleOf(room)
+	if not room or room == "out" then
+		return { bare = true }
+	end
+	local st = Rooms.style(room.kind)
+	if room.level == "U" then
+		return { bare = true, floor = st.floor, mat = st.mat }
+	end
+	return st
+end
+
+local doorsAt = {}
+local extraOpenings = {}
+
+local function edgeKey(level, i, j, axis)
+	return level .. ":" .. i .. "," .. j .. axis
+end
+
+-- Все стены одного яруса
+local function buildWalls(parent, level, decor)
+	local y = LV[level]
+	local y0, y1 = y - 1, y + H - 1
+	local function interior(i, j, axis)
+		local a, voidA = roomAt(level, i, j)
+		local ni, nj = if axis == "x" then i + 1 else i, if axis == "z" then j + 1 else j
+		local b, voidB = roomAt(level, ni, nj)
+		if a == b then
+			return
+		end
+		local cx, cz = cellCenter(i, j)
+		local plane = if axis == "x" then cx + CELL / 2 else cz + CELL / 2
+		local along = if axis == "x" then cz else cx
+		local holes = {}
+		local door = doorsAt[edgeKey(level, i, j, axis)]
+		local extra = extraOpenings[edgeKey(level, i, j, axis)]
+		local dw, dh = 0, 0
+		if door then
+			dw, dh = if door.wide then 10 else 6, if door.wide then 14 else 10
+			table.insert(holes, { along, dw, y - 2, y + dh })
+		elseif extra then
+			dw, dh = extra.w, extra.h
+			table.insert(holes, { along, dw, y - 2, y + dh })
+		end
+		rect(parent, "Wall", axis, plane, 1, along - CELL / 2, along + CELL / 2, y0, y1, holes, rgb(160, 152, 140), if level == "U" then M.Cobblestone else M.Slate)
+		local dHoles = {}
+		if door or extra then
+			table.insert(dHoles, { along, dw + 1.8, y - 2, y + dh + 1.2 })
+		end
+		local tallA = type(a) == "table" and a.tall and not voidA
+		local tallB = type(b) == "table" and b.tall and not voidB
+		faceDecor(decor, axis, plane - 0.5, -1, along - CELL / 2, along + CELL / 2, if voidA then y0 else y, y1, styleOf(a), dHoles, { wainscot = not voidA, cornice = not tallA })
+		faceDecor(decor, axis, plane + 0.5, 1, along - CELL / 2, along + CELL / 2, if voidB then y0 else y, y1, styleOf(b), dHoles, { wainscot = not voidB, cornice = not tallB })
+		if door then
+			local pos = if axis == "x" then Vector3.new(plane, y, along) else Vector3.new(along, y, plane)
+			local n = if axis == "x" then Vector3.xAxis else Vector3.zAxis
+			Props.door(decor, CFrame.lookAt(pos, pos + n), dw, dh, nil, door.wide)
+		end
+	end
+	local function exterior(i, j, dir: Vector3)
+		local a, voidA = roomAt(level, i, j)
+		local cx, cz = cellCenter(i, j)
+		local axis = if dir.X ~= 0 then "x" else "z"
+		local sign = if axis == "x" then dir.X else dir.Z
+		local edge = if axis == "x" then cx + sign * CELL / 2 else cz + sign * CELL / 2
+		local plane = edge - sign * 1
+		local along = if axis == "x" then cz else cx
+		local holes = {}
+		local windowAt = nil
+		local extra = extraOpenings[edgeKey(level, i, j, axis .. (if sign > 0 then "+" else "-"))]
+		if extra then
+			table.insert(holes, { along, extra.w, y - 2, y + extra.h })
+		elseif level ~= "U" and type(a) == "table" and a.kind ~= "stairs" and a.kind ~= "stairs_down" then
+			windowAt = y + 8
+			table.insert(holes, { along, 5, y + 4, y + 12 })
+		end
+		rect(parent, "OuterWall", axis, plane, 2, along - CELL / 2, along + CELL / 2, y0, y1, holes, FACADE, M.Slate)
+		local dHoles = {}
+		if windowAt then
+			table.insert(dHoles, { along, 7, y + 3.4, y + 12.8 })
+		elseif extra then
+			table.insert(dHoles, { along, extra.w + 1.8, y - 2, y + extra.h + 1.2 })
+		end
+		local st = styleOf(a)
+		local tallA = type(a) == "table" and a.tall and not voidA
+		faceDecor(decor, axis, plane - sign * 1, -sign, along - CELL / 2, along + CELL / 2, if voidA then y0 else y, y1, st, dHoles, { wainscot = not voidA, cornice = not tallA })
+		local out = if axis == "x" then Vector3.new(sign, 0, 0) else Vector3.new(0, 0, sign)
+		if windowAt then
+			local pos = if axis == "x" then Vector3.new(plane, windowAt, along) else Vector3.new(along, windowAt, plane)
+			Props.window(decor, CFrame.lookAt(pos, pos + out), 5, 8, 2)
+			if not st.bare then
+				Props.curtains(decor, CFrame.lookAt(pos - out * 1.1, pos - out * 2), 5, 8, st.rug or rgb(120, 22, 30))
+			end
+		end
+		if extra and extra.door then
+			local pos = if axis == "x" then Vector3.new(plane, y, along) else Vector3.new(along, y, plane)
+			Props.door(decor, CFrame.lookAt(pos, pos + out), extra.w, extra.h, Props.WOOD_DARK, true)
+		end
+	end
+	for i = 0, 6 do
+		for j = 0, 6 do
+			if i < 6 then
+				interior(i, j, "x")
+			end
+			if j < 6 then
+				interior(i, j, "z")
+			end
+			if i == 0 then
+				exterior(i, j, Vector3.new(-1, 0, 0))
+			end
+			if i == 6 then
+				exterior(i, j, Vector3.new(1, 0, 0))
+			end
+			if j == 0 then
+				exterior(i, j, Vector3.new(0, 0, -1))
+			end
+			if j == 6 then
+				exterior(i, j, Vector3.new(0, 0, 1))
+			end
+		end
+	end
+end
+
+-- Описание комнаты для обстановки: границы, клетки и участки стен со слотами
+local function roomInfo(level, room)
+	local y = LV[level]
+	local info = { kind = room.kind, id = room.id, level = level, y = y, h = if room.tall then 2 * H - 1 else H - 1, cells = {}, segs = {} }
+	local cells = room.cells or {}
+	if #cells == 0 then
+		for i = room.i0, room.i1 do
+			for j = room.j0, room.j1 do
+				table.insert(cells, { i, j })
+			end
+		end
+	end
+	local x0, x1, z0, z1 = math.huge, -math.huge, math.huge, -math.huge
+	for _, c in cells do
+		local cx, cz = cellCenter(c[1], c[2])
+		table.insert(info.cells, { x = cx, z = cz, i = c[1], j = c[2] })
+		x0, x1 = math.min(x0, cx - CELL / 2 + 0.5), math.max(x1, cx + CELL / 2 - 0.5)
+		z0, z1 = math.min(z0, cz - CELL / 2 + 0.5), math.max(z1, cz + CELL / 2 - 0.5)
+		for _, d in { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } } do
+			local ni, nj = c[1] + d[1], c[2] + d[2]
+			local other = roomAt(level, ni, nj)
+			if other ~= room then
+				local outside = other == "out"
+				local inset = if outside then 2 else 0.5
+				local n = Vector3.new(-d[1], 0, -d[2])
+				local pos = Vector3.new(cx + d[1] * (CELL / 2 - inset), y, cz + d[2] * (CELL / 2 - inset))
+				local axis = if d[1] ~= 0 then "x" else "z"
+				local ei, ej = c[1], c[2]
+				if d[1] < 0 or d[2] < 0 then
+					ei, ej = ni, nj
+				end
+				local opening = nil
+				if outside then
+					if extraOpenings[edgeKey(level, c[1], c[2], axis .. (if d[1] + d[2] > 0 then "+" else "-"))] then
+						opening = "door"
+					elseif level ~= "U" then
+						opening = "window"
+					end
+				elseif doorsAt[edgeKey(level, ei, ej, axis)] or extraOpenings[edgeKey(level, ei, ej, axis)] then
+					opening = "door"
+				end
+				table.insert(info.segs, { pos = pos, inward = n, tangent = Vector3.new(n.Z, 0, -n.X), opening = opening })
+			end
+		end
+	end
+	info.x0, info.x1, info.z0, info.z1 = x0, x1, z0, z1
+	return info
+end
+
+-- Полы, потолки, лестницы и обстановка одного яруса
+local function buildLevel(parent, level, ctx)
+	local y = LV[level]
+	local plan = plans[level]
+	local floors = Props.model(parent, "Floors")
+	local decor = Props.model(parent, "Decor")
+	buildWalls(parent, level, decor)
+	for i = 0, 6 do
+		for j = 0, 6 do
+			local room, void = roomAt(level, i, j)
+			local cx, cz = cellCenter(i, j)
+			local holes = {}
+			-- дыра над лестницей с нижнего яруса
+			local below, belowLevel = nil, nil
+			if level == "F1" then
+				below, belowLevel = plans.G.rooms[plans.G.grid[i][j]], "G"
+			elseif level == "F2" then
+				local id = plans.F1.grid[i][j]
+				below, belowLevel = (if id ~= "void" then plans.F1.rooms[id] else nil), "F1"
+			end
+			if below and below.kind == "stairs" then
+				local sx0, sx1 = stairStrip(belowLevel, cx, cz, "stairs")
+				table.insert(holes, { sx0, sx1, cz - 13.5, cz + 13.5 })
+			end
+			if room and not void and room.kind == "stairs_down" then
+				local sx0, sx1 = stairStrip(level, cx, cz, "stairs_down")
+				table.insert(holes, { sx0, sx1, cz - 13.5, cz + 13.5 })
+			end
+			if type(room) == "table" and not void and not room.special then
+				local st = styleOf(room)
+				slab(floors, "Floor", cx - CELL / 2, cx + CELL / 2, cz - CELL / 2, cz + CELL / 2, y - 1, y, holes, st.floor or rgb(110, 104, 98), st.mat or M.Slate)
+				-- потолок: светлая штукатурка (или камень в подвале), балки или кессоны
+				local ceilY = y + (if room.tall then 2 * H else H) - 1
+				local ceilHoles = {}
+				local aboveDown = level == "U" and plans.G.rooms[plans.G.grid[i][j]].kind == "stairs_down"
+				if room.kind == "stairs" then
+					local sx0, sx1 = stairStrip(level, cx, cz, "stairs")
+					table.insert(ceilHoles, { sx0, sx1, cz - 13.5, cz + 13.5 })
+				elseif aboveDown then
+					local sx0, sx1 = stairStrip("G", cx, cz, "stairs_down")
+					table.insert(ceilHoles, { sx0, sx1, cz - 13.5, cz + 13.5 })
+				end
+				slab(floors, "Ceiling", cx - CELL / 2, cx + CELL / 2, cz - CELL / 2, cz + CELL / 2, ceilY - 0.25, ceilY, ceilHoles, if level == "U" then rgb(90, 86, 80) else CEIL, if level == "U" then M.Cobblestone else M.SmoothPlastic, { CanCollide = false })
+				local k = room.kind
+				if aboveDown then
+					local _ = 0
+				elseif level == "U" or k == "kitchen" or k == "barracks" or k == "servants" or k == "training" then
+					for b = -1, 1 do
+						box(floors, "Beam", cx - CELL / 2, ceilY - 1.4, cz + b * 10 - 0.6, cx + CELL / 2, ceilY - 0.25, cz + b * 10 + 0.6, if level == "U" then rgb(80, 76, 70) else Props.WOOD_DARK, if level == "U" then M.Slate else M.Wood, { CanCollide = false })
+					end
+				elseif k ~= "stairs" and k ~= "hall" and k ~= "stairs_down" then
+					for b = -1, 1, 2 do
+						box(floors, "Coffer", cx - CELL / 2, ceilY - 0.9, cz + b * 8 - 0.4, cx + CELL / 2, ceilY - 0.25, cz + b * 8 + 0.4, CEIL:Lerp(rgb(0, 0, 0), 0.1), M.SmoothPlastic, { CanCollide = false })
+						box(floors, "Coffer", cx + b * 8 - 0.4, ceilY - 0.9, cz - CELL / 2, cx + b * 8 + 0.4, ceilY - 0.25, cz + CELL / 2, CEIL:Lerp(rgb(0, 0, 0), 0.1), M.SmoothPlastic, { CanCollide = false })
+					end
+				end
+			end
+			-- лестницы
+			if type(room) == "table" and not void and (room.kind == "stairs" or room.kind == "stairs_down") then
+				local sx0, sx1, west = stairStrip(level, cx, cz, room.kind)
+				local col = rgb(196, 188, 176)
+				local inner = if west then sx1 else sx0
+				local ang = math.atan2(H, 27)
+				if room.kind == "stairs" then
+					if west then
+						buildFlight(decor, sx0, sx1, cz + 13.5, -1, y + H, y, 18, col)
+					else
+						buildFlight(decor, sx0, sx1, cz - 13.5, 1, y + H, y, 18, col)
+					end
+					local tilt = if west then -ang else ang
+					P(decor, "StairRail", Vector3.new(0.5, 0.35, 32.4), CFrame.new(inner, y + H / 2 + 3.4, cz) * CFrame.Angles(tilt, 0, 0), Props.WOOD_DARK, M.Wood)
+				else
+					buildFlight(decor, sx0, sx1, cz + 13.5, -1, y, y - H, 18, col)
+					P(decor, "StairRail", Vector3.new(0.5, 0.35, 32.4), CFrame.new(inner, y - H / 2 + 3.4, cz) * CFrame.Angles(ang, 0, 0), Props.WOOD_DARK, M.Wood)
+					Props.railing(decor, Vector3.new(inner, y, cz - 13.5), Vector3.new(inner, y, cz + 10))
+					Props.railing(decor, Vector3.new(sx0, y, cz - 13.7), Vector3.new(sx1, y, cz - 13.7))
+				end
+			end
+			if below and below.kind == "stairs" then
+				local sx0, sx1, west = stairStrip(belowLevel, cx, cz, "stairs")
+				local inner = if west then sx1 else sx0
+				if west then
+					Props.railing(decor, Vector3.new(inner, y, cz - 13.5), Vector3.new(inner, y, cz + 10))
+					Props.railing(decor, Vector3.new(sx0, y, cz - 13.7), Vector3.new(sx1, y, cz - 13.7))
+				else
+					Props.railing(decor, Vector3.new(inner, y, cz - 10), Vector3.new(inner, y, cz + 13.5))
+					Props.railing(decor, Vector3.new(sx0, y, cz + 13.7), Vector3.new(sx1, y, cz + 13.7))
+				end
+			end
+		end
+	end
+	-- обстановка комнат
+	for id, room in plan.rooms do
+		local info = roomInfo(level, room)
+		if room.kind == "hall" then
+			for _, c in info.cells do
+				local hx = (c.i < 6 and plan.grid[c.i + 1][c.j] == id) or (c.i > 0 and plan.grid[c.i - 1][c.j] == id)
+				Rooms.hallCell(decor, c, info, ctx, hx == true)
+			end
+			Rooms.hallWalls(decor, info, id)
+		elseif room.kind == "stairs" or room.kind == "stairs_down" or room.kind == "prison_guard" then
+			local c = info.cells[1]
+			local sx0 = stairStrip(level, c.x, c.z, if room.kind == "prison_guard" then "stairs_down" else room.kind)
+			Props.ceilingLamp(decor, Vector3.new(c.x + (if sx0 < c.x then 5 else -5), y + H - 3.5, c.z), 2.5)
+			if room.kind == "prison_guard" then
+				B.points.dungeon = CFrame.new(c.x + 5, y + 3, c.z + 6)
+			end
+		elseif not room.special then
+			Rooms.decorate(decor, info, ctx)
+		end
+		room.info = info
+	end
+end
+
+-- ---------------------------------------------------------------------------
+-- тронный зал (G, клетки 2..4 × 4..6), тайный ход и сточный туннель
+
+local function throneRoom(parent)
+	local m = Props.model(parent, "ThroneRoom")
+	local x0, x1, z0, z1 = -48, 48, 16, 112
+	local hx0, hx1, hz0, hz1 = -5, 5, 95, 105
+	local tx, tz = 0, 100
+	slab(m, "Floor", x0, x1, z0, z1, -1, 0, { { hx0, hx1, hz0, hz1 } }, rgb(206, 198, 186), M.Marble)
+	for gx = -4, 3 do
+		for gz = 0, 7 do
+			if (gx + gz) % 2 == 0 then
+				box(m, "Tile", gx * 6, 0, 20 + gz * 6, gx * 6 + 6, 0.05, 26 + gz * 6, rgb(60, 56, 54), M.Marble, { CanCollide = false })
+			end
+		end
+	end
+	local ceilY = 2 * H - 1
+	box(m, "Ceiling", x0, ceilY - 0.3, z0, x1, ceilY, z1, rgb(110, 30, 36), M.Fabric, { CanCollide = false })
+	for k = 0, 5 do
+		box(m, "Rib", x0, ceilY - 1.6, z0 + 8 + k * 16 - 0.7, x1, ceilY - 0.3, z0 + 8 + k * 16 + 0.7, Props.GOLD, M.Metal, { CanCollide = false })
+	end
+	Props.runner(m, CFrame.new(0, 0, 51), 8, 70, rgb(140, 20, 28))
+	for _, sx in { -1, 1 } do
+		for k = 0, 4 do
+			Props.column(m, CFrame.new(sx * 30, 0, 24 + k * 14), ceilY, 2)
+			Props.banner(m, CFrame.new(sx * 47.3, 28, 24 + k * 14) * CFrame.Angles(0, if sx > 0 then math.pi / 2 else -math.pi / 2, 0), 16, if k % 2 == 0 then rgb(130, 20, 28) else rgb(30, 46, 110))
+		end
+		for k = 0, 3 do
+			Props.sconce(m, CFrame.new(sx * 47.4, 10, 31 + k * 24) * CFrame.Angles(0, if sx > 0 then math.pi / 2 else -math.pi / 2, 0), k % 2 == 0)
+		end
+	end
+	for k = 0, 2 do
+		Props.chandelier(m, Vector3.new(0, ceilY - 9, 34 + k * 26), 8, 8)
+	end
+	-- помост в две ступени с дырой под люк
+	slab(m, "Dais", -20, 20, 86, 111, 0, 1.5, { { hx0, hx1, hz0, hz1 } }, rgb(150, 26, 34), M.Fabric)
+	slab(m, "DaisStep", -17, 17, 90, 111, 1.5, 3, { { hx0, hx1, hz0, hz1 } }, rgb(206, 198, 186), M.Marble)
+	for _, sx in { -1, 1 } do
+		P(m, "DaisTrim", Vector3.new(0.4, 0.3, 25), CFrame.new(sx * 20, 1.6, 98.5), Props.GOLD, M.Metal, { CanCollide = false })
+	end
+	-- за троном огромный гобелен и витражи
+	Props.banner(m, CFrame.new(0, 33, 109.8), 22, rgb(140, 20, 28))
+	for _, x in { -18, 18 } do
+		Props.stainedGlass(m, CFrame.new(x, 21, 109.8), 7, 14)
+	end
+	local hatch = box(m, "Hatch", hx0, -1, hz0, hx1, 3.02, hz1, rgb(206, 198, 186), M.Marble)
+	B.hatch = hatch
+	-- трон
+	local throne = Instance.new("Model")
+	throne.Name = "Throne"
+	local seat = Instance.new("Seat")
+	seat.Name = "ThroneSeat"
+	seat.Anchored = true
+	seat.Size = Vector3.new(4, 1, 4)
+	seat.CFrame = CFrame.new(tx, 4.5, tz)
+	seat.Color = rgb(150, 20, 30)
+	seat.Material = M.Fabric
+	seat.Disabled = true
+	seat.Parent = throne
+	P(throne, "ThroneBase", Vector3.new(5.4, 1.5, 5.4), CFrame.new(tx, 3.75, tz), Props.GOLD, M.Metal)
+	P(throne, "ThroneBack", Vector3.new(5.4, 11, 1), CFrame.new(tx, 10, tz + 2.6), Props.GOLD, M.Metal)
+	P(throne, "ThroneCushion", Vector3.new(4.2, 7.5, 0.4), CFrame.new(tx, 9.2, tz + 2), rgb(150, 20, 30), M.Fabric)
+	for _, x in { -2.8, 2.8 } do
+		P(throne, "Arm", Vector3.new(0.8, 2.5, 4.6), CFrame.new(tx + x, 5.6, tz), Props.GOLD, M.Metal)
+		S(throne, "ArmKnob", 1, CFrame.new(tx + x, 7, tz - 2.3), Props.GOLD, M.Metal)
+		C(throne, "Finial", 2.4, 0.6, CFrame.new(tx + x, 16.6, tz + 2.6), Props.GOLD, M.Metal)
+	end
+	S(throne, "Crest", 2.4, CFrame.new(tx, 16.4, tz + 2.6), Props.GOLD, M.Neon)
+	for k = 0, 4 do
+		S(throne, "Gem", 0.5, CFrame.new(tx - 1.6 + k * 0.8, 14.5, tz + 2.05), if k % 2 == 0 then rgb(200, 30, 50) else rgb(40, 90, 220), M.Neon)
+	end
+	throne.PrimaryPart = seat
+	throne.Parent = m
+	prompt(seat, "throne", 1, 10)
+	prompt(throne:FindFirstChild("ThroneBack"), "passage", 1.5, 10)
+	B.throne = throne
+	B.throneSeat = seat
+	B.throneHome = throne:GetPivot()
+	B.throneSlide = Vector3.new(14, 0, 0)
+	B.points.statueLeft = CFrame.new(-28, 1.5, 100)
+	B.points.statueRight = CFrame.new(28, 1.5, 100)
+	for _, x in { -28, 28 } do
+		box(m, "StatueBase", x - 4, 0, 96, x + 4, 1.5, 104, rgb(220, 214, 204), M.Marble)
+		box(m, "StatueBaseTrim", x - 4.3, 1.3, 95.7, x + 4.3, 1.6, 104.3, Props.GOLD, M.Metal)
+	end
+	B.points.throneRoom = CFrame.new(0, 3, 30)
+
+	-- винтовая лестница в шахте под люком, вниз до сточного туннеля
+	local sh = Props.model(parent, "SecretStair")
+	local uy = LV.U
+	local wc = rgb(90, 86, 80)
+	box(sh, "ShaftWall", -5.5, uy - 1, 94.5, -5, -1, 105.5, wc, M.Cobblestone)
+	box(sh, "ShaftWall", -5, uy - 1, 94.5, 5, -1, 95, wc, M.Cobblestone)
+	box(sh, "ShaftWall", -5, uy - 1, 105, 5, -1, 105.5, wc, M.Cobblestone)
+	-- восточная стенка с проходом в туннель внизу
+	box(sh, "ShaftWall", 5, uy + 9, 94.5, 5.5, -1, 105.5, wc, M.Cobblestone)
+	box(sh, "ShaftWall", 5, uy - 1, 94.5, 5.5, uy + 9, 97.5, wc, M.Cobblestone)
+	box(sh, "ShaftWall", 5, uy - 1, 102.5, 5.5, uy + 9, 105.5, wc, M.Cobblestone)
+	C(sh, "Newel", 3 - uy, 1.8, CFrame.new(tx, (3 + uy) / 2, tz), rgb(120, 114, 106), M.Slate)
+	local steps = 28
+	for k = 0, steps - 1 do
+		local a = k * math.rad(22.5)
+		local top = 3 - (k + 1) * (3 - uy) / steps
+		P(sh, "SpiralStep", Vector3.new(3.9, 0.5, 1.9), CFrame.new(tx, top - 0.25, tz) * CFrame.Angles(0, a, 0) * CFrame.new(2.85, 0, 0), rgb(150, 144, 134), M.Slate)
+		if k % 7 == 3 then
+			local tp = (CFrame.new(tx, top + 5, tz) * CFrame.Angles(0, a + 0.4, 0) * CFrame.new(4.9, 0, 0)).Position
+			torch(sh, CFrame.lookAt(tp, Vector3.new(tx, tp.Y, tz)))
+		end
+	end
+	local lever = Props.model(sh, "Lever")
+	P(lever, "Plate", Vector3.new(0.3, 1.8, 1.2), CFrame.new(5.6, uy + 4, 106.2), Props.IRON, M.Metal)
+	local handle = P(lever, "Handle", Vector3.new(0.25, 2, 0.25), CFrame.new(6, uy + 4.8, 106.2) * CFrame.Angles(0, 0, math.rad(-25)), rgb(150, 150, 156), M.Metal)
+	S(lever, "Grip", 0.6, CFrame.new(6.4, uy + 5.7, 106.2), rgb(120, 22, 30), M.SmoothPlastic)
+	prompt(handle, "lever", 0.5)
+	B.points.tunnel = CFrame.new(20, uy + 3, 96)
+end
+
+-- Сточный туннель (U, клетки 3..6 × 6) и выход в грот на краю острова
+local function sewer(parent)
+	local m = Props.model(parent, "Sewer")
+	local uy = LV.U
+	local x0, x1, z0, z1 = -15.5, HALF - 2, 80.5, 110
+	box(m, "Floor", x0, uy - 1, z0, x1, uy, 93, rgb(86, 82, 76), M.Cobblestone)
+	box(m, "Floor", x0, uy - 1, 99, x1, uy, z1, rgb(86, 82, 76), M.Cobblestone)
+	box(m, "Floor", x0, uy - 1, 93, 8, uy, 99, rgb(86, 82, 76), M.Cobblestone)
+	box(m, "Channel", 8, uy - 2.5, 93, x1, uy - 1, 99, rgb(60, 56, 52), M.Slate)
+	box(m, "Water", 8, uy - 1.6, 93.1, x1, uy - 1.2, 98.9, rgb(70, 82, 60), M.Glass, { Transparency = 0.3, CanCollide = false })
+	-- мостки над каналом
+	for x = 20, x1 - 10, 24 do
+		box(m, "Plank", x - 2, uy - 0.2, 93, x + 2, uy, 99, Props.WOOD, M.WoodPlanks)
+	end
+	-- арки-рёбра через каждые 8 studs, решётки, трубы, факелы
+	for x = 12, x1 - 4, 8 do
+		box(m, "Rib", x - 0.8, uy, z0, x + 0.8, -1.5, z0 + 1.5, rgb(110, 104, 96), M.Slate)
+		box(m, "Rib", x - 0.8, uy, z1 - 1.5, x + 0.8, -1.5, z1, rgb(110, 104, 96), M.Slate)
+		box(m, "Rib", x - 0.8, -3.2, z0, x + 0.8, -1.5, z1, rgb(110, 104, 96), M.Slate, { CanCollide = false })
+		if (x - x0) % 24 < 8 then
+			torch(m, CFrame.new(x + 4, uy + 7, z0 + 0.1) * CFrame.Angles(0, math.pi, 0))
+		end
+		P(m, "Pipe", Vector3.new(8, 1.2, 1.2), CFrame.new(x - 4, uy + 12, z1 - 1.2), rgb(110, 80, 50), M.Metal, { CanCollide = false, Shape = Enum.PartType.Cylinder })
+	end
+	for k = 0, 8 do
+		Props.barrel(m, CFrame.new(x0 + 26 + k * 10, uy, z0 + 3.5), k % 3 == 0)
+	end
+	-- туннель под двором и лестница наверх, в грот
+	local t = Props.model(parent, "EscapeTunnel")
+	local wc = rgb(90, 86, 80)
+	box(t, "Floor", HALF, uy - 1, 93, 130, uy, 99, rgb(86, 82, 76), M.Cobblestone)
+	box(t, "Wall", HALF, uy - 1, 92, 158, -2, 93, wc, M.Cobblestone)
+	box(t, "Wall", HALF, uy - 1, 99, 158, -2, 100, wc, M.Cobblestone)
+	box(t, "Ceiling", HALF, uy + 10, 93, 145, uy + 11, 99, rgb(80, 76, 70), M.Cobblestone)
+	for k = 0, 17 do
+		local xa = 130 + k * 1.5
+		box(t, "Step", xa, uy - 1, 93, xa + 1.5, uy + (k + 1), 99, rgb(110, 104, 96), M.Slate)
+	end
+	torch(t, CFrame.new(121, uy + 6, 93.1))
+	torch(t, CFrame.new(140, uy + 9, 98.9) * CFrame.Angles(0, math.pi, 0))
+	-- грот: камни вокруг выхода, арка, плющ
+	local g = Props.model(parent, "Grotto")
+	for k = 0, 4 do
+		for _, z in { 89.5, 102.5 } do
+			S(g, "Rock", 5 + (k % 3) * 1.2, CFrame.new(145 + k * 3.2, 1.5 + (k % 2), z), ROCK:Lerp(rgb(130, 124, 116), (k % 4) / 5), M.Rock)
+		end
+	end
+	P(g, "Arch", Vector3.new(12, 3, 16), CFrame.new(150, 8.5, 96), ROCK, M.Rock)
+	for k = 0, 5 do
+		P(g, "Ivy", Vector3.new(0.3, 4, 1.2), CFrame.new(156.2, 5, 91.5 + k * 1.8), rgb(60, 100, 50), M.Grass, { CanCollide = false })
+	end
+	B.points.tunnelExit = CFrame.new(163, 3, 96)
+end
+
+-- ---------------------------------------------------------------------------
+-- огромная библиотека под главным залом (U, клетки 2..6 × 0..4, три яруса)
+
+local function library(parent)
+	local m = Props.model(parent, "Library")
+	local x0, x1, z0, z1 = -47.5, HALF - 2, -HALF + 2, 47.5
+	local fy = -54
+	local G1, G2 = -36, LV.U
+	local W = 12
+	box(m, "Floor", x0, fy - 1, z0, x1, fy, z1, rgb(70, 64, 60), M.Slate)
+	for gx = 0, 9 do
+		for gz = 0, 9 do
+			if (gx + gz) % 2 == 0 then
+				box(m, "FloorTile", x0 + W + gx * 11.4, fy, z0 + W + gz * 11.4, x0 + W + gx * 11.4 + 11.4, fy + 0.04, z0 + W + gz * 11.4 + 11.4, rgb(96, 88, 80), M.Marble, { CanCollide = false })
+			end
+		end
+	end
+	-- стены от пола до верхней галереи (выше — стены подземного яруса)
+	local wc, wm = rgb(84, 74, 66), M.Slate
+	box(m, "Wall", x0 - 1, fy - 1, z0 - 1, x0, G2, z1 + 1, wc, wm)
+	box(m, "Wall", x1, fy - 1, z0 - 1, x1 + 1, G2, z1 + 1, wc, wm)
+	box(m, "Wall", x0, fy - 1, z0 - 1, x1, G2, z0, wc, wm)
+	box(m, "Wall", x0, fy - 1, z1, x1, G2, z1 + 1, wc, wm)
+	-- галереи: кольцо шириной 12 на двух уровнях, с проёмами под лестницы
+	local flight1 = { x0 + 1, x0 + 7, -10, 17 } -- с верхней галереи на среднюю (запад)
+	local flight2 = { x1 - 7, x1 - 1, -10, 17 } -- со средней на пол (восток)
+	local inner = { x0 + W, x1 - W, z0 + W, z1 - W }
+	for _, gy in { G1, G2 } do
+		local holes = { inner, if gy == G2 then flight1 else flight2 }
+		slab(m, "Gallery", x0, x1, z0, z1, gy - 1, gy, holes, rgb(96, 70, 50), M.Slate)
+		Props.railing(m, Vector3.new(inner[1], gy, inner[3]), Vector3.new(inner[2], gy, inner[3]))
+		Props.railing(m, Vector3.new(inner[1], gy, inner[4]), Vector3.new(inner[2], gy, inner[4]))
+		Props.railing(m, Vector3.new(inner[1], gy, inner[3]), Vector3.new(inner[1], gy, inner[4]))
+		Props.railing(m, Vector3.new(inner[2], gy, inner[3]), Vector3.new(inner[2], gy, inner[4]))
+		local fl = if gy == G2 then flight1 else flight2
+		Props.railing(m, Vector3.new(fl[2], gy, fl[3]), Vector3.new(fl[2], gy, fl[4] - 3))
+	end
+	for k = 0, 17 do
+		box(m, "Step", flight1[1], G1, 17 - (k + 1) * 1.5, flight1[2], G2 - k, 17 - k * 1.5, rgb(110, 84, 60), M.Slate)
+		box(m, "Step", flight2[1], fy, 17 - (k + 1) * 1.5, flight2[2], G1 - k, 17 - k * 1.5, rgb(110, 84, 60), M.Slate)
+	end
+	-- колонны по внутреннему краю галерей
+	local dx = (inner[2] - inner[1]) / 5
+	local dz = (inner[4] - inner[3]) / 5
+	for k = 0, 5 do
+		for _, z in { inner[3], inner[4] } do
+			Props.column(m, CFrame.new(inner[1] + k * dx, fy, z), G2 - fy - 1, 1.3, rgb(120, 108, 96))
+		end
+	end
+	for k = 1, 4 do
+		for _, x in { inner[1], inner[2] } do
+			Props.column(m, CFrame.new(x, fy, inner[3] + k * dz), G2 - fy - 1, 1.3, rgb(120, 108, 96))
+		end
+	end
+	-- шкафы вдоль стен на всех трёх уровнях
+	local seed = 1
+	local function run(a0, a1, place)
+		local a = a0
+		while a + 8 <= a1 do
+			place(a + 4)
+			a += 8.4
+		end
+	end
+	local function wallShelves(level)
+		run(z0 + 1, z1 - 1, function(z)
+			local blocked = level ~= fy and z > flight1[3] - 2 and z < flight1[4] + 2 and false
+			if not blocked then
+				Props.bookshelf(m, CFrame.new(x0 + 1.1, level, z) * CFrame.Angles(0, -math.pi / 2, 0), 8, 14, seed, true)
+			end
+			seed += 1
+		end)
+		run(z0 + 1, z1 - 1, function(z)
+			local blocked = level == G2 and z > -48 and z < -16
+			if not blocked then
+				Props.bookshelf(m, CFrame.new(x1 - 1.1, level, z) * CFrame.Angles(0, math.pi / 2, 0), 8, 14, seed, true)
+			end
+			seed += 1
+		end)
+		run(x0 + 3, x1 - 3, function(x)
+			Props.bookshelf(m, CFrame.new(x, level, z0 + 1.1) * CFrame.Angles(0, math.pi, 0), 8, 14, seed, true)
+			seed += 1
+		end)
+		run(x0 + 3, x1 - 3, function(x)
+			local blocked = level == G2 and x > 22 and x < 42 -- дверь в погреб
+			if not blocked then
+				Props.bookshelf(m, CFrame.new(x, level, z1 - 1.1), 8, 14, seed, true)
+			end
+			seed += 1
+		end)
+	end
+	wallShelves(fy)
+	wallShelves(G1)
+	wallShelves(G2)
+	-- нижний зал: ряды двусторонних стеллажей на западе, читальный зал на востоке
+	local midZ = (inner[3] + inner[4]) / 2
+	for row = 0, 4 do
+		local x = inner[1] + 8 + row * 9
+		for k = 0, 9 do
+			local z = inner[3] + 6 + k * 8.6
+			if math.abs(z - midZ) > 7 and z < inner[4] - 6 then
+				Props.bookshelf(m, CFrame.new(x - 1.05, fy, z) * CFrame.Angles(0, math.pi / 2, 0), 8, 12, seed, true)
+				Props.bookshelf(m, CFrame.new(x + 1.05, fy, z) * CFrame.Angles(0, -math.pi / 2, 0), 8, 12, seed + 50, true)
+				seed += 1
+			end
+		end
+		P(m, "Ladder", Vector3.new(0.3, 12, 2), CFrame.new(x - 2.4, fy + 6, midZ + 9) * CFrame.Angles(0, 0, math.rad(-10)), Props.WOOD, M.Wood)
+	end
+	local cxm = (inner[1] + inner[2]) / 2
+	local readX = cxm + 30
+	Props.rug(m, CFrame.new(readX, fy, midZ), 30, 64, rgb(40, 60, 46))
+	for row = -1, 1 do
+		for col = 0, 1 do
+			local cf = CFrame.new(readX - 7 + col * 14, fy, midZ + row * 20)
+			Props.table(m, cf, 8, 4)
+			for _, s in { -1, 1 } do
+				for _, ox in { -2.2, 2.2 } do
+					Props.chair(m, cf * CFrame.new(ox, 0, s * 3.4) * CFrame.Angles(0, if s > 0 then 0 else math.pi, 0), rgb(40, 70, 50))
+				end
+			end
+			for _, ox in { -2, 2 } do
+				C(m, "LampFoot", 0.2, 0.6, cf * CFrame.new(ox, 3.45, 0), Props.GOLD, M.Metal, { CanCollide = false })
+				C(m, "LampStem", 1, 0.12, cf * CFrame.new(ox, 4, 0), Props.GOLD, M.Metal, { CanCollide = false })
+				local shade = P(m, "LampShade", Vector3.new(1.6, 0.5, 0.7), cf * CFrame.new(ox, 4.6, 0), rgb(40, 140, 80), M.Glass, { CanCollide = false, Transparency = 0.15 })
+				if ox < 0 then
+					Props.light(shade, 12, 0.9, rgb(255, 230, 170))
+				end
+			end
+			local book = P(m, "OpenBook", Vector3.new(2, 0.2, 1.4), cf * CFrame.new(0, 3.45, 0), rgb(245, 236, 210), M.SmoothPlastic)
+			prompt(book, "book")
+		end
+	end
+	Props.globe(m, CFrame.new(readX + 10, fy, inner[3] + 6))
+	Props.grandfatherClock(m, CFrame.new(inner[2] - 3, fy, inner[4] - 3) * CFrame.Angles(0, math.pi * 0.75, 0))
+	-- люстры и парящий жрец над круглой площадкой
+	local px = cxm + 4
+	for _, ox in { -30, 30 } do
+		for _, oz in { -30, 30 } do
+			Props.chandelier(m, Vector3.new(cxm + ox, -10, midZ + oz), 7, 8)
+		end
+	end
+	Props.chandelier(m, Vector3.new(px, -10, midZ), 10, 8)
+	C(m, "Dais", 1, 18, CFrame.new(px, fy + 0.5, midZ), rgb(150, 140, 126), M.Marble)
+	C(m, "DaisRing", 1.1, 14, CFrame.new(px, fy + 0.55, midZ), rgb(120, 22, 30), M.Fabric)
+	for k = 0, 5 do
+		local a = k / 6 * math.pi * 2
+		Props.candelabra(m, Vector3.new(px + math.cos(a) * 7.5, fy + 1, midZ + math.sin(a) * 7.5))
+	end
+	B.points.priest = CFrame.new(px, fy + 12, midZ)
+	B.points.library = CFrame.new(px, fy + 3, midZ + 14)
+	for _, gy in { fy, G1, G2 } do
+		for z = z0 + 24, z1 - 20, 40 do
+			Props.sconce(m, CFrame.new(x0 + 2.3, gy + 15.5, z) * CFrame.Angles(0, -math.pi / 2, 0), true)
+		end
+	end
+end
+
+-- ---------------------------------------------------------------------------
+-- тюрьма (U, клетки 0..1 × 3..6): камеры по краям, двор для работ, ворота с решёткой
+
+local function prison(parent)
+	local m = Props.model(parent, "Prison")
+	local uy = LV.U
+	local x0, x1, z0, z1 = -HALF + 2, -48 - 0.5, -16 + 0.5, HALF - 2
+	box(m, "Floor", x0, uy - 1, z0, x1, uy, z1, rgb(80, 76, 70), M.Cobblestone)
+	box(m, "Ceiling", x0, -1.4, z0, x1, -1, z1, rgb(70, 66, 62), M.Cobblestone, { CanCollide = false })
+	B.cells = {}
+	local cellDepth, cellW = 11, 9
+	local n = math.floor((z1 - z0 - 14) / cellW)
+	for side = 0, 1 do
+		local wx = if side == 0 then x0 else x1
+		local dir = if side == 0 then 1 else -1
+		local front = wx + dir * cellDepth
+		for k = 0, n - 1 do
+			local za = z0 + 14 + k * cellW
+			local zb = za + cellW
+			box(m, "CellWall", math.min(wx, front), uy, za - 0.4, math.max(wx, front), uy + 12, za + 0.4, rgb(96, 90, 84), M.Slate)
+			-- решётка с проходом посередине: узники свободно ходят по тюрьме, но не выходят из неё
+			for b = 0, 7 do
+				if b < 3 or b > 5 then
+					P(m, "Bar", Vector3.new(0.35, 12, 0.35), CFrame.new(front, uy + 6, za + 0.8 + b * 1.05), Props.IRON, M.Metal)
+				end
+			end
+			box(m, "BarTop", front - 0.3, uy + 11.5, za, front + 0.3, uy + 12, zb, Props.IRON, M.Metal)
+			Props.bunk(m, CFrame.new(wx + dir * 2.2, uy, za + cellW / 2))
+			Props.bucket(m, CFrame.new(wx + dir * 6.5, uy, zb - 1.2))
+			P(m, "Chain", Vector3.new(0.2, 4, 0.2), CFrame.new(wx + dir * 0.4, uy + 8, za + cellW / 2 + 3), Props.IRON, M.Metal, { CanCollide = false })
+			table.insert(B.cells, { inside = CFrame.new(wx + dir * (cellDepth - 3), uy + 3, za + cellW / 2) })
+		end
+		box(m, "CellWall", math.min(wx, front), uy, z0 + 14 + n * cellW - 0.4, math.max(wx, front), uy + 12, z0 + 14 + n * cellW + 0.4, rgb(96, 90, 84), M.Slate)
+		box(m, "CellBlockTop", math.min(wx, front), uy + 12, z0 + 13.6, math.max(wx, front), uy + 12.6, z0 + 14.4 + n * cellW, rgb(96, 90, 84), M.Slate)
+	end
+	-- двор для работ: камень, точильные круги, стирка
+	local yx0, yx1 = x0 + cellDepth + 2, x1 - cellDepth - 2
+	local ymid = (yx0 + yx1) / 2
+	B.points.prisonYard = CFrame.new(ymid, uy + 3, z0 + 10)
+	local stations = { Props.rockPile, Props.grindstone, Props.washtub }
+	local k = 0
+	for z = z0 + 24, z1 - 14, 16 do
+		for _, x in { yx0 + 5, yx1 - 5 } do
+			k += 1
+			local st = stations[k % 3 + 1](m, CFrame.new(x, uy, z))
+			prompt(st:FindFirstChildWhichIsA("BasePart"), "work", 2, 10)
+		end
+	end
+	for z = z0 + 32, z1 - 14, 32 do
+		Props.crate(m, CFrame.new(ymid - 2, uy, z))
+		Props.sack(m, CFrame.new(ymid + 2, uy, z + 1))
+	end
+	box(m, "Overseer", ymid - 5, uy, z1 - 9, ymid + 5, uy + 4, z1 - 1, Props.WOOD, M.WoodPlanks)
+	Props.railing(m, Vector3.new(ymid - 5, uy + 4, z1 - 9), Vector3.new(ymid + 5, uy + 4, z1 - 9))
+	for z = z0 + 18, z1 - 8, 24 do
+		torch(m, CFrame.new(x0 + cellDepth + 0.25, uy + 9, z) * CFrame.Angles(0, math.pi / 2, 0))
+		torch(m, CFrame.new(x1 - cellDepth - 0.25, uy + 9, z) * CFrame.Angles(0, -math.pi / 2, 0))
+	end
+	for _, z in { z0 + 40, z1 - 40 } do
+		Props.ceilingLamp(m, Vector3.new(ymid, uy + 13, z), 2.5)
+	end
+	-- ворота: решётка в проёме между караульной и тюрьмой
+	local gx, gz = -96, -16
+	local gate = Props.model(m, "PrisonGate")
+	for b = -3, 3 do
+		P(gate, "GateBar", Vector3.new(0.4, 10, 0.4), CFrame.new(gx + b * 1.15, uy + 5, gz), Props.IRON, M.Metal)
+	end
+	for _, y in { uy + 1, uy + 5, uy + 9.6 } do
+		P(gate, "GateRail", Vector3.new(8, 0.4, 0.4), CFrame.new(gx, y, gz), Props.IRON, M.Metal)
+	end
+	local lock = P(gate, "Lock", Vector3.new(1, 1.2, 0.8), CFrame.new(gx + 3, uy + 4.5, gz - 0.5), Props.GOLD, M.Metal)
+	P(gate, "GateBlock", Vector3.new(8, 10, 1), CFrame.new(gx, uy + 5, gz), rgb(0, 0, 0), M.SmoothPlastic, { Transparency = 1 })
+	prompt(lock, "prisongate", 0.8, 10)
+	B.points.prisonInside = CFrame.new(gx, uy + 3, gz + 6)
+	B.points.prisonOutside = CFrame.new(gx, uy + 3, gz - 6)
+end
+
+-- ---------------------------------------------------------------------------
+-- двор, крепостная стена, ворота, смотровая терраса
+
+local function courtyard(parent)
+	local m = Props.model(parent, "Courtyard")
+	local W = 6
+	local WH = 24
+	local inner = ISLAND - W
+	rect(m, "CurtainWall", "z", -ISLAND + W / 2, W, -ISLAND, ISLAND, -2, WH, { { 0, 14, -3, 18 } }, FACADE_DARK, M.Slate)
+	rect(m, "CurtainWall", "z", ISLAND - W / 2, W, -ISLAND, ISLAND, -2, WH, nil, FACADE_DARK, M.Slate)
+	rect(m, "CurtainWall", "x", -ISLAND + W / 2, W, -ISLAND + W, ISLAND - W, -2, WH, nil, FACADE_DARK, M.Slate)
+	rect(m, "CurtainWall", "x", ISLAND - W / 2, W, -ISLAND + W, ISLAND - W, -2, WH, nil, FACADE_DARK, M.Slate)
+	for a = -ISLAND + 3, ISLAND - 3, 5 do
+		if math.abs(a) > 17 then
+			box(m, "Merlon", a - 1.2, WH, -ISLAND, a + 1.2, WH + 3.5, -ISLAND + 1.5, FACADE_DARK, M.Slate)
+		end
+		box(m, "Merlon", a - 1.2, WH, ISLAND - 1.5, a + 1.2, WH + 3.5, ISLAND, FACADE_DARK, M.Slate)
+		box(m, "Merlon", -ISLAND, WH, a - 1.2, -ISLAND + 1.5, WH + 3.5, a + 1.2, FACADE_DARK, M.Slate)
+		box(m, "Merlon", ISLAND - 1.5, WH, a - 1.2, ISLAND, WH + 3.5, a + 1.2, FACADE_DARK, M.Slate)
+	end
+	for _, c in { { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } } do
+		local x, z = c[1] * (ISLAND - 4), c[2] * (ISLAND - 4)
+		C(m, "WallTower", 48, 22, CFrame.new(x, 22, z), FACADE, M.Slate)
+		C(m, "WallTowerTop", 3, 25, CFrame.new(x, 47.5, z), FACADE_DARK, M.Slate)
+		for k = 0, 6 do
+			local roof = C(m, "WallTowerRoof", 2.6, 26 - k * 3.6, CFrame.new(x, 50 + k * 2.6, z), rgb(66, 48, 58), M.RoofShingles)
+			roof:SetAttribute("Roof", true)
+		end
+		S(m, "Finial", 1.6, CFrame.new(x, 68.5, z), Props.GOLD, M.Metal)
+	end
+	-- надвратная башня и подъёмная решётка
+	local gz0, gz1 = -ISLAND - 4, -ISLAND + W + 4
+	box(m, "Gatehouse", -16, 18, gz0, 16, 42, gz1, FACADE, M.Slate)
+	for _, x in { -11.5, 11.5 } do
+		box(m, "GateTower", x - 4.5, -2, gz0, x + 4.5, 42, gz1, FACADE, M.Slate)
+	end
+	for a = -15, 15, 5 do
+		box(m, "Merlon", a - 1.2, 42, gz0, a + 1.2, 45.5, gz0 + 1.5, FACADE_DARK, M.Slate)
+	end
+	Props.banner(m, CFrame.new(0, 38, gz0 - 0.1) * CFrame.Angles(0, math.pi, 0), 12, rgb(130, 20, 28))
+	local gateBody = box(m, "Portcullis", -7, 0, -ISLAND + 2.4, 7, 18, -ISLAND + 3.6, rgb(45, 42, 40), M.DiamondPlate, { Transparency = 0.15 })
+	B.gate = gateBody
+	B.gateLift = 19
+	for _, x in { -9.5, 9.5 } do
+		torch(m, CFrame.new(x, 12, gz0) * CFrame.Angles(0, math.pi, 0))
+	end
+	-- смотровая терраса над пустотой за воротами
+	box(m, "Terrace", -26, -2, -ISLAND - 30, 26, 0, gz0, rgb(130, 126, 118), M.Slate)
+	P(m, "TerraceRock", Vector3.new(50, 26, 24), CFrame.new(0, -16, -ISLAND - 17) * CFrame.Angles(0.25, 0, 0), ROCK, M.Rock)
+	Props.railing(m, Vector3.new(-26, 0, -ISLAND - 29.7), Vector3.new(26, 0, -ISLAND - 29.7), FACADE_DARK)
+	Props.railing(m, Vector3.new(-25.7, 0, -ISLAND - 30), Vector3.new(-25.7, 0, gz0), FACADE_DARK)
+	Props.railing(m, Vector3.new(25.7, 0, -ISLAND - 30), Vector3.new(25.7, 0, gz0), FACADE_DARK)
+	Props.telescope(m, CFrame.new(-18, 0, -ISLAND - 25))
+	Props.lamppost(m, CFrame.new(-22, 0, gz0 - 3))
+	Props.lamppost(m, CFrame.new(22, 0, gz0 - 3))
+	Props.bench(m, CFrame.new(12, 0, -ISLAND - 25) * CFrame.Angles(0, math.pi, 0), 8)
+	B.points.outside = CFrame.new(0, 3, -ISLAND - 16)
+
+	-- парадный двор: фонтан со статуей короля, дорожки, скамьи, фонари, клумбы
+	local fz = -140
+	box(m, "Path", -4, 0, -inner, 4, 0.08, fz - 18, rgb(170, 162, 150), M.Slate, { CanCollide = false })
+	box(m, "Path", -4, 0, fz + 18, 4, 0.08, -HALF - 12, rgb(170, 162, 150), M.Slate, { CanCollide = false })
+	for k = 0, 15 do
+		local a = k / 16 * math.pi * 2
+		P(m, "RingPath", Vector3.new(7.5, 0.08, 3), CFrame.new(math.cos(a) * 16.5, 0.04, fz + math.sin(a) * 16.5) * CFrame.Angles(0, -a + math.pi / 2, 0), rgb(170, 162, 150), M.Slate, { CanCollide = false })
+	end
+	local basin = C(m, "Fountain", 2.4, 28, CFrame.new(0, 1.2, fz), rgb(196, 190, 180), M.Marble)
+	C(m, "FountainLip", 0.6, 28.6, CFrame.new(0, 2.5, fz), rgb(176, 170, 160), M.Marble)
+	C(m, "FountainWater", 0.4, 25.6, CFrame.new(0, 2.3, fz), rgb(70, 130, 170), M.Glass, { Transparency = 0.35, CanCollide = false })
+	box(m, "StatuePlinth", -5, 0, fz - 5, 5, 8, fz + 5, rgb(196, 190, 180), M.Marble)
+	box(m, "PlinthCap", -5.6, 7.4, fz - 5.6, 5.6, 8, fz + 5.6, rgb(176, 170, 160), M.Marble)
+	for k = 0, 3 do
+		local a = k / 4 * math.pi * 2 + math.pi / 4
+		local jet = S(m, "Spout", 1, CFrame.new(math.cos(a) * 6.5, 2.6, fz + math.sin(a) * 6.5), Props.GOLD, M.Metal)
+		local spray = Instance.new("ParticleEmitter")
+		spray.Rate = 25
+		spray.Speed = NumberRange.new(9, 12)
+		spray.SpreadAngle = Vector2.new(8, 8)
+		spray.Lifetime = NumberRange.new(1, 1.3)
+		spray.Acceleration = Vector3.new(0, -32, 0)
+		spray.Size = NumberSequence.new(0.35)
+		spray.Color = ColorSequence.new(rgb(190, 220, 255))
+		spray.Transparency = NumberSequence.new(0.3)
+		spray.EmissionDirection = Enum.NormalId.Top
+		spray.Parent = jet
+	end
+	prompt(basin, "water", 0, 18)
+	B.points.statue = CFrame.new(0, 8, fz)
+	for k = 0, 3 do
+		local a = k / 4 * math.pi * 2 + math.pi / 4
+		local p = Vector3.new(math.cos(a) * 24, 0, fz + math.sin(a) * 24)
+		Props.bench(m, CFrame.lookAt(p, Vector3.new(0, 0, fz)), 8)
+	end
+	for _, p in { { -10, -165 }, { 10, -165 }, { -10, -126 }, { 10, -126 }, { -44, -140 }, { 44, -140 }, { -140, -60 }, { 140, -60 }, { -140, 60 }, { 140, 60 }, { -40, 145 }, { 40, 145 } } do
+		Props.lamppost(m, CFrame.new(p[1], 0, p[2]))
+	end
+	for _, p in { { -80, -152 }, { 80, -152 }, { -80, -126 }, { 80, -126 } } do
+		Props.flowerbed(m, CFrame.new(p[1], 0, p[2]), 20, 8, p[1] + p[2])
+	end
+	Props.well(m, CFrame.new(-135, 0, -145))
+	-- живые изгороди и беседка в западном саду
+	for _, z in { -90, -50, 50, 90 } do
+		Props.hedge(m, CFrame.new(-144, 0, z), 40)
+	end
+	local gp = CFrame.new(-144, 0, 0)
+	C(m, "GazeboFloor", 1, 22, gp * CFrame.new(0, 0.5, 0), rgb(196, 190, 180), M.Marble)
+	for k = 0, 5 do
+		local a = k / 6 * math.pi * 2
+		Props.column(m, gp * CFrame.new(math.cos(a) * 9, 1, math.sin(a) * 9), 11, 0.7)
+	end
+	for k = 0, 4 do
+		C(m, "GazeboRoof", 1.2, 24 - k * 5, gp * CFrame.new(0, 12.6 + k * 1.2, 0), rgb(66, 48, 58), M.RoofShingles)
+	end
+	S(m, "GazeboFinial", 1.4, gp * CFrame.new(0, 19, 0), Props.GOLD, M.Metal)
+	Props.bench(m, gp * CFrame.new(0, 1, 4), 8)
+	Props.bench(m, gp * CFrame.new(0, 1, -4) * CFrame.Angles(0, math.pi, 0), 8)
+	-- восточный двор: мишени и стойка с оружием
+	for k = 0, 3 do
+		local cf = CFrame.new(150, 0, -80 + k * 20) * CFrame.Angles(0, -math.pi / 2, 0)
+		P(m, "TargetStand", Vector3.new(0.4, 5, 0.4), cf * CFrame.new(0, 2.5, 0.3), Props.WOOD, M.Wood)
+		for r = 0, 3 do
+			C(m, "Target", 0.2 + r * 0.02, 4 - r, cf * CFrame.new(0, 5, -r * 0.06) * CFrame.Angles(math.pi / 2, 0, 0), if r % 2 == 0 then rgb(230, 225, 210) else rgb(170, 30, 30), M.Fabric)
+		end
+	end
+	Props.weaponRack(m, CFrame.new(167, 0, -10) * CFrame.Angles(0, math.pi / 2, 0))
+	-- задний двор: старое кладбище с оградой
+	for k = 0, 9 do
+		local x, z = -110 + (k % 5) * 9, 140 + math.floor(k / 5) * 12
+		P(m, "Gravestone", Vector3.new(2.6, 3.6, 0.6), CFrame.new(x, 1.8, z) * CFrame.Angles(0, 0, math.rad((k % 3 - 1) * 4)), rgb(130, 126, 120), M.Slate)
+		C(m, "GraveTop", 0.6, 2.6, CFrame.new(x, 3.6, z) * CFrame.Angles(math.pi / 2, 0, 0), rgb(130, 126, 120), M.Slate)
+		P(m, "GraveMound", Vector3.new(2.6, 0.6, 5), CFrame.new(x, 0.3, z - 3), rgb(80, 70, 50), M.Ground)
+	end
+	for x = -120, -66, 3 do
+		P(m, "Fence", Vector3.new(0.2, 4, 0.2), CFrame.new(x, 2, 128), Props.IRON, M.Metal)
+	end
+	P(m, "FenceRail", Vector3.new(54, 0.2, 0.2), CFrame.new(-93, 3.6, 128), Props.IRON, M.Metal)
+	-- деревья (вид меняется со временем года)
+	B.trees = {}
+	for _, t in { { -60, -128 }, { 60, -128 }, { -60, -162 }, { 60, -162 }, { -120, -162 }, { 120, -162 }, { -160, -120 }, { 160, -120 }, { -160, 30 }, { -160, -30 }, { 140, 30 }, { 160, 140 }, { 130, 158 }, { 100, 160 }, { 60, 130 }, { 0, 150 }, { -30, 160 }, { -150, 150 }, { 150, -150 }, { -150, -150 } } do
+		table.insert(B.trees, Vector3.new(t[1], 0, t[2]))
+	end
+	-- факелы на внутренней стороне стены
+	for a = -ISLAND + 30, ISLAND - 30, 48 do
+		torch(m, CFrame.new(a, 12, inner) * CFrame.Angles(0, math.pi, 0))
+		torch(m, CFrame.new(-inner, 12, a) * CFrame.Angles(0, math.pi / 2, 0))
+		torch(m, CFrame.new(inner, 12, a) * CFrame.Angles(0, -math.pi / 2, 0))
+	end
+	local spawn = Instance.new("SpawnLocation")
+	spawn.Anchored = true
+	spawn.Size = Vector3.new(12, 1, 6)
+	spawn.CFrame = CFrame.new(0, 0.5, -160)
+	spawn.Transparency = 1
+	spawn.CanCollide = false
+	spawn.Neutral = true
+	spawn.Duration = 0
+	spawn.Parent = m
+	B.points.yard = CFrame.new(0, 3, -160)
+	B.yard = { x0 = -inner, x1 = inner, z0 = -inner, z1 = -HALF - 14 }
+end
+
+-- ---------------------------------------------------------------------------
+-- фасад главного здания, башни и крыши
+
+local function exterior(parent)
+	local m = Props.model(parent, "Exterior")
+	local E = HALF
+	for _, y in { -1, LV.F1 - 1, LV.F2 - 1 } do
+		local h = if y == -1 then 2 else 1
+		box(m, "Band", -E - 0.8, y, -E - 0.8, E + 0.8, y + h, -E, FACADE_DARK, M.Slate)
+		box(m, "Band", -E - 0.8, y, E, E + 0.8, y + h, E + 0.8, FACADE_DARK, M.Slate)
+		box(m, "Band", -E - 0.8, y, -E, -E, y + h, E, FACADE_DARK, M.Slate)
+		box(m, "Band", E, y, -E, E + 0.8, y + h, E, FACADE_DARK, M.Slate)
+	end
+	for k = 1, N - 1 do
+		local a = -E + k * CELL
+		box(m, "Pilaster", a - 1.2, -1, -E - 1, a + 1.2, ROOF, -E, FACADE_DARK, M.Slate)
+		box(m, "Pilaster", a - 1.2, -1, E, a + 1.2, ROOF, E + 1, FACADE_DARK, M.Slate)
+		box(m, "Pilaster", -E - 1, -1, a - 1.2, -E, ROOF, a + 1.2, FACADE_DARK, M.Slate)
+		box(m, "Pilaster", E, -1, a - 1.2, E + 1, ROOF, a + 1.2, FACADE_DARK, M.Slate)
+	end
+	box(m, "Roof", -E, ROOF - 1, -E, E, ROOF, E, rgb(90, 86, 80), M.Slate)
+	box(m, "Parapet", -E - 1, ROOF, -E - 1, E + 1, ROOF + 2, -E, FACADE, M.Slate)
+	box(m, "Parapet", -E - 1, ROOF, E, E + 1, ROOF + 2, E + 1, FACADE, M.Slate)
+	box(m, "Parapet", -E - 1, ROOF, -E, -E, ROOF + 2, E, FACADE, M.Slate)
+	box(m, "Parapet", E, ROOF, -E, E + 1, ROOF + 2, E, FACADE, M.Slate)
+	for a = -E + 2, E - 2, 5 do
+		box(m, "Merlon", a - 1.2, ROOF + 2, -E - 1, a + 1.2, ROOF + 5, -E + 0.5, FACADE, M.Slate)
+		box(m, "Merlon", a - 1.2, ROOF + 2, E - 0.5, a + 1.2, ROOF + 5, E + 1, FACADE, M.Slate)
+		box(m, "Merlon", -E - 1, ROOF + 2, a - 1.2, -E + 0.5, ROOF + 5, a + 1.2, FACADE, M.Slate)
+		box(m, "Merlon", E - 0.5, ROOF + 2, a - 1.2, E + 1, ROOF + 5, a + 1.2, FACADE, M.Slate)
+	end
+	-- скатные крыши над крыльями
+	for _, wx in { -80, 80 } do
+		for k = 0, 9 do
+			local w = 44 - k * 4.4
+			local roof = box(m, "WingRoof", wx - w / 2, ROOF + k * 2.2, -E + 8, wx + w / 2, ROOF + 2.2 + k * 2.2, E - 8, rgb(66, 48, 58), M.RoofShingles)
+			if roof then
+				roof:SetAttribute("Roof", true)
+			end
+		end
+	end
+	for _, c in { { -40, -60 }, { 40, -60 }, { -40, 20 }, { 40, 20 } } do
+		box(m, "Chimney", c[1] - 3, ROOF, c[2] - 3, c[1] + 3, ROOF + 16, c[2] + 3, rgb(120, 70, 56), M.Brick)
+		box(m, "ChimneyCap", c[1] - 3.6, ROOF + 16, c[2] - 3.6, c[1] + 3.6, ROOF + 17, c[2] + 3.6, FACADE_DARK, M.Slate)
+	end
+	-- угловые башни
+	for _, c in { { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } } do
+		local x, z = c[1] * E, c[2] * E
+		C(m, "Tower", ROOF + 30, 30, CFrame.new(x, (ROOF + 30) / 2 - 1, z), FACADE, M.Slate)
+		C(m, "TowerBand", 2, 32, CFrame.new(x, ROOF + 29, z), FACADE_DARK, M.Slate)
+		for k = 0, 9 do
+			local a = k / 10 * math.pi * 2
+			P(m, "TowerMerlon", Vector3.new(3, 3.5, 2), CFrame.new(x, ROOF + 31.7, z) * CFrame.Angles(0, a, 0) * CFrame.new(0, 0, 15), FACADE, M.Slate)
+		end
+		for k = 0, 9 do
+			local roof = C(m, "TowerRoof", 3.2, 30 - k * 3, CFrame.new(x, ROOF + 32 + k * 3.2, z), rgb(66, 48, 58), M.RoofShingles)
+			roof:SetAttribute("Roof", true)
+		end
+		S(m, "Finial", 1.8, CFrame.new(x, ROOF + 66, z), Props.GOLD, M.Metal)
+		local out = Vector3.new(c[1], 0, c[2]).Unit
+		for _, y in { 10, 28, 46, 66 } do
+			local wp = Vector3.new(x, y, z) + out * 14.6
+			Props.window(m, CFrame.lookAt(wp, wp + out), 3, 6, 1)
+		end
+	end
+	-- главная башня над тронным залом
+	local tz = 64
+	box(m, "Keep", -24, ROOF - 1, tz - 24, 24, ROOF + 56, tz + 24, FACADE, M.Slate)
+	for a = -22, 22, 5 do
+		box(m, "KeepMerlon", a - 1.2, ROOF + 56, tz - 25, a + 1.2, ROOF + 60, tz - 23.5, FACADE, M.Slate)
+		box(m, "KeepMerlon", a - 1.2, ROOF + 56, tz + 23.5, a + 1.2, ROOF + 60, tz + 25, FACADE, M.Slate)
+	end
+	for k = 0, 11 do
+		local w = 44 - k * 3.6
+		local r = box(m, "KeepRoof", -w / 2, ROOF + 56 + k * 3, tz - w / 2, w / 2, ROOF + 59 + k * 3, tz + w / 2, rgb(66, 48, 58), M.RoofShingles)
+		if r then
+			r:SetAttribute("Roof", true)
+		end
+	end
+	P(m, "Spire", Vector3.new(0.6, 14, 0.6), CFrame.new(0, ROOF + 99, tz), Props.GOLD, M.Metal)
+	for _, y in { ROOF + 12, ROOF + 32 } do
+		for _, x in { -12, 0, 12 } do
+			Props.window(m, CFrame.lookAt(Vector3.new(x, y, tz - 24), Vector3.new(x, y, tz - 30)), 4, 9, 1)
+		end
+	end
+	-- портик главного входа
+	for _, x in { -12, 12 } do
+		Props.column(m, CFrame.new(x, 0, -E - 9), 22, 1.6)
+	end
+	box(m, "Portico", -16, 22, -E - 12, 16, 24, -E, FACADE, M.Slate)
+	box(m, "Pediment", -14, 24, -E - 11, 14, 27, -E - 1, FACADE_DARK, M.Slate)
+	box(m, "Steps", -16, -0.6, -E - 12, 16, 0.3, -E, rgb(170, 162, 150), M.Slate)
+	Props.banner(m, CFrame.new(0, 22, -E - 12.2) * CFrame.Angles(0, math.pi, 0), 8, rgb(130, 20, 28))
+	for _, x in { -18, 18 } do
+		Props.lamppost(m, CFrame.new(x, 0, -E - 14))
 	end
 end
 
@@ -349,543 +1219,65 @@ function B.build()
 		old:Destroy()
 	end
 	table.clear(prompts)
+	workspace.Terrain:Clear()
 	root = Instance.new("Folder")
 	root.Name = "TheCastle"
-	root.Parent = workspace
 	B.root = root
-	landscape()
-	foundation(root)
-
-	local outer = Instance.new("Model")
-	outer.Name = "Walls"
-	local inside = Instance.new("Model")
-	inside.Name = "Interior"
-	local yard = Instance.new("Model")
-	yard.Name = "Courtyard"
-
-	-- ---- внешние стены с зубцами и четыре башни
-	local WH = 60
-	wallX(outer, -150, -80, 80, 0, WH, { { 0, 16, 22 } }, 6)
-	wallX(outer, 150, -80, 80, 0, WH, nil, 6)
-	wallZ(outer, -80, -150, 150, 0, WH, nil, 6)
-	wallZ(outer, 80, -150, 150, 0, WH, nil, 6)
-	for x = -78, 78, 6 do
-		box(outer, "Merlon", x - 1.5, WH, -153, x + 1.5, WH + 4, -147)
-		box(outer, "Merlon", x - 1.5, WH, 147, x + 1.5, WH + 4, 153)
+	for _, level in Layout.ORDER do
+		plans[level] = Layout.build(level)
 	end
-	for z = -146, 146, 6 do
-		box(outer, "Merlon", -83, WH, z - 1.5, -77, WH + 4, z + 1.5)
-		box(outer, "Merlon", 77, WH, z - 1.5, 83, WH + 4, z + 1.5)
-	end
-	for _, c in { { -80, -150 }, { 80, -150 }, { -80, 150 }, { 80, 150 } } do
-		part(outer, { Name = "Tower", Shape = Enum.PartType.Cylinder, Size = Vector3.new(96, 28, 28), CFrame = CFrame.new(c[1], 48, c[2]) * CFrame.Angles(0, 0, math.pi / 2), Color = STONE, Material = Enum.Material.Slate })
-		part(outer, { Name = "TowerTop", Shape = Enum.PartType.Cylinder, Size = Vector3.new(4, 32, 32), CFrame = CFrame.new(c[1], 98, c[2]) * CFrame.Angles(0, 0, math.pi / 2), Color = STONE_DARK, Material = Enum.Material.Slate })
-		-- конусная крыша башни из колец
-		for k = 0, 6 do
-			local r = 30 - k * 4.4
-			local roof = part(outer, { Name = "TowerRoof", Shape = Enum.PartType.Cylinder, Size = Vector3.new(3, r, r), CFrame = CFrame.new(c[1], 101.5 + k * 3, c[2]) * CFrame.Angles(0, 0, math.pi / 2), Color = rgb(70, 50, 60), Material = Enum.Material.RoofShingles })
-			roof:SetAttribute("Roof", true)
+	B.plans = plans
+	table.clear(doorsAt)
+	table.clear(extraOpenings)
+	for _, level in Layout.ORDER do
+		for _, d in plans[level].doors do
+			doorsAt[edgeKey(level, d.i, d.j, d.axis)] = d
 		end
 	end
-	-- главная башня над тронным залом: 140 studs, около 50 метров
-	box(outer, "Keep", -24, 60, 104, 24, 132, 148, STONE, Enum.Material.Slate)
-	for k = 0, 7 do
-		local w = 52 - k * 6.5
-		local roof = box(outer, "KeepRoof", -w / 2, 132 + k * 2.5, 126 - w * 0.45, w / 2, 134.5 + k * 2.5, 126 + w * 0.45, rgb(70, 50, 60), Enum.Material.RoofShingles)
-		roof:SetAttribute("Roof", true)
-	end
-	for _, x in { -20, -8, 8, 20 } do
-		window(outer, Vector3.new(x, 100, 103.6), Vector3.new(0, 0, -1), 4, 9)
-	end
+	-- особые проёмы: парадный вход, ворота тюрьмы, выход сточного туннеля
+	extraOpenings[edgeKey("G", 3, 0, "z-")] = { w = 12, h = 15, door = true }
+	extraOpenings[edgeKey("U", 0, 2, "z")] = { w = 8, h = 10 }
+	extraOpenings[edgeKey("U", 6, 6, "x+")] = { w = 6, h = 9 }
 
-	-- ---- мост и ворота
-	box(outer, "Bridge", -8, -0.6, -192, 8, 0.4, -150, WOOD, Enum.Material.WoodPlanks)
-	for _, x in { -6, 6 } do
-		for _, z in { -182, -168 } do
-			box(outer, "BridgePier", x - 1, -16, z - 1, x + 1, -0.6, z + 1, STONE_DARK, Enum.Material.Cobblestone)
-		end
+	local ctx = { prompt = prompt, points = B.points }
+	island(root)
+	courtyard(root)
+	exterior(root)
+	for _, level in Layout.ORDER do
+		local f = Instance.new("Folder")
+		f.Name = "Level_" .. level
+		f.Parent = root
+		buildLevel(f, level, ctx)
+		task.wait()
 	end
-	for z = -190, -152, 4 do
-		box(outer, "Rail", -8.4, 0.4, z - 0.25, -7.6, 3.4, z + 0.25, WOOD_DARK, Enum.Material.Wood)
-		box(outer, "Rail", 7.6, 0.4, z - 0.25, 8.4, 3.4, z + 0.25, WOOD_DARK, Enum.Material.Wood)
-	end
-	box(outer, "Handrail", -8.5, 3.2, -192, -7.5, 3.6, -150, WOOD, Enum.Material.Wood)
-	box(outer, "Handrail", 7.5, 3.2, -192, 8.5, 3.6, -150, WOOD, Enum.Material.Wood)
-	local gate = box(outer, "Portcullis", -8, 0, -151, 8, 22, -149.5, rgb(45, 42, 40), Enum.Material.DiamondPlate, { Transparency = 0.15 })
-	gate:SetAttribute("Gate", true)
-	B.gate = gate
-	torch(outer, Vector3.new(-12, 14, -154), Vector3.new(0, 0, -1))
-	torch(outer, Vector3.new(12, 14, -154), Vector3.new(0, 0, -1))
-	B.points.outside = CFrame.new(0, 3, -205)
+	throneRoom(root)
+	sewer(root)
+	library(root)
+	prison(root)
+	B.points.dummies = B.points.dummies or {}
+	root.Parent = workspace
 
-	-- ---- двор: брусчатка, фонтан со статуей короля, скамьи, доска ролей
-	slab(yard, "Cobbles", -81, 81, -153, -30, -1, 0, -46, -38, -70, -44, rgb(124, 120, 114), Enum.Material.Cobblestone)
-	-- дорожки из плит к фонтану и к дверям, газоны по углам
-	box(yard, "Path", -4, 0, -150, 4, 0.08, -30, rgb(160, 152, 140), Enum.Material.Slate)
-	box(yard, "Path", -60, 0, -94, 60, 0.08, -86, rgb(160, 152, 140), Enum.Material.Slate)
-	for _, g in { { -74, -146, -28, -118 }, { 28, -146, 74, -118 }, { 28, -66, 74, -38 } } do
-		box(yard, "Lawn", g[1], 0, g[2], g[3], 0.12, g[4], rgb(86, 130, 62), Enum.Material.Grass)
-		box(yard, "Kerb", g[1] - 0.6, 0, g[2] - 0.6, g[3] + 0.6, 0.5, g[2], rgb(150, 145, 136), Enum.Material.Slate)
-		box(yard, "Kerb", g[1] - 0.6, 0, g[4], g[3] + 0.6, 0.5, g[4] + 0.6, rgb(150, 145, 136), Enum.Material.Slate)
-	end
-	-- колодец-коновязь и бочки у стены для уюта
-	for k = 0, 3 do
-		part(yard, { Name = "Barrel", Shape = Enum.PartType.Cylinder, Size = Vector3.new(3.2, 2.8, 2.8), CFrame = CFrame.new(70 - k * 3.2, 1.6, -36) * CFrame.Angles(0, 0, math.pi / 2), Color = WOOD, Material = Enum.Material.Wood })
-	end
-	local basin = part(yard, { Name = "Fountain", Shape = Enum.PartType.Cylinder, Size = Vector3.new(2, 30, 30), CFrame = CFrame.new(0, 1, -90) * CFrame.Angles(0, 0, math.pi / 2), Color = rgb(170, 165, 158), Material = Enum.Material.Marble })
-	part(yard, { Name = "FountainWater", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.6, 27, 27), CFrame = CFrame.new(0, 1.8, -90) * CFrame.Angles(0, 0, math.pi / 2), Color = rgb(70, 130, 170), Material = Enum.Material.Glass, Transparency = 0.35, CanCollide = false })
-	local plinth = box(yard, "StatuePlinth", -5, 0, -95, 5, 8, -85, rgb(170, 165, 158), Enum.Material.Marble)
-	local jets = part(yard, { Name = "Jets", Size = Vector3.new(10, 1, 10), CFrame = CFrame.new(0, 8.5, -90), Transparency = 1, CanCollide = false })
-	local spray = Instance.new("ParticleEmitter")
-	spray.Rate = 60
-	spray.Speed = NumberRange.new(8, 12)
-	spray.SpreadAngle = Vector2.new(25, 25)
-	spray.Lifetime = NumberRange.new(1, 1.4)
-	spray.Acceleration = Vector3.new(0, -30, 0)
-	spray.Size = NumberSequence.new(0.35)
-	spray.Color = ColorSequence.new(rgb(190, 220, 255))
-	spray.Transparency = NumberSequence.new(0.3)
-	spray.Parent = jets
-	prompt(basin, "water", "", 0, 18)
-	B.points.statue = CFrame.new(0, 8, -90)
-	local _ = plinth
-	for _, x in { -30, 30 } do
-		for _, z in { -110, -70 } do
-			bench(yard, CFrame.new(x, 0, z) * CFrame.Angles(0, math.pi / 2, 0), 8)
-		end
-	end
-	local board = box(yard, "RoleBoard", -30, 2, -140, -20, 10, -139, WOOD, Enum.Material.WoodPlanks)
-	box(yard, "BoardPost", -29.5, 0, -139.8, -28.5, 10, -139, WOOD_DARK, Enum.Material.Wood)
-	box(yard, "BoardPost", -21.5, 0, -139.8, -20.5, 10, -139, WOOD_DARK, Enum.Material.Wood)
-	prompt(board, "roles", "", 0, 14)
-	-- деревья во дворе и по берегу (меняются со временем года)
-	B.trees = {}
-	for _, t in { { -51, -132 }, { 51, -132 }, { 51, -52 }, { -20, -112 } } do
-		table.insert(B.trees, Vector3.new(t[1], 0, t[2]))
-	end
-	for i = 0, 27 do
-		local a = i / 28 * math.pi * 2
-		local tp = Vector3.new(math.cos(a) * 190, 0, math.sin(a) * 275)
-		if math.abs(tp.X) > 16 or tp.Z > 0 then
-			table.insert(B.trees, tp)
-		end
-	end
-	-- свечение окон и факелы вдоль стен двора
-	for z = -140, -40, 20 do
-		torch(yard, Vector3.new(-76.5, 12, z), Vector3.new(1, 0, 0))
-		torch(yard, Vector3.new(76.5, 12, z), Vector3.new(-1, 0, 0))
-	end
-	local spawn = Instance.new("SpawnLocation")
-	spawn.Anchored = true
-	spawn.Size = Vector3.new(12, 1, 6)
-	spawn.CFrame = CFrame.new(0, 0.5, -132)
-	spawn.Transparency = 1
-	spawn.CanCollide = false
-	spawn.Neutral = true
-	spawn.Duration = 0
-	spawn.Parent = yard
-	B.points.yard = CFrame.new(0, 3, -125)
-
-	-- ---- главное здание: z от -30 до 147, два этажа по 20 и тронный зал высотой 36
-	local FH = 20
-	local KZ0 = -30
-	local function floorWithHole(...)
-		slab(inside, ...)
-	end
-	-- пол первого этажа, с отверстием под люком за троном
-	floorWithHole("Floor", -78, 78, KZ0, 147, -1, 0.2, -3, 3, 139, 145, FLOOR, Enum.Material.Slate)
-	wallX(inside, KZ0, -78, 78, 0, 60, { { 0, 12, 16 } }, 3)
-	for _, x in { -60, -40, -20, 20, 40, 60 } do
-		window(inside, Vector3.new(x, 10, KZ0 - 1.6), Vector3.new(0, 0, -1))
-		window(inside, Vector3.new(x, 30, KZ0 - 1.6), Vector3.new(0, 0, -1))
-		window(inside, Vector3.new(x, 50, KZ0 - 1.6), Vector3.new(0, 0, -1), 4, 6)
-	end
-	torch(inside, Vector3.new(-9, 9, KZ0 - 2), Vector3.new(0, 0, -1))
-	torch(inside, Vector3.new(9, 9, KZ0 - 2), Vector3.new(0, 0, -1))
-	local roofTop = box(inside, "Roof", -78, 60, KZ0, 78, 61, 147, rgb(70, 50, 60), Enum.Material.RoofShingles)
-	roofTop:SetAttribute("Roof", true)
-
-	-- холл z -30..0: высокий, с двумя лестницами вдоль фасада на второй этаж
-	carpet(inside, -3, KZ0 + 1, 3, 90, 0.2)
-	wallX(inside, 0, -78, 78, 0, FH, { { 0, 12, 16 }, { -45, 8, 10 }, { 45, 8, 10 } }, 2)
-	for i = 0, FH - 1 do
-		local x = 12 + i * 1.4
-		box(inside, "Step", -x - 1.4, 0, -29, -x, i + 1, -22, STONE_DARK, Enum.Material.Slate)
-		box(inside, "Step", x, 0, -29, x + 1.4, i + 1, -22, STONE_DARK, Enum.Material.Slate)
-	end
-	carpet(inside, -40, -27, -12, -24, 0)
-	-- перила лестниц
-	for i = 0, FH - 1, 2 do
-		local x = 12.7 + i * 1.4
-		box(inside, "Baluster", -x - 0.2, i + 1, -22.4, -x + 0.2, i + 4, -22, WOOD_DARK, Enum.Material.Wood)
-		box(inside, "Baluster", x - 0.2, i + 1, -22.4, x + 0.2, i + 4, -22, WOOD_DARK, Enum.Material.Wood)
-	end
-	box(inside, "HallCeiling", -12, 40, KZ0, 12, 41, 0, STONE_DARK)
-	chandelier(inside, Vector3.new(0, 26, -15))
-	for _, x in { -60, -40, 40, 60 } do
-		torch(inside, Vector3.new(x, 9, -1.4), Vector3.new(0, 0, -1))
-	end
-	banner(inside, Vector3.new(-8, 34, -1.2), Vector3.new(0, 0, -1), 12)
-	banner(inside, Vector3.new(8, 34, -1.2), Vector3.new(0, 0, -1), 12)
-	-- второй этаж: плиты с проёмами над лестницами, стены и потолки
-	floorWithHole("Floor2", -78, -12, KZ0, 90, FH, FH + 1, -40, -12, KZ0, -20, PLANKS, Enum.Material.WoodPlanks)
-	floorWithHole("Floor2", 12, 78, KZ0, 0, FH, FH + 1, 12, 40, KZ0, -20, PLANKS, Enum.Material.WoodPlanks)
-	for x = -39, -13, 2 do
-		box(inside, "Rail", x - 0.2, FH + 1, -20.4, x + 0.2, FH + 4, -20, WOOD_DARK, Enum.Material.Wood)
-		box(inside, "Rail", -x - 0.2, FH + 1, -20.4, -x + 0.2, FH + 4, -20, WOOD_DARK, Enum.Material.Wood)
-	end
-	box(inside, "Handrail", -40, FH + 3.8, -20.6, -12, FH + 4.3, -19.8, WOOD, Enum.Material.Wood)
-	box(inside, "Handrail", 12, FH + 3.8, -20.6, 40, FH + 4.3, -19.8, WOOD, Enum.Material.Wood)
-	wallZ(inside, -12, KZ0, 90, FH + 1, FH - 1, nil, 2)
-	wallZ(inside, 12, KZ0, 0, FH + 1, FH - 1, nil, 2)
-	wallX(inside, 0, 12, 78, FH + 1, FH - 1, nil, 2)
-	wallX(inside, 90, -78, -12, FH + 1, FH - 1, nil, 2)
-	box(inside, "Ceiling2", -78, 40, KZ0, -12, 41, 90, STONE_DARK)
-	box(inside, "Ceiling2", 12, 40, KZ0, 78, 41, 0, STONE_DARK)
-
-	-- центральный коридор z 0..90 с ковром и факелами
-	wallZ(inside, -12, 0, 90, 0, FH, { { 20, 8, 10 }, { 65, 8, 10 } }, 2)
-	wallZ(inside, 12, 0, 90, 0, FH, { { 20, 8, 10 }, { 65, 8, 10 } }, 2)
-	for z = 6, 86, 10 do
-		torch(inside, Vector3.new(-10.6, 9, z), Vector3.new(1, 0, 0))
-		torch(inside, Vector3.new(10.6, 9, z), Vector3.new(-1, 0, 0))
-	end
-	box(inside, "CorridorCeiling", -12, FH, 0, 12, FH + 1, 90, STONE_DARK)
-	box(inside, "CasinoCeiling", 12, FH, 60, 78, FH + 1, 90, STONE_DARK)
-	-- ---- кухня (запад, z 0..45)
-	wallX(inside, 45, -78, -12, 0, FH, { { -45, 8, 10 } }, 2)
-	for i, x in { -70, -58 } do
-		local oven = box(inside, "Oven", x - 4, 0, 40, x + 4, 7, 44, rgb(120, 60, 50), Enum.Material.Brick)
-		local fire = Instance.new("Fire")
-		fire.Size = 4
-		fire.Parent = box(inside, "OvenFire", x - 2, 1, 39.9, x + 2, 4, 40, rgb(40, 20, 10), Enum.Material.Slate)
-		local l = Instance.new("PointLight")
-		l.Color = rgb(255, 140, 60)
-		l.Range = 18
-		l.Parent = oven
-		if i == 1 then
-			prompt(oven, "cook", "", 2)
-		end
-	end
-	local counter = box(inside, "Counter", -40, 0, 30, -18, 3.4, 34, WOOD, Enum.Material.WoodPlanks)
-	prompt(counter, "bread", "")
-	local fruit = box(inside, "FruitTable", -40, 0, 10, -28, 3.4, 14, WOOD, Enum.Material.WoodPlanks)
-	for k = 0, 6 do
-		part(inside, { Name = "Apple", Shape = Enum.PartType.Ball, Size = Vector3.new(0.8, 0.8, 0.8), CFrame = CFrame.new(-39 + k * 1.5, 3.8, 12), Color = rgb(190, 40, 40), CanCollide = false })
-	end
-	prompt(fruit, "apple", "")
-	local drawer = box(inside, "Cutlery", -70, 0, 6, -64, 3.4, 9, WOOD_DARK, Enum.Material.Wood)
-	prompt(drawer, "spoon", "")
-	for k = 0, 4 do
-		part(inside, { Name = "Barrel", Shape = Enum.PartType.Cylinder, Size = Vector3.new(3.2, 2.8, 2.8), CFrame = CFrame.new(-75, 1.6, 12 + k * 4) * CFrame.Angles(0, 0, math.pi / 2), Color = WOOD, Material = Enum.Material.Wood })
-	end
-	chandelier(inside, Vector3.new(-45, 16, 22))
-	window(inside, Vector3.new(-79, 10, 22), Vector3.new(-1, 0, 0))
-
-	-- ---- трапезная (запад, z 45..90)
-	wallX(inside, 90, -78, -12, 0, FH, nil, 2)
-	table_(inside, CFrame.new(-45, 0, 67), 34, 6)
-	bench(inside, CFrame.new(-45, 0, 62.5), 32)
-	bench(inside, CFrame.new(-45, 0, 71.5), 32)
-	for k = 0, 5 do
-		part(inside, { Name = "Plate", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.15, 1.6, 1.6), CFrame = CFrame.new(-60 + k * 6, 3.55, 65.5) * CFrame.Angles(0, 0, math.pi / 2), Color = rgb(235, 230, 220), Material = Enum.Material.SmoothPlastic, CanCollide = false })
-		part(inside, { Name = "Plate", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.15, 1.6, 1.6), CFrame = CFrame.new(-60 + k * 6, 3.55, 68.5) * CFrame.Angles(0, 0, math.pi / 2), Color = rgb(235, 230, 220), Material = Enum.Material.SmoothPlastic, CanCollide = false })
-	end
-	chandelier(inside, Vector3.new(-55, 16, 67))
-	chandelier(inside, Vector3.new(-35, 16, 67))
-	window(inside, Vector3.new(-79, 10, 60), Vector3.new(-1, 0, 0))
-	window(inside, Vector3.new(-79, 10, 78), Vector3.new(-1, 0, 0))
-
-	-- ---- библиотека (восток, z 0..60, высота 40)
-	wallX(inside, 60, 12, 78, 0, 40, { { 45, 8, 10 } }, 2)
-	box(inside, "LibraryCeiling", 12, 40, 0, 78, 41, 60, STONE_DARK)
-	local seed = 1
-	for z = 6, 54, 8 do
-		bookshelf(inside, CFrame.new(76, 0, z) * CFrame.Angles(0, math.pi / 2, 0), 7, 16, seed)
-		seed += 3
-	end
-	for x = 22, 70, 8 do
-		bookshelf(inside, CFrame.new(x, 0, 2) * CFrame.Angles(0, math.pi, 0), 7, 16, seed)
-		seed += 5
-	end
-	-- галерея второго яруса библиотеки, лестница к ней вдоль галереи
-	box(inside, "Gallery", 60, 18, 2, 78, 19, 58, WOOD, Enum.Material.WoodPlanks)
-	for z = 4, 56, 4 do
-		if z < 26 or z > 36 then
-			box(inside, "GalleryRail", 59.6, 19, z - 0.2, 60.2, 22, z + 0.2, WOOD_DARK, Enum.Material.Wood)
-		end
-	end
-	box(inside, "GalleryHandrail", 59.5, 21.8, 2, 60.3, 22.4, 26, WOOD, Enum.Material.Wood)
-	box(inside, "GalleryHandrail", 59.5, 21.8, 36, 60.3, 22.4, 58, WOOD, Enum.Material.Wood)
-	for i = 0, 17 do
-		local z = 56 - i * 1.4
-		box(inside, "Step", 53, 0, z - 1.4, 59.4, i + 1, z, WOOD, Enum.Material.WoodPlanks)
-	end
-	for z = 6, 54, 8 do
-		bookshelf(inside, CFrame.new(76, 19, z) * CFrame.Angles(0, math.pi / 2, 0), 7, 16, seed)
-		seed += 2
-	end
-	local readTable = box(inside, "ReadingTable", 28, 0, 26, 40, 3.2, 34, WOOD, Enum.Material.WoodPlanks)
-	prompt(readTable, "book", "")
-	bench(inside, CFrame.new(34, 0, 23), 10)
-	bench(inside, CFrame.new(34, 0, 37), 10)
-	B.points.priest = CFrame.new(40, 4, 48)
-	chandelier(inside, Vector3.new(36, 28, 18))
-	chandelier(inside, Vector3.new(36, 28, 42))
-	for z = 10, 50, 20 do
-		torch(inside, Vector3.new(13.4, 10, z), Vector3.new(1, 0, 0))
-	end
-	window(inside, Vector3.new(79, 24, 30), Vector3.new(1, 0, 0), 5, 12)
-
-	-- ---- казино (восток, z 60..90, первый этаж)
-	box(inside, "CasinoCarpet", 13, 0.2, 61, 78, 0.32, 89, rgb(70, 20, 70), Enum.Material.Carpet)
-	for i = 0, 3 do
-		local x = 22 + i * 12
-		local slot = box(inside, "SlotMachine", x - 2, 0, 86, x + 2, 7, 89, rgb(150, 30, 40), Enum.Material.SmoothPlastic)
-		box(inside, "SlotScreen", x - 1.4, 3.4, 85.8, x + 1.4, 5.6, 86, rgb(255, 210, 90), Enum.Material.Neon)
-		prompt(slot, "slots", "")
-	end
-	local felt = box(inside, "CoinTable", 30, 0, 68, 46, 3.4, 76, rgb(30, 100, 50), Enum.Material.Fabric)
-	box(inside, "TableRim", 29.5, 3.3, 67.5, 46.5, 3.6, 76.5, WOOD_DARK, Enum.Material.Wood)
-	prompt(felt, "coin", "")
-	chandelier(inside, Vector3.new(45, 16, 75))
-
-	-- ---- тронный зал z 90..147, высота 36
-	wallX(inside, 90, -40, 40, 0, 37, { { 0, 16, 16 } }, 2)
-	floorWithHole("ThroneFloor", -40, 40, 91, 147, 0.2, 0.3, -3, 3, 139, 145, rgb(140, 132, 120), Enum.Material.Marble)
-	carpet(inside, -3, 90, 3, 133, 0.32)
-	for _, x in { -30, 30 } do
-		for z = 98, 140, 10 do
-			pillar(inside, x, z, 0, 36, 1.6)
-		end
-		for z = 100, 140, 14 do
-			banner(inside, Vector3.new(x * 1.28, 30, z), Vector3.new(-math.sign(x), 0, 0), 14)
-		end
-	end
-	wallZ(inside, -40, 90, 147, 0, 60, nil, 2)
-	wallZ(inside, 40, 90, 147, 0, 60, nil, 2)
-	box(inside, "ThroneCeiling", -40, 36, 90, 40, 37, 147, STONE_DARK)
-	for z = 100, 140, 20 do
-		chandelier(inside, Vector3.new(0, 30, z))
-		window(inside, Vector3.new(-41.6, 22, z), Vector3.new(-1, 0, 0), 5, 12)
-		window(inside, Vector3.new(41.6, 22, z), Vector3.new(1, 0, 0), 5, 12)
-	end
-	-- помост с люком под троном
-	floorWithHole("Dais", -12, 12, 132, 147, 0, 1.5, -3, 3, 139, 145, rgb(150, 30, 40), Enum.Material.Fabric)
-	floorWithHole("DaisStep", -9, 9, 134, 147, 1.5, 3, -3, 3, 139, 145, rgb(140, 132, 120), Enum.Material.Marble)
-	local hatch = box(inside, "Hatch", -3, 0, 139, 3, 3.02, 145, rgb(140, 132, 120), Enum.Material.Marble)
-	B.hatch = hatch
-	local throne = Instance.new("Model")
-	throne.Name = "Throne"
-	local seat = Instance.new("Seat")
-	seat.Name = "ThroneSeat"
-	seat.Anchored = true
-	seat.Size = Vector3.new(4, 1, 4)
-	seat.CFrame = CFrame.new(0, 4.5, 140)
-	seat.Color = rgb(150, 20, 30)
-	seat.Material = Enum.Material.Fabric
-	seat.Disabled = true
-	seat.Parent = throne
-	part(throne, { Name = "ThroneBase", Size = Vector3.new(5, 1.5, 5), CFrame = CFrame.new(0, 3.75, 140), Color = GOLD, Material = Enum.Material.Metal })
-	part(throne, { Name = "ThroneBack", Size = Vector3.new(5, 10, 1), CFrame = CFrame.new(0, 9.5, 142.4), Color = GOLD, Material = Enum.Material.Metal })
-	part(throne, { Name = "ThroneCushion", Size = Vector3.new(4, 7, 0.4), CFrame = CFrame.new(0, 9, 141.8), Color = rgb(150, 20, 30), Material = Enum.Material.Fabric })
-	for _, x in { -2.6, 2.6 } do
-		part(throne, { Name = "Arm", Size = Vector3.new(0.8, 2.5, 4.4), CFrame = CFrame.new(x, 5.6, 140), Color = GOLD, Material = Enum.Material.Metal })
-	end
-	part(throne, { Name = "Crest", Shape = Enum.PartType.Ball, Size = Vector3.new(2, 2, 2), CFrame = CFrame.new(0, 15, 142.4), Color = GOLD, Material = Enum.Material.Neon })
-	throne.PrimaryPart = seat
-	throne.Parent = inside
-	prompt(seat, "throne", "", 1, 10)
-	prompt(throne:FindFirstChild("ThroneBack") :: BasePart, "passage", "", 1.5, 10)
-	B.throne = throne
-	B.throneSeat = seat
-	B.throneHome = throne:GetPivot()
-	B.points.statueLeft = CFrame.new(-18, 1.5, 136)
-	B.points.statueRight = CFrame.new(18, 1.5, 136)
-	for _, x in { -18, 18 } do
-		box(inside, "StatueBase", x - 4, 0, 132, x + 4, 1.5, 140, rgb(170, 165, 158), Enum.Material.Marble)
-	end
-	B.points.throneRoom = CFrame.new(0, 3, 105)
-
-	-- ---- тайный ход: шахта с лестницей под троном, туннель под стеной и рвом на запад,
-	-- рычаг внизу возвращает трон на место, выход в поле за рвом
-	local secret = Instance.new("Model")
-	secret.Name = "SecretPassage"
-	local D = -27
-	local function shaft(x)
-		box(secret, "ShaftWall", x - 4, D, 138, x + 4, 0, 139, STONE_DARK, Enum.Material.Slate)
-		box(secret, "ShaftWall", x - 4, D, 145, x + 4, 0, 146, STONE_DARK, Enum.Material.Slate)
-		box(secret, "ShaftWall", x + 3, D, 139, x + 4, 0, 145, STONE_DARK, Enum.Material.Slate)
-		local t = Instance.new("TrussPart")
-		t.Name = "Ladder"
-		t.Anchored = true
-		t.Size = Vector3.new(2, 30, 2)
-		t.CFrame = CFrame.new(x + 1.9, D + 15, 142)
-		t.Color = WOOD_DARK
-		t.Material = Enum.Material.Wood
-		t.Parent = secret
-	end
-	shaft(0)
-	box(secret, "ShaftWall", -4, D, 139, -3, D + 10, 145, STONE_DARK, Enum.Material.Slate)
-	box(secret, "ShaftWall", -4, D + 10, 139, -3, 0, 145, STONE_DARK, Enum.Material.Slate)
-	shaft(-132)
-	box(secret, "ShaftWall", -136, D, 139, -135, 0, 145, STONE_DARK, Enum.Material.Slate)
-	box(secret, "TunnelFloor", -136, D - 1, 138, 4, D, 146, STONE_DARK, Enum.Material.Cobblestone)
-	box(secret, "TunnelCeiling", -131, D + 10, 138, -4, D + 11, 146, STONE_DARK, Enum.Material.Slate)
-	box(secret, "TunnelWall", -132, D, 138, -3, D + 10, 139, STONE_DARK, Enum.Material.Slate)
-	box(secret, "TunnelWall", -132, D, 145, -3, D + 10, 146, STONE_DARK, Enum.Material.Slate)
-	box(secret, "TunnelWater", -131, D, 140.5, -4, D + 0.3, 143.5, rgb(60, 70, 50), Enum.Material.Glass, { Transparency = 0.4, CanCollide = false })
-	for x = -20, -120, -25 do
-		torch(secret, Vector3.new(x, D + 6, 144.6), Vector3.new(0, 0, -1))
-	end
-	local lever = box(secret, "Lever", 2.2, D + 3, 139.2, 2.8, D + 5.5, 139.8, rgb(60, 56, 52), Enum.Material.Metal)
-	prompt(lever, "lever", "", 0.5)
-	-- выход: каменный колодец с решёткой в поле за рвом
-	for _, w in { { -137, -136, 137, 147 }, { -128, -127, 137, 147 }, { -137, -127, 137, 138 }, { -137, -127, 146, 147 } } do
-		box(secret, "ExitWell", w[1], -1, w[3], w[2], 2.5, w[4], STONE_DARK, Enum.Material.Cobblestone)
-	end
-	slab(secret, "ExitCap", -138, -126, 135, 149, -1, 0.2, -135, -129, 139, 145, rgb(110, 106, 100), Enum.Material.Cobblestone)
-	secret.Parent = inside
-	B.points.tunnel = CFrame.new(-20, D + 3, 142)
-	B.points.tunnelExit = CFrame.new(-132, 4, 152)
-
-	-- ---- второй этаж: покои прислуги, казарма, магазин; покои короля
-	local y2 = FH + 1
-	wallX(inside, 30, -78, -12, y2, FH - 1, { { -40, 8, 10 } }, 2)
-	wallX(inside, 60, -78, -12, y2, FH - 1, { { -40, 8, 10 } }, 2)
-	for i = 0, 3 do
-		bed(inside, CFrame.new(-72, y2, -10 + i * 10) * CFrame.Angles(0, -math.pi / 2, 0), Color3.fromHSV(i * 0.17, 0.4, 0.75))
-		bed(inside, CFrame.new(-30, y2, -10 + i * 10) * CFrame.Angles(0, math.pi / 2, 0), Color3.fromHSV(0.5 + i * 0.1, 0.4, 0.75))
-	end
-	local brooms = box(inside, "BroomRack", -56, y2, 27, -50, y2 + 6, 28.8, WOOD_DARK, Enum.Material.Wood)
-	prompt(brooms, "broom", "")
-	chandelier(inside, Vector3.new(-45, y2 + 15, 5))
-	window(inside, Vector3.new(-79, y2 + 9, 10), Vector3.new(-1, 0, 0))
-	-- казарма z 30..60: оружие, кандалы, тренировочный манекен
-	local rack = box(inside, "WeaponRack", -76, y2, 34, -74, y2 + 7, 46, WOOD_DARK, Enum.Material.Wood)
-	for k = 0, 4 do
-		part(inside, { Name = "RackSword", Size = Vector3.new(0.3, 5, 0.8), CFrame = CFrame.new(-73.6, y2 + 3.5, 35.5 + k * 2.3), Color = rgb(190, 190, 200), Material = Enum.Material.Metal, CanCollide = false })
-	end
-	prompt(rack, "sword", "")
-	local cuffs = box(inside, "ShacklesHook", -76, y2, 50, -74, y2 + 5, 54, rgb(60, 56, 52), Enum.Material.Metal)
-	prompt(cuffs, "cuffs", "")
-	B.points.dummy = CFrame.new(-45, y2 + 3, 46)
-	chandelier(inside, Vector3.new(-45, y2 + 15, 45))
-	window(inside, Vector3.new(-79, y2 + 9, 45), Vector3.new(-1, 0, 0))
-	-- магазин z 60..90
-	local shopCounter = box(inside, "ShopCounter", -60, y2, 66, -30, y2 + 3.4, 70, WOOD, Enum.Material.WoodPlanks)
-	prompt(shopCounter, "shop", "", 0, 12)
-	for x = -70, -24, 8 do
-		box(inside, "ShopShelf", x, y2, 86, x + 6, y2 + 8, 88, WOOD_DARK, Enum.Material.Wood)
-		part(inside, { Name = "Goods", Size = Vector3.new(1.4, 1.4, 1.4), CFrame = CFrame.new(x + 3, y2 + 5, 87), Color = Color3.fromHSV((x + 70) / 60, 0.6, 0.85), Material = Enum.Material.Fabric })
-	end
-	chandelier(inside, Vector3.new(-45, y2 + 15, 75))
-	window(inside, Vector3.new(-79, y2 + 9, 75), Vector3.new(-1, 0, 0))
-	-- покои короля
-	bed(inside, CFrame.new(70, y2, -10) * CFrame.Angles(0, math.pi / 2, 0), rgb(150, 20, 30))
-	carpet(inside, 44, -18, 60, -4, y2)
-	local stand = box(inside, "ScepterStand", 50, y2, -28, 52, y2 + 4, -26, GOLD, Enum.Material.Metal)
-	part(inside, { Name = "ScepterShow", Size = Vector3.new(0.3, 3, 0.3), CFrame = CFrame.new(51, y2 + 5.5, -27), Color = GOLD, Material = Enum.Material.Metal, CanCollide = false })
-	prompt(stand, "scepter", "")
-	local wardrobe = box(inside, "Wardrobe", 20, y2, -6, 24, y2 + 9, -1.2, WOOD_DARK, Enum.Material.Wood)
-	prompt(wardrobe, "shop", "", 0, 10)
-	chandelier(inside, Vector3.new(55, y2 + 15, -12))
-
-	-- ---- темница под двором (вход по лестнице в западной части двора)
-	local dungeon = Instance.new("Model")
-	dungeon.Name = "Dungeon"
-	box(dungeon, "DungeonFloor", -78, -21, -136, -32, -20, -44, STONE_DARK, Enum.Material.Cobblestone)
-	slab(dungeon, "DungeonCeiling", -78, -32, -136, -44, -2, -1, -46, -38, -70, -44, STONE_DARK, Enum.Material.Slate)
-	box(dungeon, "DungeonWall", -79, -21, -137, -78, 0, -43, STONE_DARK, Enum.Material.Slate)
-	box(dungeon, "DungeonWall", -32, -21, -137, -31, 0, -43, STONE_DARK, Enum.Material.Slate)
-	box(dungeon, "DungeonWall", -79, -21, -137, -31, 0, -136, STONE_DARK, Enum.Material.Slate)
-	box(dungeon, "DungeonWall", -79, -21, -44, -46, 0, -43, STONE_DARK, Enum.Material.Slate)
-	box(dungeon, "DungeonWall", -38, -21, -44, -31, 0, -43, STONE_DARK, Enum.Material.Slate)
-	for i = 0, 19 do
-		local z = -44 - i * 1.3
-		box(dungeon, "DungeonStep", -46, -20, z - 1.3, -38, math.min(-i - 1, -0.95), z, STONE_DARK, Enum.Material.Slate)
-	end
-	-- перила вокруг проёма во дворе
-	box(yard, "HoleRail", -46.6, 0, -70.6, -46, 3.2, -44, WOOD_DARK, Enum.Material.Wood)
-	box(yard, "HoleRail", -38, 0, -70.6, -37.4, 3.2, -44, WOOD_DARK, Enum.Material.Wood)
-	box(yard, "HoleRail", -46.6, 0, -71.2, -37.4, 3.2, -70.6, WOOD_DARK, Enum.Material.Wood)
-	B.cells = {}
-	for i = 0, 4 do
-		local z = -135 + i * 13
-		box(dungeon, "CellWall", -78, -20, z + 12, -60, -1, z + 13, STONE_DARK, Enum.Material.Slate)
-		local bars = Instance.new("Model")
-		bars.Name = "CellBars" .. (i + 1)
-		for k = 0, 5 do
-			part(bars, { Name = "Bar", Size = Vector3.new(0.4, 19, 0.4), CFrame = CFrame.new(-60, -10.5, z + 1 + k * 2), Color = rgb(50, 48, 46), Material = Enum.Material.Metal })
-		end
-		bars.Parent = dungeon
-		local lock = part(dungeon, { Name = "CellLock", Size = Vector3.new(0.6, 1, 0.6), CFrame = CFrame.new(-59.5, -17, z + 6), Color = rgb(80, 70, 50), Material = Enum.Material.Metal })
-		prompt(lock, "cell", "", 1)
-		lock:SetAttribute("Cell", i + 1)
-		table.insert(B.cells, { bars = bars, inside = CFrame.new(-70, -17, z + 6), lock = lock })
-		torch(dungeon, Vector3.new(-33, -10, z + 6), Vector3.new(-1, 0, 0))
-		part(dungeon, { Name = "Chain", Size = Vector3.new(0.2, 4, 0.2), CFrame = CFrame.new(-77.5, -13, z + 6), Color = rgb(60, 58, 56), Material = Enum.Material.Metal, CanCollide = false })
-		part(dungeon, { Name = "Straw", Size = Vector3.new(5, 0.4, 4), CFrame = CFrame.new(-72, -19.8, z + 6), Color = rgb(190, 160, 90), Material = Enum.Material.Grass, CanCollide = false })
-	end
-	dungeon.Parent = root
-	B.points.dungeon = CFrame.new(-45, -17, -100)
-	-- деревянные панели внизу внутренних стен и карниз, как в старых особняках
-	local panels = Instance.new("Model")
-	panels.Name = "Panels"
-	for _, w in inside:GetChildren() do
-		if w:IsA("BasePart") and w.Name == "Wall" then
-			local bottom = w.Position.Y - w.Size.Y / 2
-			if (math.abs(bottom) < 0.5 or math.abs(bottom - 21) < 0.5) and w.Size.Y <= 40 then
-				local alongX = w.Size.X > w.Size.Z
-				local len = if alongX then w.Size.X else w.Size.Z
-				local t = if alongX then w.Size.Z else w.Size.X
-				if len > 1.5 and w.Size.Y > 6 then
-					for _, side in { -1, 1 } do
-						local off = (t / 2 + 0.12) * side
-						local pos = Vector3.new(w.Position.X, bottom + 2.3, w.Position.Z) + (if alongX then Vector3.new(0, 0, off) else Vector3.new(off, 0, 0))
-						local size = if alongX then Vector3.new(len, 4.6, 0.24) else Vector3.new(0.24, 4.6, len)
-						part(panels, { Name = "Wainscot", Size = size, CFrame = CFrame.new(pos), Color = WOOD_DARK, Material = Enum.Material.Wood, CanCollide = false })
-						local trim = if alongX then Vector3.new(len, 0.35, 0.4) else Vector3.new(0.4, 0.35, len)
-						part(panels, { Name = "Trim", Size = trim, CFrame = CFrame.new(pos + Vector3.new(0, 2.4, 0)), Color = GOLD:Lerp(WOOD, 0.6), Material = Enum.Material.Wood, CanCollide = false })
-						local cornice = if alongX then Vector3.new(len, 0.6, 0.6) else Vector3.new(0.6, 0.6, len)
-						part(panels, { Name = "Cornice", Size = cornice, CFrame = CFrame.new(Vector3.new(pos.X, bottom + w.Size.Y - 0.3, pos.Z)), Color = STONE_DARK, Material = Enum.Material.Slate, CanCollide = false })
-					end
-				end
-			end
-		end
-	end
-	-- балки под потолками коридора и второго этажа
-	for z = 4, 88, 8 do
-		box(inside, "Beam", -12, FH - 1.2, z - 0.5, 12, FH, z + 0.5, WOOD_DARK, Enum.Material.Wood)
-	end
-	for z = -26, 88, 8 do
-		box(inside, "Beam", -78, 38.8, z - 0.5, -12, 40, z + 0.5, WOOD_DARK, Enum.Material.Wood)
-	end
-	panels.Parent = inside
-	outer.Parent = root
-	inside.Parent = root
-	yard.Parent = root
-
-	-- атмосфера: тёплый полумрак, как в хоррор-играх, но без страха
-	Lighting.Ambient = rgb(78, 70, 64)
-	Lighting.OutdoorAmbient = rgb(128, 126, 122)
+	-- атмосфера: тёплый полумрак в комнатах, как в DOORS
+	Lighting.Ambient = rgb(58, 52, 48)
+	Lighting.OutdoorAmbient = rgb(118, 116, 120)
 	Lighting.Brightness = 2
-	Lighting.ExposureCompensation = 0.25
-	Lighting.EnvironmentDiffuseScale = 0.4
+	Lighting.ExposureCompensation = 0
+	Lighting.EnvironmentDiffuseScale = 0.35
 	Lighting.EnvironmentSpecularScale = 0.4
 	Lighting.GlobalShadows = true
 	local cc = Lighting:FindFirstChild("CastleColor") or Instance.new("ColorCorrectionEffect")
 	cc.Name = "CastleColor"
-	cc.TintColor = rgb(255, 246, 236)
-	cc.Contrast = 0.08
+	cc.TintColor = rgb(255, 244, 232)
+	cc.Contrast = 0.1
 	cc.Saturation = 0.05
 	cc.Parent = Lighting
 	local bloom = Lighting:FindFirstChild("CastleBloom") or Instance.new("BloomEffect")
 	bloom.Name = "CastleBloom"
-	bloom.Intensity = 0.5
-	bloom.Size = 30
-	bloom.Threshold = 1.4
+	bloom.Intensity = 0.6
+	bloom.Size = 28
+	bloom.Threshold = 1.3
 	bloom.Parent = Lighting
+	B.partCount = Props.count()
 	return B
 end
 
