@@ -18,7 +18,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "0.9.0"
+VERSION = "1.0.0"
 
 
 class Builder:
@@ -98,8 +98,9 @@ def build(dest: Path):
     lobby, _ = b.item(ws, "Model", "WsLobby")
     _, fp = b.item(lobby, "Part", "Floor")
     b.prop(fp, "bool", "Anchored", True)
-    b.vec3(fp, "size", (60, 1, 60))
-    b.cframe(fp, "CFrame", (0, 0, 0))
+    b.vec3(fp, "size", (12, 1, 12))
+    b.cframe(fp, "CFrame", (0, -0.5, -132))
+    b.prop(fp, "float", "Transparency", 1)
     b.prop(fp, "Color3uint8", "Color3uint8", 0xFF000000 | (46 << 16) | (50 << 8) | 58)
     _, sp = b.item(lobby, "SpawnLocation", "Spawn")
     b.prop(sp, "bool", "Anchored", True)
@@ -108,7 +109,7 @@ def build(dest: Path):
     b.prop(sp, "float", "Transparency", 1)
     b.prop(sp, "float", "Duration", 0)
     b.vec3(sp, "size", (8, 1, 8))
-    b.cframe(sp, "CFrame", (0, 1, 0))
+    b.cframe(sp, "CFrame", (0, 0.5, -132))
 
     _, lp = b.item(b.root, "Lighting", "Lighting")
     b.prop(lp, "float", "Brightness", 1)
@@ -126,7 +127,7 @@ def build(dest: Path):
     b.tree(server, ROOT / "src/server")
 
     starter, stp = b.item(b.root, "StarterPlayer", "StarterPlayer")
-    b.prop(stp, "float", "CharacterWalkSpeed", 14)
+    b.prop(stp, "float", "CharacterWalkSpeed", 16)
     b.prop(stp, "float", "CameraMaxZoomDistance", 40)
     sps, _ = b.item(starter, "StarterPlayerScripts", "StarterPlayerScripts")
     client, _ = b.item(sps, "Folder", "Workshop")

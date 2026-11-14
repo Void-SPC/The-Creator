@@ -49,7 +49,7 @@ function CameraController.new(settings)
 			return
 		end
 		local sens = self.settings.sensitivity
-		if input.UserInputType == Enum.UserInputType.MouseMovement then
+		if input.UserInputType == Enum.UserInputType.MouseMovement and not self.freeCursor then
 			self:look(input.Delta.X * 0.0035 * sens, input.Delta.Y * 0.0035 * sens)
 		elseif input.UserInputType == Enum.UserInputType.Touch and input == self.lookTouch and not processed then
 			self:look(input.Delta.X * 0.006 * sens, input.Delta.Y * 0.006 * sens)
@@ -160,8 +160,9 @@ function CameraController:update(dt: number)
 	end
 	self.walkCF = nil
 	if UserInputService.MouseEnabled and not UserInputService.TouchEnabled then
-		UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
-		UserInputService.MouseIconEnabled = false
+		-- курсор свободен, пока открыто окно (магазин, роли, админ-панель)
+		UserInputService.MouseBehavior = if self.freeCursor then Enum.MouseBehavior.Default else Enum.MouseBehavior.LockCenter
+		UserInputService.MouseIconEnabled = self.freeCursor == true
 	end
 	-- мягкая камера от первого лица: взгляд догоняет поворот, шаги дают плавное
 	-- покачивание вверх-вниз и из стороны в сторону, при шаге вбок камера слегка
@@ -257,6 +258,10 @@ function CameraController:restore()
 		local _, y = hrp.CFrame:ToOrientation()
 		self.yaw = y
 	end
+end
+
+function CameraController:setFreeCursor(on: boolean)
+	self.freeCursor = on
 end
 
 function CameraController:destroy()

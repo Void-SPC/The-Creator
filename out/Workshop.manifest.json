@@ -1,0 +1,298 @@
+{
+  "file": "Workshop.rbxlx",
+  "version": "1.0.0",
+  "sha256": "73d5e996e885772237f11bf2aa85ba3e9b6864f6a69783526eb6acb6b01a41e6",
+  "bytes": 667208,
+  "scripts": [
+    {
+      "path": "src/shared/AdminCommands.luau",
+      "class": "ModuleScript",
+      "name": "AdminCommands"
+    },
+    {
+      "path": "src/shared/Anim.luau",
+      "class": "ModuleScript",
+      "name": "Anim"
+    },
+    {
+      "path": "src/shared/CastleRules.luau",
+      "class": "ModuleScript",
+      "name": "CastleRules"
+    },
+    {
+      "path": "src/shared/CastleSounds.luau",
+      "class": "ModuleScript",
+      "name": "CastleSounds"
+    },
+    {
+      "path": "src/shared/Catalog.luau",
+      "class": "ModuleScript",
+      "name": "Catalog"
+    },
+    {
+      "path": "src/shared/Closet.luau",
+      "class": "ModuleScript",
+      "name": "Closet"
+    },
+    {
+      "path": "src/shared/Demo.luau",
+      "class": "ModuleScript",
+      "name": "Demo"
+    },
+    {
+      "path": "src/shared/Format.luau",
+      "class": "ModuleScript",
+      "name": "Format"
+    },
+    {
+      "path": "src/shared/Ids.luau",
+      "class": "ModuleScript",
+      "name": "Ids"
+    },
+    {
+      "path": "src/shared/Lang.luau",
+      "class": "ModuleScript",
+      "name": "Lang"
+    },
+    {
+      "path": "src/shared/Logic/init.luau",
+      "class": "ModuleScript",
+      "name": "Logic"
+    },
+    {
+      "path": "src/shared/Logic/Commands.luau",
+      "class": "ModuleScript",
+      "name": "Commands"
+    },
+    {
+      "path": "src/shared/Logic/Interpreter.luau",
+      "class": "ModuleScript",
+      "name": "Interpreter"
+    },
+    {
+      "path": "src/shared/Logic/Parser.luau",
+      "class": "ModuleScript",
+      "name": "Parser"
+    },
+    {
+      "path": "src/shared/Logic/Printer.luau",
+      "class": "ModuleScript",
+      "name": "Printer"
+    },
+    {
+      "path": "src/shared/Logic/Validator.luau",
+      "class": "ModuleScript",
+      "name": "Validator"
+    },
+    {
+      "path": "src/shared/MafiaRules.luau",
+      "class": "ModuleScript",
+      "name": "MafiaRules"
+    },
+    {
+      "path": "src/shared/MafiaSounds.luau",
+      "class": "ModuleScript",
+      "name": "MafiaSounds"
+    },
+    {
+      "path": "src/shared/MathX.luau",
+      "class": "ModuleScript",
+      "name": "MathX"
+    },
+    {
+      "path": "src/shared/Model.luau",
+      "class": "ModuleScript",
+      "name": "Model"
+    },
+    {
+      "path": "src/shared/OfficeModels.luau",
+      "class": "ModuleScript",
+      "name": "OfficeModels"
+    },
+    {
+      "path": "src/shared/Ops.luau",
+      "class": "ModuleScript",
+      "name": "Ops"
+    },
+    {
+      "path": "src/shared/Prefabs.luau",
+      "class": "ModuleScript",
+      "name": "Prefabs"
+    },
+    {
+      "path": "src/shared/Rig.luau",
+      "class": "ModuleScript",
+      "name": "Rig"
+    },
+    {
+      "path": "src/shared/Roblox/Animator.luau",
+      "class": "ModuleScript",
+      "name": "Animator"
+    },
+    {
+      "path": "src/shared/Roblox/Convert.luau",
+      "class": "ModuleScript",
+      "name": "Convert"
+    },
+    {
+      "path": "src/shared/Roblox/Remotes.luau",
+      "class": "ModuleScript",
+      "name": "Remotes"
+    },
+    {
+      "path": "src/shared/Roblox/WorldBuilder.luau",
+      "class": "ModuleScript",
+      "name": "WorldBuilder"
+    },
+    {
+      "path": "src/shared/UiText.luau",
+      "class": "ModuleScript",
+      "name": "UiText"
+    },
+    {
+      "path": "src/shared/Util.luau",
+      "class": "ModuleScript",
+      "name": "Util"
+    },
+    {
+      "path": "src/server/Access.luau",
+      "class": "ModuleScript",
+      "name": "Access"
+    },
+    {
+      "path": "src/server/AdminService.luau",
+      "class": "ModuleScript",
+      "name": "AdminService"
+    },
+    {
+      "path": "src/server/Castle/Admin.luau",
+      "class": "ModuleScript",
+      "name": "Admin"
+    },
+    {
+      "path": "src/server/Castle/CastleBuilder.luau",
+      "class": "ModuleScript",
+      "name": "CastleBuilder"
+    },
+    {
+      "path": "src/server/Castle/CastleGame.luau",
+      "class": "ModuleScript",
+      "name": "CastleGame"
+    },
+    {
+      "path": "src/server/Castle/Npc.luau",
+      "class": "ModuleScript",
+      "name": "Npc"
+    },
+    {
+      "path": "src/server/Castle/Outfits.luau",
+      "class": "ModuleScript",
+      "name": "Outfits"
+    },
+    {
+      "path": "src/server/Castle/Seasons.luau",
+      "class": "ModuleScript",
+      "name": "Seasons"
+    },
+    {
+      "path": "src/server/Config.luau",
+      "class": "ModuleScript",
+      "name": "Config"
+    },
+    {
+      "path": "src/server/Core/ProjectStore.luau",
+      "class": "ModuleScript",
+      "name": "ProjectStore"
+    },
+    {
+      "path": "src/server/CurrencyService.luau",
+      "class": "ModuleScript",
+      "name": "CurrencyService"
+    },
+    {
+      "path": "src/server/DataStoreAdapter.luau",
+      "class": "ModuleScript",
+      "name": "DataStoreAdapter"
+    },
+    {
+      "path": "src/server/Mafia/MafiaGame.luau",
+      "class": "ModuleScript",
+      "name": "MafiaGame"
+    },
+    {
+      "path": "src/server/Mafia/Village.luau",
+      "class": "ModuleScript",
+      "name": "Village"
+    },
+    {
+      "path": "src/server/Main.server.luau",
+      "class": "Script",
+      "name": "Main"
+    },
+    {
+      "path": "src/server/Statue.luau",
+      "class": "ModuleScript",
+      "name": "Statue"
+    },
+    {
+      "path": "src/client/Castle/AdminPanel.luau",
+      "class": "ModuleScript",
+      "name": "AdminPanel"
+    },
+    {
+      "path": "src/client/Castle/CastleClient.luau",
+      "class": "ModuleScript",
+      "name": "CastleClient"
+    },
+    {
+      "path": "src/client/Castle/Menu.luau",
+      "class": "ModuleScript",
+      "name": "Menu"
+    },
+    {
+      "path": "src/client/Castle/Ui.luau",
+      "class": "ModuleScript",
+      "name": "Ui"
+    },
+    {
+      "path": "src/client/Common/Bubble.luau",
+      "class": "ModuleScript",
+      "name": "Bubble"
+    },
+    {
+      "path": "src/client/Common/CameraController.luau",
+      "class": "ModuleScript",
+      "name": "CameraController"
+    },
+    {
+      "path": "src/client/Common/FreeCamera.luau",
+      "class": "ModuleScript",
+      "name": "FreeCamera"
+    },
+    {
+      "path": "src/client/Common/WeatherFx.luau",
+      "class": "ModuleScript",
+      "name": "WeatherFx"
+    },
+    {
+      "path": "src/client/Mafia/MafiaClient.luau",
+      "class": "ModuleScript",
+      "name": "MafiaClient"
+    },
+    {
+      "path": "src/client/Main.client.luau",
+      "class": "LocalScript",
+      "name": "Main"
+    },
+    {
+      "path": "src/client/UI/Kit.luau",
+      "class": "ModuleScript",
+      "name": "Kit"
+    }
+  ],
+  "target": {
+    "universeId": 6616737535,
+    "placeId": 74144820847995
+  },
+  "status": "XML собран и разобран обратно; запуск в движке Roblox этим скриптом не проверяется"
+}

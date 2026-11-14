@@ -39,7 +39,10 @@ Statue.POSE_R6 = {
 
 local nameCache: { [string]: number } = {}
 
-local function userIdOf(username: string): number?
+local function userIdOf(username: any): number?
+	if type(username) == "number" then
+		return username
+	end
 	if nameCache[username] then
 		return nameCache[username]
 	end

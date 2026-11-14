@@ -15,8 +15,8 @@ local Remotes = require(Shared.Roblox.Remotes)
 local MafiaSounds = require(Shared.MafiaSounds)
 
 local Kit = require(script.Parent.Parent.UI.Kit)
-local FreeCamera = require(script.Parent.Parent.Editor.FreeCamera)
-local WeatherFx = require(script.Parent.Parent.Play.WeatherFx)
+local FreeCamera = require(script.Parent.Parent.Common.FreeCamera)
+local WeatherFx = require(script.Parent.Parent.Common.WeatherFx)
 
 local L, H = UiText.L, UiText.H
 

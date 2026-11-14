@@ -5,10 +5,12 @@
 
 local Players = game:GetService("Players")
 
-local Shared = game:GetService("ReplicatedStorage").Workshop.Shared
-local UiText = require(Shared.UiText)
 
 local CurrencyService = {}
+
+-- название в таблице игроков; новичок получает стартовое золото один раз
+local GOLD = "Gold"
+local START_GOLD = 100
 
 local store: any
 local wallets: { [Player]: { base: number, delta: number, loaded: boolean, value: IntValue } } = {}
@@ -24,10 +26,10 @@ local function valueOf(player: Player): IntValue
 		stats.Name = "leaderstats"
 		stats.Parent = player
 	end
-	local v = stats:FindFirstChild(UiText.L.Coins) :: IntValue?
+	local v = stats:FindFirstChild(GOLD) :: IntValue?
 	if not v then
 		local nv = Instance.new("IntValue")
-		nv.Name = UiText.L.Coins
+		nv.Name = GOLD
 		nv.Parent = stats
 		v = nv
 	end
@@ -95,6 +97,10 @@ function CurrencyService.init(projectStore)
 		if ok then
 			w.base = (type(rec) == "table" and rec.coins) or 0
 			w.loaded = true
+			if rec == nil then
+				w.delta += START_GOLD
+				task.spawn(flush, player)
+			end
 		else
 			warn("[Creator] монеты не загрузились, баланс не меняется до следующей попытки")
 		end

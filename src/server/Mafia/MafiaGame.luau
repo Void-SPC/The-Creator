@@ -836,14 +836,22 @@ end
 
 -- ---------------------------------------------------------------------------
 
-function Game.init()
+-- hooks: { beforeJoin = fn(p), afterLeave = fn(p) } — переход из замка и обратно
+function Game.init(hooks)
+	hooks = hooks or {}
 	event = Remotes.event("Mafia")
 	Remotes.fn("MafiaRequest").OnServerInvoke = function(p: Player, action: any, ...: any)
 		local h = type(action) == "string" and handlers[action]
 		if not h then
 			return { ok = false }
 		end
+		if action == "Join" and hooks.beforeJoin then
+			hooks.beforeJoin(p)
+		end
 		local ok, res = pcall(h, p, ...)
+		if action == "Leave" and hooks.afterLeave then
+			hooks.afterLeave(p)
+		end
 		if not ok then
 			warn("[Mafia] " .. tostring(action) .. ": " .. tostring(res))
 			return { ok = false }

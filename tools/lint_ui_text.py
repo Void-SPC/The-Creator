@@ -19,7 +19,7 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SKIP_FILES = {"UiText.luau"}
+SKIP_FILES = {"UiText.luau", "Lang.luau", "AdminCommands.luau"}
 CYR = re.compile(r"[А-Яа-яЁё]")
 STRING = re.compile(r'"((?:[^"\\\n]|\\.)*)"')
 
