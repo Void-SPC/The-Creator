@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Сборка файла плейса мастерской (Roblox XML, .rbxlx) только средствами Python.
+"""Сборка файла плейса игры «The Labyrinth» (Roblox XML, .rbxlx) только средствами Python.
 
 Дерево совпадает с default.project.json (Rojo):
   ReplicatedStorage/Workshop/Shared  <- src/shared
@@ -18,7 +18,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "3.1.0"
+VERSION = "4.0.0"
 
 
 class Builder:
@@ -91,36 +91,19 @@ def build(dest: Path):
     ws, wp = b.item(b.root, "Workspace", "Workspace")
     b.prop(wp, "float", "Gravity", 196.2)
     b.prop(wp, "float", "FallenPartsDestroyHeight", -500)
-    # предпросмотр редактора и сессии игры стоят далеко друг от друга; стриминг выключен,
-    # чтобы клиент получал нужные модели целиком
-    # замок огромный: на телефоне подгружается только то, что рядом
+    # лабиринт строится по ходу игры; на телефоне подгружается только то, что рядом
     b.prop(wp, "bool", "StreamingEnabled", True)
-    b.prop(wp, "int", "StreamingMinRadius", 80)
-    b.prop(wp, "int", "StreamingTargetRadius", 256)
-    # лобби лежит в файле, чтобы игрок появился на полу ещё до запуска скриптов
-    lobby, _ = b.item(ws, "Model", "WsLobby")
-    _, fp = b.item(lobby, "Part", "Floor")
-    b.prop(fp, "bool", "Anchored", True)
-    b.vec3(fp, "size", (12, 1, 12))
-    b.cframe(fp, "CFrame", (0, -0.5, -160))
-    b.prop(fp, "float", "Transparency", 1)
-    b.prop(fp, "Color3uint8", "Color3uint8", 0xFF000000 | (46 << 16) | (50 << 8) | 58)
-    _, sp = b.item(lobby, "SpawnLocation", "Spawn")
-    b.prop(sp, "bool", "Anchored", True)
-    b.prop(sp, "bool", "Neutral", True)
-    b.prop(sp, "bool", "CanCollide", False)
-    b.prop(sp, "float", "Transparency", 1)
-    b.prop(sp, "float", "Duration", 0)
-    b.vec3(sp, "size", (8, 1, 8))
-    b.cframe(sp, "CFrame", (0, 0.5, -160))
+    b.prop(wp, "int", "StreamingMinRadius", 64)
+    b.prop(wp, "int", "StreamingTargetRadius", 200)
 
     _, lp = b.item(b.root, "Lighting", "Lighting")
-    b.prop(lp, "float", "Brightness", 1)
+    b.prop(lp, "float", "Brightness", 0)
     b.prop(lp, "float", "ClockTime", 0)
     b.prop(lp, "bool", "GlobalShadows", True)
     # освещение Future: тёплые лампы и тени в комнатах (на слабых телефонах Roblox упрощает сам)
     b.prop(lp, "token", "Technology", 4)
-    b.color3(lp, "Ambient", (0.16, 0.16, 0.19))
+    b.color3(lp, "Ambient", (0.05, 0.05, 0.05))
+    b.color3(lp, "OutdoorAmbient", (0, 0, 0))
 
     rep, _ = b.item(b.root, "ReplicatedStorage", "ReplicatedStorage")
     wsFolder, _ = b.item(rep, "Folder", "Workshop")

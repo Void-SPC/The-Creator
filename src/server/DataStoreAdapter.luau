@@ -1,5 +1,5 @@
 --!nonstrict
--- Адаптер DataStore для ProjectStore
+-- Адаптер DataStore для рекордов
 -- В Studio без доступа к API используется память сервера с предупреждением в выводе
 
 local DataStoreService = game:GetService("DataStoreService")
@@ -58,7 +58,7 @@ function Adapter.create()
 		end
 	end
 	if not ok then
-		warn("[Workshop] DataStore недоступен, поэтому данные хранятся только в памяти этого сервера (включите Studio Access to API Services)")
+		warn("[Labyrinth] DataStore недоступен, поэтому данные хранятся только в памяти этого сервера (включите Studio Access to API Services)")
 		return Adapter.memory()
 	end
 	local ds = store :: DataStore

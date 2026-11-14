@@ -1,13 +1,13 @@
 --!nonstrict
--- Сетевые каналы мастерской. Сервер создаёт их, клиент ждёт появления
+-- Сетевые каналы игры. Сервер создаёт их, клиент ждёт появления
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Remotes = {}
 
-local FUNCTIONS = { "Request", "CastleRequest", "AdminRequest", "ManiacRequest" }
-local EVENTS = { "Castle", "Maniac" }
+local FUNCTIONS = { "Request", "AdminRequest" }
+local EVENTS = { "Game" }
 
 local folder: Folder
 

@@ -58,10 +58,7 @@ function T.vnear(a, b, eps: number?, msg: string?)
 	end
 end
 
-local specs = {
-	"MathSpec", "AnimSpec", "FormatSpec", "OpsSpec", "ModelSpec", "LogicSpec",
-	"ClosetSpec", "StoreSpec", "UiTextSpec", "ScenarioSpec", "OfficeSpec", "CastleSpec", "ManiacSpec",
-}
+local specs = { "GameSpec" }
 for _, name in specs do
 	local spec = require((script.Parent :: any)[name])
 	spec(T)

@@ -1,8 +1,8 @@
 {
   "file": "Workshop.rbxlx",
-  "version": "3.1.0",
-  "sha256": "79769806fea0122eb5247e47835425be494f8dc428c16b1e59d63b191dc930b4",
-  "bytes": 848661,
+  "version": "4.0.0",
+  "sha256": "d602455c9f0833fefaeee2e32f40882738e1f4eb4cfabf5aef523b7da5b7e5c0",
+  "bytes": 156553,
   "scripts": [
     {
       "path": "src/shared/AdminCommands.luau",
@@ -10,89 +10,9 @@
       "name": "AdminCommands"
     },
     {
-      "path": "src/shared/Anim.luau",
-      "class": "ModuleScript",
-      "name": "Anim"
-    },
-    {
-      "path": "src/shared/CastleLayout.luau",
-      "class": "ModuleScript",
-      "name": "CastleLayout"
-    },
-    {
-      "path": "src/shared/CastleRules.luau",
-      "class": "ModuleScript",
-      "name": "CastleRules"
-    },
-    {
-      "path": "src/shared/CastleSounds.luau",
-      "class": "ModuleScript",
-      "name": "CastleSounds"
-    },
-    {
-      "path": "src/shared/Catalog.luau",
-      "class": "ModuleScript",
-      "name": "Catalog"
-    },
-    {
-      "path": "src/shared/Closet.luau",
-      "class": "ModuleScript",
-      "name": "Closet"
-    },
-    {
-      "path": "src/shared/Demo.luau",
-      "class": "ModuleScript",
-      "name": "Demo"
-    },
-    {
-      "path": "src/shared/Format.luau",
-      "class": "ModuleScript",
-      "name": "Format"
-    },
-    {
-      "path": "src/shared/Ids.luau",
-      "class": "ModuleScript",
-      "name": "Ids"
-    },
-    {
       "path": "src/shared/Lang.luau",
       "class": "ModuleScript",
       "name": "Lang"
-    },
-    {
-      "path": "src/shared/Logic/init.luau",
-      "class": "ModuleScript",
-      "name": "Logic"
-    },
-    {
-      "path": "src/shared/Logic/Commands.luau",
-      "class": "ModuleScript",
-      "name": "Commands"
-    },
-    {
-      "path": "src/shared/Logic/Interpreter.luau",
-      "class": "ModuleScript",
-      "name": "Interpreter"
-    },
-    {
-      "path": "src/shared/Logic/Parser.luau",
-      "class": "ModuleScript",
-      "name": "Parser"
-    },
-    {
-      "path": "src/shared/Logic/Printer.luau",
-      "class": "ModuleScript",
-      "name": "Printer"
-    },
-    {
-      "path": "src/shared/Logic/Validator.luau",
-      "class": "ModuleScript",
-      "name": "Validator"
-    },
-    {
-      "path": "src/shared/ManiacRules.luau",
-      "class": "ModuleScript",
-      "name": "ManiacRules"
     },
     {
       "path": "src/shared/Materials.luau",
@@ -100,64 +20,19 @@
       "name": "Materials"
     },
     {
-      "path": "src/shared/MathX.luau",
-      "class": "ModuleScript",
-      "name": "MathX"
-    },
-    {
-      "path": "src/shared/Model.luau",
-      "class": "ModuleScript",
-      "name": "Model"
-    },
-    {
-      "path": "src/shared/OfficeModels.luau",
-      "class": "ModuleScript",
-      "name": "OfficeModels"
-    },
-    {
-      "path": "src/shared/Ops.luau",
-      "class": "ModuleScript",
-      "name": "Ops"
-    },
-    {
-      "path": "src/shared/Prefabs.luau",
-      "class": "ModuleScript",
-      "name": "Prefabs"
-    },
-    {
-      "path": "src/shared/Rig.luau",
-      "class": "ModuleScript",
-      "name": "Rig"
-    },
-    {
-      "path": "src/shared/Roblox/Animator.luau",
-      "class": "ModuleScript",
-      "name": "Animator"
-    },
-    {
-      "path": "src/shared/Roblox/Convert.luau",
-      "class": "ModuleScript",
-      "name": "Convert"
-    },
-    {
       "path": "src/shared/Roblox/Remotes.luau",
       "class": "ModuleScript",
       "name": "Remotes"
     },
     {
-      "path": "src/shared/Roblox/WorldBuilder.luau",
+      "path": "src/shared/RoomPlan.luau",
       "class": "ModuleScript",
-      "name": "WorldBuilder"
+      "name": "RoomPlan"
     },
     {
-      "path": "src/shared/UiText.luau",
+      "path": "src/shared/Rules.luau",
       "class": "ModuleScript",
-      "name": "UiText"
-    },
-    {
-      "path": "src/shared/Util.luau",
-      "class": "ModuleScript",
-      "name": "Util"
+      "name": "Rules"
     },
     {
       "path": "src/server/Access.luau",
@@ -165,64 +40,9 @@
       "name": "Access"
     },
     {
-      "path": "src/server/AdminService.luau",
-      "class": "ModuleScript",
-      "name": "AdminService"
-    },
-    {
-      "path": "src/server/Castle/Admin.luau",
-      "class": "ModuleScript",
-      "name": "Admin"
-    },
-    {
-      "path": "src/server/Castle/CastleBuilder.luau",
-      "class": "ModuleScript",
-      "name": "CastleBuilder"
-    },
-    {
-      "path": "src/server/Castle/CastleGame.luau",
-      "class": "ModuleScript",
-      "name": "CastleGame"
-    },
-    {
-      "path": "src/server/Castle/Npc.luau",
-      "class": "ModuleScript",
-      "name": "Npc"
-    },
-    {
-      "path": "src/server/Castle/Outfits.luau",
-      "class": "ModuleScript",
-      "name": "Outfits"
-    },
-    {
-      "path": "src/server/Castle/Props.luau",
-      "class": "ModuleScript",
-      "name": "Props"
-    },
-    {
-      "path": "src/server/Castle/Rooms.luau",
-      "class": "ModuleScript",
-      "name": "Rooms"
-    },
-    {
-      "path": "src/server/Castle/Seasons.luau",
-      "class": "ModuleScript",
-      "name": "Seasons"
-    },
-    {
       "path": "src/server/Config.luau",
       "class": "ModuleScript",
       "name": "Config"
-    },
-    {
-      "path": "src/server/Core/ProjectStore.luau",
-      "class": "ModuleScript",
-      "name": "ProjectStore"
-    },
-    {
-      "path": "src/server/CurrencyService.luau",
-      "class": "ModuleScript",
-      "name": "CurrencyService"
     },
     {
       "path": "src/server/DataStoreAdapter.luau",
@@ -230,59 +50,44 @@
       "name": "DataStoreAdapter"
     },
     {
+      "path": "src/server/Game/Admin.luau",
+      "class": "ModuleScript",
+      "name": "Admin"
+    },
+    {
+      "path": "src/server/Game/Entities.luau",
+      "class": "ModuleScript",
+      "name": "Entities"
+    },
+    {
+      "path": "src/server/Game/Game.luau",
+      "class": "ModuleScript",
+      "name": "Game"
+    },
+    {
+      "path": "src/server/Game/Records.luau",
+      "class": "ModuleScript",
+      "name": "Records"
+    },
+    {
       "path": "src/server/Main.server.luau",
       "class": "Script",
       "name": "Main"
     },
     {
-      "path": "src/server/Maniac/ManiacGame.luau",
+      "path": "src/server/World/Props.luau",
       "class": "ModuleScript",
-      "name": "ManiacGame"
+      "name": "Props"
     },
     {
-      "path": "src/server/Statue.luau",
+      "path": "src/server/World/RoomBuilder.luau",
       "class": "ModuleScript",
-      "name": "Statue"
+      "name": "RoomBuilder"
     },
     {
-      "path": "src/client/Castle/AdminPanel.luau",
+      "path": "src/server/World/Special.luau",
       "class": "ModuleScript",
-      "name": "AdminPanel"
-    },
-    {
-      "path": "src/client/Castle/CastleClient.luau",
-      "class": "ModuleScript",
-      "name": "CastleClient"
-    },
-    {
-      "path": "src/client/Castle/Menu.luau",
-      "class": "ModuleScript",
-      "name": "Menu"
-    },
-    {
-      "path": "src/client/Castle/Ui.luau",
-      "class": "ModuleScript",
-      "name": "Ui"
-    },
-    {
-      "path": "src/client/Common/Bubble.luau",
-      "class": "ModuleScript",
-      "name": "Bubble"
-    },
-    {
-      "path": "src/client/Common/CameraController.luau",
-      "class": "ModuleScript",
-      "name": "CameraController"
-    },
-    {
-      "path": "src/client/Common/FreeCamera.luau",
-      "class": "ModuleScript",
-      "name": "FreeCamera"
-    },
-    {
-      "path": "src/client/Common/WeatherFx.luau",
-      "class": "ModuleScript",
-      "name": "WeatherFx"
+      "name": "Special"
     },
     {
       "path": "src/client/Main.client.luau",
@@ -290,14 +95,9 @@
       "name": "Main"
     },
     {
-      "path": "src/client/Maniac/ManiacClient.luau",
+      "path": "src/client/Ui.luau",
       "class": "ModuleScript",
-      "name": "ManiacClient"
-    },
-    {
-      "path": "src/client/UI/Kit.luau",
-      "class": "ModuleScript",
-      "name": "Kit"
+      "name": "Ui"
     }
   ],
   "target": {
