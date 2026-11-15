@@ -321,12 +321,45 @@ function Special.codeHall(parent, d, origin: CFrame, rand, prev)
 		end
 	end
 	Props.prompt(panel, "code", 0, 8)
-	-- ключ лежит на подушке в правом крыле; в левом — пустой постамент
-	local _, keyTop = Props.plinth(m, at(origin, 26, 0, -22), 2, 3)
-	P(m, "Cushion", Vector3.new(1.5, 0.2, 1.5), keyTop * CFrame.new(0, 0.1, 0), rgb(100, 20, 30), M.Fabric, nc())
-	local _, key = Props.pickup(m, keyTop * CFrame.new(0, 0.2, 0), "key")
+	-- второй щиток слева от двери: порядок экспонатов
+	local ocf = Builder.slotFront(d, origin, 8) * CFrame.new(0, 5, 0.1)
+	local orderPanel = P(m, "OrderPanel", Vector3.new(3.2, 3.6, 0.3), ocf, rgb(36, 36, 40), M.Metal)
+	for r = 0, 1 do
+		for col = 0, 3 do
+			P(m, "OrderCap", Vector3.new(0.5, 0.9, 0.08), ocf * CFrame.new(1.05 - col * 0.7, 0.7 - r * 1.3, -0.17), Props.BRASS, M.Metal, nc())
+		end
+	end
+	Props.prompt(orderPanel, "order", 0, 8)
+	-- восемь экспонатов с римскими номерами: по четыре в каждом крыле
+	local items = table.clone(Props.ODD)
+	for i = #items, 2, -1 do
+		local j = math.floor(rand() * i) + 1
+		items[i], items[j] = items[j], items[i]
+	end
+	local spots = { { -22, -16 }, { -31, -18 }, { -22, -37 }, { -31, -38 }, { 22, -16 }, { 31, -18 }, { 22, -37 }, { 31, -38 } }
+	local exhibits = {}
+	for k = 1, 8 do
+		local cf = at(origin, spots[k][1], 0, spots[k][2])
+		local cm = Props.displayCase(m, cf, items[k])
+		for _, face in { -1, 1 } do
+			local plate = P(cm, "RomanPlate", Vector3.new(1.3, 0.7, 0.08), cf * CFrame.new(0, 1.5, face * 1.34), Props.BRASS, M.Metal, nc())
+			surfaceText(plate, if face < 0 then Enum.NormalId.Front else Enum.NormalId.Back, Rules.ROMAN[code.roman[k]], nil, rgb(36, 26, 14), 60)
+		end
+		exhibits[k] = items[k]
+	end
+	-- ключ: одно из четырёх мест, каждый раз другое
+	local keySpots = {}
+	for _, sx in { -1, 1 } do
+		local _, top = Props.plinth(m, at(origin, sx * 26, 0, -26), 2, 3)
+		P(m, "Cushion", Vector3.new(1.5, 0.2, 1.5), top * CFrame.new(0, 0.1, 0), rgb(100, 20, 30), M.Fabric, nc())
+		table.insert(keySpots, top * CFrame.new(0, 0.2, 0))
+		table.insert(keySpots, at(origin, sx * 35.5, 0, -4))
+	end
+	local _, key = Props.pickup(m, keySpots[math.floor(rand() * #keySpots) + 1], "key")
 	key:SetAttribute("KeyFor", d.door + 1)
-	Props.vase(m, at(origin, -26, 0, -22), 3)
+	info.exhibits = exhibits
+	info.orderPanel = orderPanel
+	info.locks = { code = false, order = false }
 	info.code = code
 	info.codePanel = panel
 	info.sealed = true
@@ -341,6 +374,13 @@ end
 function Special.arena(parent, d, origin: CFrame, rand, prev)
 	local m, info = begin(parent, d, origin, rand, prev)
 	local fy = d.dy
+	-- зал хорошо освещён: зверя видно издалека
+	Props.LIGHT = 1.5
+	for _, x in { -24, 24 } do
+		for _, z in { -46, -86 } do
+			chandelier(info, m, at(origin, x, d.h, z).Position, 6)
+		end
+	end
 	local function cell(i: number, j: number): CFrame
 		return at(origin, i * 10, fy, -(40 + j * 10))
 	end

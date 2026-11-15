@@ -208,6 +208,23 @@ local leaveBtn = Ui.button(gui, "", function()
 	task.spawn(request, "Unhide")
 end, { Size = UDim2.fromOffset(160, 48), Position = UDim2.new(0.5, -80, 1, -150), Visible = false, ZIndex = 30 })
 
+-- вид из шкафчика: тёмная дверца с узкими прорезями, сквозь которые видно зал
+local slits = Ui.frame(gui, { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 28 })
+do
+	local gap, bar = 0.035, 0.085
+	local y = 0.2
+	Ui.frame(slits, { BackgroundColor3 = Color3.fromRGB(8, 9, 9), Size = UDim2.fromScale(1, y), ZIndex = 28 })
+	for _ = 1, 5 do
+		y += gap
+		Ui.frame(slits, { BackgroundColor3 = Color3.fromRGB(8, 9, 9), Size = UDim2.fromScale(1, bar), Position = UDim2.fromScale(0, y), ZIndex = 28 })
+		y += bar
+	end
+	Ui.frame(slits, { BackgroundColor3 = Color3.fromRGB(8, 9, 9), Size = UDim2.fromScale(1, 1 - y), Position = UDim2.fromScale(0, y), ZIndex = 28 })
+	for _, x in { 0, 0.88 } do
+		Ui.frame(slits, { BackgroundColor3 = Color3.fromRGB(8, 9, 9), Size = UDim2.fromScale(0.12, 1), Position = UDim2.fromScale(x, 0), ZIndex = 28 })
+	end
+end
+
 local function refreshHud()
 	local char = player.Character
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
@@ -274,6 +291,7 @@ player:GetAttributeChangedSignal("HiddenEye"):Connect(function()
 	local eye = player:GetAttribute("HiddenEye")
 	hiddenEye = if typeof(eye) == "CFrame" then eye else nil
 	leaveBtn.Visible = hiddenEye ~= nil
+	slits.Visible = hiddenEye ~= nil
 	if not hiddenEye then
 		setCamera()
 	end
@@ -282,7 +300,7 @@ end)
 player:GetAttributeChangedSignal("Sneaking"):Connect(function()
 	local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
 	if hum then
-		TweenService:Create(hum, TweenInfo.new(0.25), { CameraOffset = if player:GetAttribute("Sneaking") then Vector3.new(0, -1.6, 0) else Vector3.zero }):Play()
+		TweenService:Create(hum, TweenInfo.new(0.25), { CameraOffset = if player:GetAttribute("Sneaking") then Vector3.new(0, -2, 0) else Vector3.zero }):Play()
 	end
 end)
 
@@ -521,6 +539,50 @@ local function openKeypad(order)
 	keyBox.Visible = true
 end
 
+-- третий замок: нажать восемь экспонатов по порядку их римских номеров
+local ODD_ICON = { wrench = "🔧", gear = "⚙️", teapot = "🫖", skull = "💀", crown = "👑", mask = "🎭", clock = "🕰️", boot = "🥾", bottle = "🍾", gem = "💎", bulb = "💡", bigkey = "🗝️" }
+local orderBox = panel(360, 400, 64)
+local function openOrder(items)
+	orderBox:ClearAllChildren()
+	Ui.corner(orderBox, 10)
+	Ui.pad(orderBox, 14)
+	local picked = {}
+	local buttons = {}
+	local title = Ui.label(orderBox, T("Order"), { Font = Ui.BOLD, TextSize = 17, Size = UDim2.new(1, -50, 0, 30), ZIndex = 65 })
+	local _ = title
+	Ui.button(orderBox, "✕", function()
+		orderBox.Visible = false
+	end, { Size = UDim2.fromOffset(40, 30), Position = UDim2.new(1, -40, 0, 0), ZIndex = 66 })
+	local function reset()
+		table.clear(picked)
+		for _, b in buttons do
+			b.BackgroundColor3 = Ui.C.panel
+		end
+	end
+	for k = 1, 8 do
+		local id = items[k]
+		local b = Ui.button(orderBox, (ODD_ICON[id] or "?") .. "\n" .. T("odd_" .. tostring(id)), nil, { Size = UDim2.fromOffset(76, 150), Position = UDim2.fromOffset(((k - 1) % 4) * 84, 40 + math.floor((k - 1) / 4) * 160), TextSize = 13, TextWrapped = true, ZIndex = 65 })
+		buttons[k] = b
+		b.Activated:Connect(function()
+			if table.find(picked, k) then
+				return
+			end
+			table.insert(picked, k)
+			b.BackgroundColor3 = Ui.C.line
+			if #picked == 8 then
+				local r = request("Order", picked)
+				if r and r.ok then
+					orderBox.Visible = false
+				else
+					flashRed(0.2)
+					reset()
+				end
+			end
+		end)
+	end
+	orderBox.Visible = true
+end
+
 local JOURNAL = { "darkness", "mimic", "coinkeeper", "colossus", "void" }
 local journalBox = panel(420, 420, 62)
 local function openJournal()
@@ -611,6 +673,7 @@ end)
 local function closePanels()
 	coinBox.Visible = false
 	keyBox.Visible = false
+	orderBox.Visible = false
 	journalBox.Visible = false
 end
 
@@ -618,6 +681,7 @@ local function onDead(msg)
 	app.dead = true
 	hiddenEye = nil
 	leaveBtn.Visible = false
+	slits.Visible = false
 	hud.Visible = false
 	closePanels()
 	deathTitle.Text = T("Died")
@@ -870,6 +934,8 @@ Remotes.event("Game").OnClientEvent:Connect(function(msg)
 		openCoin(msg.price or 0)
 	elseif msg.type == "keypad" then
 		openKeypad(msg.order or { 1, 2, 3, 4 })
+	elseif msg.type == "order" and type(msg.items) == "table" then
+		openOrder(msg.items)
 	elseif msg.type == "voice" then
 		say(T(msg.key), true)
 	elseif msg.type == "cutscene" then

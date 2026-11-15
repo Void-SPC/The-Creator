@@ -88,6 +88,9 @@ local RUN = {
 			if info.door then
 				info.door.locked = false
 			end
+			if info.locks then
+				info.locks.code, info.locks.order = true, true
+			end
 			if info.gate and not info.gate.opened then
 				for _, l in info.levers do
 					l.need = l.on

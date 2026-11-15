@@ -404,7 +404,8 @@ local function hide(p: Player, part: BasePart)
 		p.Character:PivotTo(part.CFrame * CFrame.new(0, -part.Size.Y / 2 + 3, 0.2))
 		r.Anchored = true
 	end
-	p:SetAttribute("HiddenEye", part.CFrame * CFrame.new(0, math.min(1.6, part.Size.Y / 2 - 0.6), -part.Size.Z / 2 + 0.2))
+	-- глаза у самых прорезей дверцы: зал виден сквозь щели (их рисует клиент)
+	p:SetAttribute("HiddenEye", part.CFrame * CFrame.new(0, math.min(1.9, part.Size.Y / 2 - 0.5), -part.Size.Z / 2 - 0.55))
 end
 
 -- ---------------------------------------------------------------------------
@@ -523,48 +524,46 @@ end
 
 local wirePickups
 
-local function openDrawers(p: Player, info, sr)
-	if sr.opened then
+-- один ящик: выдвинуть или задвинуть. Находка лежит внутри и ездит вместе с ящиком
+local function toggleDrawer(info, sr, dr)
+	if dr.busy then
 		return
 	end
-	sr.opened = true
-	local pr = sr.hit:FindFirstChildOfClass("ProximityPrompt")
-	if pr then
-		pr.Enabled = false
-	end
-	sound(sr.hit, SOUND.door, 0.6, 1.4)
-	for _, dr in sr.drawers do
-		local base = dr.model.WorldPivot
-		local v = Instance.new("NumberValue")
-		v.Changed:Connect(function(a)
-			dr.model:PivotTo(base * CFrame.new(0, 0, -1.4 * a))
-		end)
-		local t = TweenService:Create(v, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Value = 1 })
-		t:Play()
-		t.Completed:Connect(function()
-			v:Destroy()
-		end)
-	end
-	task.delay(0.5, function()
-		if not sr.hit.Parent then
-			return
-		end
-		if sr.key then
-			local _, part = Props.pickup(info.model, sr.drawers[1].open, "key")
+	dr.busy = true
+	if not dr.rolled then
+		dr.rolled = true
+		local slot = Props.model(dr.model, "Loot")
+		if sr.key and sr.keyDrawer == dr then
+			local _, part = Props.pickup(slot, dr.inside * CFrame.new(-0.5, 0, 0), "key")
 			part:SetAttribute("KeyFor", sr.key)
 		end
 		local item, amount = Rules.loot(math.random(), run.front)
 		if item ~= "nothing" then
-			local dr = sr.drawers[math.random(1, #sr.drawers)]
-			local cf = dr.open * CFrame.new(if sr.key and dr == sr.drawers[1] then 0.8 else 0, 0, 0)
-			local _, part = Props.pickup(info.model, cf, item)
+			local _, part = Props.pickup(slot, dr.inside * CFrame.new(if sr.keyDrawer == dr then 0.6 else 0, 0, 0), item)
 			if item == "coins" then
 				part:SetAttribute("Amount", amount)
 			end
 		end
 		wirePickups(info)
+	end
+	dr.open = not dr.open
+	local base = dr.base or dr.model:GetPivot()
+	dr.base = base
+	local from, to = if dr.open then 0 else 1, if dr.open then 1 else 0
+	local v = Instance.new("NumberValue")
+	v.Value = from
+	v.Changed:Connect(function(a)
+		if dr.model.Parent then
+			dr.model:PivotTo(base * CFrame.new(0, 0, -1.3 * a))
+		end
 	end)
-	local _ = p
+	local t = TweenService:Create(v, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Value = to })
+	t:Play()
+	t.Completed:Connect(function()
+		v:Destroy()
+		dr.busy = false
+	end)
+	sound(dr.hit, SOUND.door, 0.5, if dr.open then 1.5 else 1.2)
 end
 
 function wirePickups(info)
@@ -604,14 +603,16 @@ local function wireRoom(info)
 		end
 	end
 	for _, sr in info.searchables do
-		local pr = sr.hit:FindFirstChildOfClass("ProximityPrompt")
-		if pr and not pr:GetAttribute("Wired") then
-			pr:SetAttribute("Wired", true)
-			pr.Triggered:Connect(function(p)
-				if G.isAlive(p) then
-					openDrawers(p, info, sr)
-				end
-			end)
+		for _, dr in sr.drawers do
+			local pr = dr.hit:FindFirstChildOfClass("ProximityPrompt")
+			if pr and not pr:GetAttribute("Wired") then
+				pr:SetAttribute("Wired", true)
+				pr.Triggered:Connect(function(p)
+					if G.isAlive(p) then
+						toggleDrawer(info, sr, dr)
+					end
+				end)
+			end
 		end
 	end
 	wirePickups(info)
@@ -853,30 +854,65 @@ end
 -- ---------------------------------------------------------------------------
 -- кодовый замок, арена, лифт
 
+local function panelDone(panel: BasePart)
+	panel.Color = Color3.fromRGB(60, 200, 90)
+	panel.Material = M.Neon
+	local pr = panel:FindFirstChildOfClass("ProximityPrompt")
+	if pr then
+		pr.Enabled = false
+	end
+	sound(panel, SOUND.pick, 1.2, 0.8)
+end
+
 local function wireCode(info)
 	info.codePanel:FindFirstChildOfClass("ProximityPrompt").Triggered:Connect(function(p)
-		if G.isAlive(p) and info.sealed then
+		if G.isAlive(p) and not info.locks.code then
 			send(p, { type = "keypad", order = info.code.order })
+		end
+	end)
+	info.orderPanel:FindFirstChildOfClass("ProximityPrompt").Triggered:Connect(function(p)
+		if G.isAlive(p) and not info.locks.order then
+			send(p, { type = "order", items = info.exhibits })
 		end
 	end)
 end
 
-function G.code(p: Player, text: string)
+local function nearPanel(p: Player, panel: BasePart): boolean
 	local r = rootOf(p)
+	return r ~= nil and G.isAlive(p) and (panel.Position - r.Position).Magnitude < 18
+end
+
+-- замок с цифрами
+function G.code(p: Player, text: string)
 	local info = run.rooms[Rules.CODE_ROOM]
-	if not info or not info.sealed or not r or not G.isAlive(p) or (info.codePanel.Position - r.Position).Magnitude > 16 then
+	if not info or info.locks.code or not nearPanel(p, info.codePanel) then
 		return { ok = false }
 	end
 	if text ~= info.code.text then
 		sound(info.codePanel, SOUND.locked, 1, 0.6)
 		return { ok = false }
 	end
-	info.sealed = false
-	info.codePanel.Color = Color3.fromRGB(60, 200, 90)
-	info.codePanel.Material = M.Neon
-	local pr = info.codePanel:FindFirstChildOfClass("ProximityPrompt")
-	pr.Enabled = false
-	sound(info.codePanel, SOUND.pick, 1.2, 0.8)
+	info.locks.code = true
+	info.sealed = not (info.locks.code and info.locks.order)
+	panelDone(info.codePanel)
+	return { ok = true }
+end
+
+-- замок с порядком экспонатов: list — номера экспонатов в том порядке, как их нажали
+function G.order(p: Player, list)
+	local info = run.rooms[Rules.CODE_ROOM]
+	if not info or info.locks.order or not nearPanel(p, info.orderPanel) or type(list) ~= "table" then
+		return { ok = false }
+	end
+	for i = 1, 8 do
+		if list[i] ~= info.code.sequence[i] then
+			sound(info.orderPanel, SOUND.locked, 1, 0.6)
+			return { ok = false }
+		end
+	end
+	info.locks.order = true
+	info.sealed = not (info.locks.code and info.locks.order)
+	panelDone(info.orderPanel)
 	return { ok = true }
 end
 
@@ -1013,7 +1049,10 @@ local function buildRoom(n: number)
 	end
 	if d.locked then
 		if #info.searchables > 0 then
-			info.searchables[math.floor(rand() * #info.searchables) + 1].key = n + 1
+			-- ключ лежит в одном случайном ящике этого зала
+			local sr = info.searchables[math.floor(rand() * #info.searchables) + 1]
+			sr.key = n + 1
+			sr.keyDrawer = sr.drawers[math.floor(rand() * #sr.drawers) + 1]
 		else
 			-- ящиков нет: ключ лежит на полу у дальней стены
 			local side = if n % 2 == 0 then 1 else -1
@@ -1305,6 +1344,10 @@ local function loadCharacter(p: Player, cf: CFrame, inRun: boolean)
 	p:LoadCharacter()
 	local char = p.Character or p.CharacterAdded:Wait()
 	char:WaitForChild("HumanoidRootPart", 5)
+	-- персонаж чуть крупнее обычного: двери, витрины и шкафчики ему по росту
+	pcall(function()
+		char:ScaleTo(1.2)
+	end)
 	local hum = char:FindFirstChildOfClass("Humanoid")
 	if hum then
 		hum.WalkSpeed = Rules.SPEED.walk
@@ -1536,6 +1579,8 @@ function G.init()
 			return G.pay(p, arg)
 		elseif action == "Code" and type(arg) == "string" and #arg <= 8 then
 			return G.code(p, arg)
+		elseif action == "Order" then
+			return G.order(p, arg)
 		elseif action == "Journal" then
 			return { ok = true, journal = Records.journal(p) }
 		elseif action == "Lobby" then

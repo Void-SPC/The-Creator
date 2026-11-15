@@ -58,7 +58,7 @@ C.LIST = {
 	{ id = "god", en = "Immortality on / off", ru = "Бессмертие вкл / выкл" },
 	{ id = "skip", en = "Open 5 doors ahead", ru = "Открыть 5 дверей вперёд" },
 	{ id = "skip20", en = "Open 20 doors ahead", ru = "Открыть 20 дверей вперёд" },
-	{ id = "to_code", en = "To door 049 (code lock hall)", ru = "К двери 049 (зал с кодовым замком)" },
+	{ id = "to_code", en = "To door 048 (hall of three locks)", ru = "К двери 048 (зал трёх замков)" },
 	{ id = "to_lift", en = "To door 099 (elevator and stairs)", ru = "К двери 099 (лифт и лестница)" },
 	{ id = "darkness", en = "Summon the Darkness", ru = "Вызвать Тьму" },
 	{ id = "unseal", en = "Solve the puzzle of this room", ru = "Решить загадку этого зала" },
@@ -99,7 +99,7 @@ Lang.en = {
 	JournalEmpty = "The pages are empty for now",
 	JournalNew = "A new page in the journal",
 	MuseumSign = "MUSEUM",
-	EndlessSoon = "ENDLESS MODE\nSOON",
+	EndlessSoon = "ENDLESS MODE\nCOMING SOON",
 
 	item_flashlight = "Flashlight",
 	item_battery = "Battery",
@@ -110,7 +110,8 @@ Lang.en = {
 	item_meat = "Meat",
 
 	p_hide = "Hide / leave",
-	p_search = "Search",
+	p_drawer = "Open / close",
+	p_order = "Set the order",
 	p_pick = "Take",
 	p_lockpick = "Pick the lock",
 	p_talk = "Talk",
@@ -128,14 +129,27 @@ Lang.en = {
 	GodOn = "Immortality on",
 	GodOff = "Immortality off",
 
-	DoorShut = "The door seems to have shut, I need to find a way out of here",
-	LiftLocked = "The elevator is locked, please use the maintenance stairs",
+	DoorShut = "The door seems to have shut, I need to find another way out",
+	LiftLocked = "Attention, elevator service has been suspended, to access the lower exhibition sector please use the maintenance stairwell",
 	CoinLine = "Give me the gold, or pay another way",
 	CoinPrice = "%d coins",
 	PayGold = "Pay with gold",
 	PaySelf = "Pay with yourself",
 	NoGold = "Not enough gold",
 	Code = "Code",
+	Order = "Order of the exhibits",
+	odd_wrench = "Wrench",
+	odd_gear = "Gear",
+	odd_teapot = "Teapot",
+	odd_skull = "Skull",
+	odd_crown = "Crown",
+	odd_mask = "Mask",
+	odd_clock = "Clock",
+	odd_boot = "Boot",
+	odd_bottle = "Bottle",
+	odd_gem = "Gem",
+	odd_bulb = "Light bulb",
+	odd_bigkey = "Old key",
 	Clear = "Clear",
 
 	Died = "You died",
@@ -184,7 +198,8 @@ Lang.ru = {
 	item_meat = "Мясо",
 
 	p_hide = "Спрятаться / выйти",
-	p_search = "Обыскать",
+	p_drawer = "Открыть / закрыть",
+	p_order = "Выставить порядок",
 	p_pick = "Взять",
 	p_lockpick = "Вскрыть замок",
 	p_talk = "Говорить",
@@ -202,14 +217,27 @@ Lang.ru = {
 	GodOn = "Бессмертие включено",
 	GodOff = "Бессмертие выключено",
 
-	DoorShut = "Кажется, дверь закрылась, надо найти способ выбраться отсюда",
-	LiftLocked = "Лифт заперт, пожалуйста, используйте лестницу для техобслуживания",
+	DoorShut = "Кажется, дверь закрылась, нужно найти другой выход",
+	LiftLocked = "Внимание, работа лифта приостановлена, для перехода в нижний выставочный сектор воспользуйтесь служебной лестницей",
 	CoinLine = "Отдай мне золото или расплатись другим способом",
 	CoinPrice = "Монет: %d",
 	PayGold = "Расплатиться золотом",
 	PaySelf = "Расплатиться собой",
 	NoGold = "Золота не хватает",
 	Code = "Код",
+	Order = "Порядок экспонатов",
+	odd_wrench = "Гаечный ключ",
+	odd_gear = "Шестерня",
+	odd_teapot = "Чайник",
+	odd_skull = "Череп",
+	odd_crown = "Корона",
+	odd_mask = "Маска",
+	odd_clock = "Часы",
+	odd_boot = "Сапог",
+	odd_bottle = "Бутылка",
+	odd_gem = "Самоцвет",
+	odd_bulb = "Лампочка",
+	odd_bigkey = "Старый ключ",
 	Clear = "Стереть",
 
 	Died = "Ты погиб",
@@ -360,30 +388,31 @@ local Plan = {}
 -- выходы, branch — сколько дверей (лишние ложные), min — с какой двери встречается,
 -- door — какие двери любит зал, hides — сколько шкафчиков самое большее
 Plan.TEMPLATES = {
-	corridor = { w = 12, l = 40, h = 13, weight = 12, exits = { "front", "side" }, door = "normal", hides = 1 },
-	longhall = { w = 12, l = 70, h = 13, weight = 5, min = 5, exits = { "front", "side" }, door = "normal", hides = 2 },
-	shorthall = { w = 12, l = 22, h = 13, weight = 5, exits = { "front" }, door = "normal", hides = 1 },
-	gallery = { w = 30, l = 44, h = 16, weight = 9, exits = { "front", "side" }, branch = 2, door = "grand", hides = 2 },
-	sculpture = { w = 36, l = 40, h = 18, weight = 8, exits = { "front", "frontL", "frontR", "side" }, door = "grand", hides = 2 },
-	cases = { w = 30, l = 34, h = 14, weight = 8, exits = { "front", "frontL", "frontR", "side" }, door = "normal", hides = 2 },
-	fossil = { w = 44, l = 56, h = 24, weight = 4, min = 8, exits = { "front", "side" }, door = "grand", hides = 3 },
-	armory = { w = 28, l = 36, h = 14, weight = 5, exits = { "front", "side" }, door = "normal", hides = 2 },
-	ceramics = { w = 26, l = 30, h = 14, weight = 6, exits = { "front", "frontL", "frontR" }, door = "normal", hides = 2 },
+	corridor = { w = 12, l = 40, h = 13, weight = 6, exits = { "front", "side" }, door = "normal", hides = 1 },
+	longhall = { w = 12, l = 70, h = 13, weight = 3, min = 5, exits = { "front", "side" }, door = "normal", hides = 2 },
+	shorthall = { w = 12, l = 22, h = 13, weight = 3, exits = { "front" }, door = "normal", hides = 1 },
+	gallery = { w = 30, l = 44, h = 16, weight = 10, exits = { "front", "side" }, branch = 2, door = "grand", hides = 2 },
+	sculpture = { w = 36, l = 40, h = 18, weight = 10, exits = { "front", "frontL", "frontR", "side" }, door = "grand", hides = 2 },
+	cases = { w = 30, l = 34, h = 14, weight = 9, exits = { "front", "frontL", "frontR", "side" }, door = "normal", hides = 2 },
+	fossil = { w = 44, l = 56, h = 24, weight = 7, min = 8, exits = { "front", "side" }, door = "grand", hides = 3 },
+	armory = { w = 28, l = 36, h = 14, weight = 7, exits = { "front", "side" }, door = "normal", hides = 2 },
+	ceramics = { w = 26, l = 30, h = 14, weight = 7, exits = { "front", "frontL", "frontR" }, door = "normal", hides = 2 },
 	archive = { w = 34, l = 40, h = 16, weight = 5, min = 6, exits = { "frontL", "frontR", "side" }, branch = 2, door = "normal", hides = 2 },
-	storage = { w = 30, l = 34, h = 14, weight = 5, min = 6, exits = { "frontL", "frontR", "side" }, branch = 2, door = "small", hides = 2 },
-	tech = { w = 12, l = 34, h = 10, weight = 4, min = 12, exits = { "front" }, door = "small", hides = 2 },
-	stairsup = { w = 16, l = 40, h = 13, weight = 3, min = 4, dy = 10, exits = { "front" }, door = "normal", hides = 1 },
-	stairsdown = { w = 16, l = 40, h = 13, weight = 3, min = 4, dy = -10, exits = { "front" }, door = "normal", hides = 1 },
-	restroom = { w = 24, l = 26, h = 12, weight = 4, exits = { "front" }, door = "small", hides = 1 },
+	storage = { w = 30, l = 34, h = 14, weight = 4, min = 6, exits = { "frontL", "frontR", "side" }, branch = 2, door = "small", hides = 2 },
+	tech = { w = 12, l = 34, h = 10, weight = 3, min = 12, exits = { "front" }, door = "small", hides = 2 },
+	stairsup = { w = 16, l = 40, h = 13, weight = 2, min = 4, dy = 10, exits = { "front" }, door = "normal", hides = 1 },
+	stairsdown = { w = 16, l = 40, h = 13, weight = 2, min = 4, dy = -10, exits = { "front" }, door = "normal", hides = 1 },
+	restroom = { w = 24, l = 26, h = 12, weight = 3, exits = { "front" }, door = "small", hides = 1 },
 	cafe = { w = 32, l = 32, h = 14, weight = 4, exits = { "front", "side" }, door = "normal", hides = 1 },
-	rotunda = { w = 46, l = 46, h = 24, weight = 4, min = 10, exits = { "front", "frontL", "frontR", "side" }, branch = 3, door = "grand", hides = 3 },
-	oddities = { w = 30, l = 30, h = 14, weight = 6, exits = { "front", "frontL", "frontR" }, door = "normal", hides = 2 },
+	rotunda = { w = 46, l = 46, h = 24, weight = 6, min = 10, exits = { "front", "frontL", "frontR", "side" }, branch = 3, door = "grand", hides = 3 },
+	oddities = { w = 30, l = 30, h = 14, weight = 7, exits = { "front", "frontL", "frontR" }, door = "normal", hides = 2 },
 	blank = { w = 30, l = 30, h = 14, weight = 2, min = 15, exits = { "front", "frontL", "frontR" }, door = "normal", hides = 1 },
 	-- особые: выбираются отдельно
 	figures = { w = 40, l = 40, h = 16, exits = { "front" }, door = "normal", hides = 0 },
 	voidhall = { w = 12, l = 180, h = 14, exits = { "front" }, door = "normal", hides = 2 },
 	start = { w = 30, l = 30, h = 16, exits = { "front" }, door = "grand", hides = 0 },
 	codehall = { w = 76, l = 44, h = 18, exits = { "front" }, door = "grand", hides = 2 },
+	passage = { w = 18, l = 44, h = 16, exits = { "front" }, door = "grand", hides = 1 },
 	arena = { w = 80, l = 104, h = 26, dy = -10, exits = { "front" }, door = "grand", hides = 0 },
 	lifthall = { w = 30, l = 30, h = 16, exits = { "front" }, door = "small", hides = 0 },
 	final = { w = 50, l = 60, h = 20, exits = { "front" }, door = "normal", hides = 0 },
@@ -391,10 +420,10 @@ Plan.TEMPLATES = {
 
 Plan.ORDER = { "corridor", "longhall", "shorthall", "gallery", "sculpture", "cases", "fossil", "armory", "ceramics", "archive", "storage", "tech", "stairsup", "stairsdown", "restroom", "cafe", "rotunda", "oddities", "blank" }
 
-Plan.DOORS = { small = { w = 4, h = 8 }, normal = { w = 5, h = 9 }, grand = { w = 8, h = 12 } }
+Plan.DOORS = { small = { w = 4, h = 7.5 }, normal = { w = 5, h = 8 }, grand = { w = 8, h = 11 } }
 local RANK = { small = 1, normal = 2, grand = 3 }
 
-local SPECIAL = { [0] = "start", [Rules.CODE_ROOM] = "codehall", [Rules.BOSS_ROOM] = "arena", [Rules.LIFT_ROOM] = "lifthall", [Rules.FINAL_ROOM] = "final" }
+local SPECIAL = { [0] = "start", [Rules.CODE_ROOM] = "codehall", [Rules.PASS_ROOM] = "passage", [Rules.BOSS_ROOM] = "arena", [Rules.LIFT_ROOM] = "lifthall", [Rules.FINAL_ROOM] = "final" }
 
 -- перед особыми залами путь прямой и спокойный
 local function straightZone(door: number): boolean
@@ -482,6 +511,10 @@ local function overlaps(state, r): boolean
 	return false
 end
 Plan.overlaps = overlaps
+
+-- залы, к которым сбоку может быть пристроен туалет: где в боковой стене дверь (z)
+Plan.ANNEX = { sculpture = -26, cases = -22, armory = -24.5, fossil = -44 }
+Plan.ANNEX_SIZE = { w = 18, l = 16, h = 11 }
 
 -- какой зал будет за дверью door (выбирается заранее, чтобы знать размер двери)
 local function pickKind(state, door: number): string
@@ -639,6 +672,29 @@ function Plan.room(state, door: number)
 		d.mono = door &gt; 10 and rand() &lt; 0.04
 	end
 	state.lastHides = hides
+	-- пристройка-туалет с той стороны, куда путь не поворачивает (если там свободно)
+	local az = Plan.ANNEX[d.kind]
+	if az and not special and door &gt;= 3 and rand() &lt; 0.45 then
+		local s = if state.heading == 0 then -state.side else state.heading
+		local A = Plan.ANNEX_SIZE
+		local fx, fz, rx, rz = frame(state.heading)
+		local xs, zs = {}, {}
+		for _, c in { { d.w / 2, -az - A.w / 2 }, { d.w / 2 + A.l + 1, -az - A.w / 2 }, { d.w / 2, -az + A.w / 2 }, { d.w / 2 + A.l + 1, -az + A.w / 2 } } do
+			table.insert(xs, state.ox + rx * s * c[1] + fx * c[2])
+			table.insert(zs, state.oz + rz * s * c[1] + fz * c[2])
+		end
+		local r = { math.min(table.unpack(xs)), math.min(table.unpack(zs)), math.max(table.unpack(xs)), math.max(table.unpack(zs)) }
+		local free = true
+		for _, o in state.rects do
+			if math.min(r[3], o[3]) - math.max(r[1], o[1]) &gt; -Plan.GAP and math.min(r[4], o[4]) - math.max(r[2], o[2]) &gt; -Plan.GAP then
+				free = false
+			end
+		end
+		if free then
+			d.annex = { side = s, z = az, rect = r }
+			table.insert(state.rects, r)
+		end
+	end
 	d.light = Rules.light(door)
 	-- размер дверей: вход — как выход прошлого зала; выход — по вкусу этого и следующего
 	d.entrySize = state.lastExit or "grand"
@@ -652,7 +708,7 @@ function Plan.room(state, door: number)
 	state.lastExit = d.exitSize
 	-- запомнить место и перейти к выходу
 	table.insert(state.rects, mine)
-	if #state.rects &gt; 7 then
+	while #state.rects &gt; 9 do
 		table.remove(state.rects, 1)
 	end
 	local nx = after(state, d.exit.x, d.exit.z, d.exit.turn)
@@ -678,13 +734,14 @@ local Rules = {}
 -- локация --------------------------------------------------------------------
 
 Rules.CHAPTER = 100
-Rules.CODE_ROOM = 49 -- зал с кодовым замком (дверь 050 заперта)
+Rules.CODE_ROOM = 48 -- зал трёх замков (дверь 049 заперта)
+Rules.PASS_ROOM = 49 -- переход к залу Колосса
 Rules.BOSS_ROOM = 50 -- зал Колосса
 Rules.LIFT_ROOM = 99 -- лифт, загадка и лестница обслуживания
 Rules.FINAL_ROOM = 100 -- заброшенный зал
 
 function Rules.isSpecial(door: number): boolean
-	return door == 0 or door == Rules.CODE_ROOM or door == Rules.BOSS_ROOM or door == Rules.LIFT_ROOM or door == Rules.FINAL_ROOM
+	return door == 0 or door == Rules.CODE_ROOM or door == Rules.PASS_ROOM or door == Rules.BOSS_ROOM or door == Rules.LIFT_ROOM or door == Rules.FINAL_ROOM
 end
 
 function Rules.plate(door: number): string
@@ -805,15 +862,16 @@ end
 
 -- что лежит в ящике: r в [0, 1)
 function Rules.loot(r: number, door: number): (string, number)
-	if r &lt; 0.4 then
-		return "coins", 3 + math.floor(r * 25) + math.floor(door / 10)
-	elseif r &lt; 0.52 then
+	-- у каждого ящика своя находка, поэтому пустых больше
+	if r &lt; 0.25 then
+		return "coins", 3 + math.floor(r * 40) + math.floor(door / 10)
+	elseif r &lt; 0.33 then
 		return "battery", 1
-	elseif r &lt; 0.56 then
+	elseif r &lt; 0.355 then
 		return "lockpick", 1
-	elseif r &lt; 0.575 then
+	elseif r &lt; 0.365 then
 		return "plant", 1
-	elseif r &lt; 0.585 then
+	elseif r &lt; 0.372 then
 		return "hammer", 1
 	end
 	return "nothing", 0
@@ -839,6 +897,7 @@ Rules.COLOSSUS = { wander = 8, hunt = 16, sniffEvery = 11, sniffTime = 2.6, snif
 
 -- кодовый замок: четыре цифры 1–6 (сколько предметов на витрине каждого цвета)
 Rules.COLORS = { "red", "blue", "green", "yellow" }
+Rules.ROMAN = { "I", "II", "III", "IV", "V", "VI", "VII", "VIII" }
 
 function Rules.code(rand: () -&gt; number)
 	local digits, order = {}, { 1, 2, 3, 4 }
@@ -853,8 +912,19 @@ function Rules.code(rand: () -&gt; number)
 	for _, c in order do
 		text ..= digits[c]
 	end
-	-- digits[i] — число для цвета i; order — порядок цветов на замке; text — код
-	return { digits = digits, order = order, text = text }
+	-- третий замок: восемь экспонатов с римскими номерами I–VIII в случайном порядке
+	local roman = { 1, 2, 3, 4, 5, 6, 7, 8 }
+	for i = 8, 2, -1 do
+		local j = 1 + math.floor(rand() * i)
+		roman[i], roman[j] = roman[j], roman[i]
+	end
+	local sequence = {}
+	for item, num in roman do
+		sequence[num] = item
+	end
+	-- digits[i] — число для цвета i; order — порядок цветов на замке; text — код;
+	-- roman[k] — номер экспоната k; sequence — в каком порядке нажимать экспонаты
+	return { digits = digits, order = order, text = text, roman = roman, sequence = sequence }
 end
 
 -- зеркала: сетка клеток (i, j). Зеркало в состоянии 1 меняет местами оси луча,
@@ -1210,6 +1280,9 @@ local RUN = {
 			info.sealed = false
 			if info.door then
 				info.door.locked = false
+			end
+			if info.locks then
+				info.locks.code, info.locks.order = true, true
 			end
 			if info.gate and not info.gate.opened then
 				for _, l in info.levers do
@@ -1746,45 +1819,80 @@ function E.spawnColossus(info)
 	if not model then
 		return nil
 	end
-	marble(model, rgb(196, 192, 184))
-	local head = model:FindFirstChild("Head") :: BasePart?
-	local function weldTo(to: BasePart, name, size, offset: CFrame, color, mat)
+	-- человеческий каркас только двигает существо и остаётся невидимым; видно каменного
+	-- зверя из мраморных блоков: длинное тело, четыре ноги, шея, голова без глаз, хвост
+	for _, dsc in model:GetDescendants() do
+		if dsc:IsA("BasePart") then
+			dsc.Transparency = 1
+			dsc.CanQuery = false
+		elseif dsc:IsA("Decal") then
+			dsc:Destroy()
+		end
+	end
+	local hrp = model:FindFirstChild("HumanoidRootPart") :: BasePart
+	local stone, dark = rgb(206, 202, 194), rgb(120, 116, 110)
+	local motors = { legs = {} }
+	local function piece(name, size, offset: CFrame, color, jointAt: CFrame?)
 		local p = Instance.new("Part")
 		p.Name = name
 		p.Size = size
-		p.Color = color
-		p.Material = mat or M.Marble
+		p.Color = color or stone
+		p.Material = M.Marble
 		p.CanCollide = false
 		p.CanQuery = false
 		p.Massless = true
-		p.CFrame = to.CFrame * offset
-		local w = Instance.new("WeldConstraint")
-		w.Part0 = to
-		w.Part1 = p
-		w.Parent = p
+		p.TopSurface = Enum.SurfaceType.Smooth
+		p.BottomSurface = Enum.SurfaceType.Smooth
+		p.CFrame = hrp.CFrame * offset
+		local mt = Instance.new("Motor6D")
+		mt.Part0 = hrp
+		mt.Part1 = p
+		-- сустав: точка вращения в координатах корня и та же точка в координатах детали
+		local joint = jointAt or offset
+		mt.C0 = joint
+		mt.C1 = offset:Inverse() * joint
+		mt.Parent = p
 		p.Parent = model
+		return p, mt
 	end
-	if head then
-		local s = head.Size
-		-- гладкое лицо без глаз, трещины, широкие ноздри, каменные уши
-		weldTo(head, "Brow", Vector3.new(s.X * 1.02, s.Y * 0.22, s.Z * 1.02), CFrame.new(0, s.Y * 0.16, 0), rgb(170, 166, 158))
-		for _, x in { -1, 1 } do
-			weldTo(head, "Nostril", Vector3.new(s.X * 0.12, s.Y * 0.1, 0.2), CFrame.new(x * s.X * 0.1, -s.Y * 0.08, -s.Z / 2 - 0.05), rgb(40, 38, 36))
-			weldTo(head, "Ear", Vector3.new(0.4, s.Y * 0.6, s.Z * 0.45), CFrame.new(x * s.X * 0.56, 0, 0) * CFrame.Angles(0, x * 0.4, 0), rgb(196, 192, 184))
+	piece("Body", Vector3.new(7, 6, 15), CFrame.new(0, 1, 1))
+	piece("Chest", Vector3.new(8, 7, 5), CFrame.new(0, 1.4, -5.5))
+	for k = 0, 3 do
+		piece("Spine", Vector3.new(2.2 - k * 0.2, 2.6 - k * 0.3, 2.4), CFrame.new(0, 4.8 - k * 0.2, -5 + k * 3.6) * CFrame.Angles(0.3, 0, 0), dark)
+	end
+	piece("Crack", Vector3.new(0.25, 4.5, 6), CFrame.new(3.52, 1.4, 0) * CFrame.Angles(0.5, 0, 0), rgb(60, 58, 56))
+	piece("Crack", Vector3.new(0.25, 3.5, 5), CFrame.new(-3.52, 0.8, 3) * CFrame.Angles(-0.4, 0, 0), rgb(60, 58, 56))
+	-- шея и голова двигаются вместе, когда он принюхивается
+	local neckJoint = CFrame.new(0, 3, -7.5)
+	local _, neckM = piece("Neck", Vector3.new(3.6, 3.6, 6.5), CFrame.new(0, 4.6, -10) * CFrame.Angles(0.45, 0, 0), stone, neckJoint)
+	local _, headM = piece("Head", Vector3.new(4.6, 3.8, 6.8), CFrame.new(0, 6.6, -14.4), stone, neckJoint)
+	local _, jawM = piece("Jaw", Vector3.new(4, 1.1, 5.6), CFrame.new(0, 4.3, -14.6), dark, neckJoint)
+	local _, crestM = piece("Crest", Vector3.new(1, 2.4, 4.4), CFrame.new(0, 9, -13.2) * CFrame.Angles(-0.3, 0, 0), dark, neckJoint)
+	local _, n1 = piece("Nostril", Vector3.new(0.5, 0.9, 0.2), CFrame.new(-0.9, 6.3, -17.82), rgb(30, 28, 26), neckJoint)
+	local _, n2 = piece("Nostril", Vector3.new(0.5, 0.9, 0.2), CFrame.new(0.9, 6.3, -17.82), rgb(30, 28, 26), neckJoint)
+	local _, brow = piece("BlindBrow", Vector3.new(4.8, 1, 3), CFrame.new(0, 7.6, -15.6), dark, neckJoint)
+	motors.head = { neckM, headM, jawM, crestM, n1, n2, brow }
+	for _, mt in motors.head do
+		mt:SetAttribute("Rest", mt.C0)
+	end
+	-- ноги: бедро качается при ходьбе
+	for _, sx in { -1, 1 } do
+		for _, z in { -5, 6.5 } do
+			local hip = CFrame.new(sx * 3.6, 0, z)
+			local _, lm = piece("Leg", Vector3.new(2.6, 9.2, 3), CFrame.new(sx * 3.6, -4.6, z), stone, hip)
+			local _, fm = piece("Foot", Vector3.new(3.4, 1, 4.2), CFrame.new(sx * 3.6, -8.8, z - 0.5), dark, hip)
+			table.insert(motors.legs, { lm, fm, phase = if (sx &lt; 0) == (z &lt; 0) then 0 else math.pi, rest = hip })
 		end
-		weldTo(head, "Crack", Vector3.new(0.15, s.Y * 0.7, 0.1), CFrame.new(s.X * 0.2, 0.1, -s.Z / 2 - 0.03) * CFrame.Angles(0, 0, 0.35), rgb(60, 58, 56))
-		weldTo(head, "Mouth", Vector3.new(s.X * 0.5, s.Y * 0.07, 0.1), CFrame.new(0, -s.Y * 0.28, -s.Z / 2 - 0.03), rgb(50, 46, 44))
 	end
-	local torso = model:FindFirstChild("UpperTorso") :: BasePart?
-	if torso then
-		weldTo(torso, "Crack", Vector3.new(0.2, torso.Size.Y * 0.9, 0.1), CFrame.new(-torso.Size.X * 0.15, 0, -torso.Size.Z / 2 - 0.03) * CFrame.Angles(0, 0, -0.3), rgb(60, 58, 56))
+	for k = 0, 4 do
+		piece("Tail", Vector3.new(3 - k * 0.5, 2.6 - k * 0.4, 3.4), CFrame.new(0, 1 - k * 1.1, 9.5 + k * 3) * CFrame.Angles(-0.35, 0, 0), if k % 2 == 0 then stone else dark)
 	end
 	model:PivotTo(info.arena.spawn * CFrame.new(0, 3 * 3.1, 0))
 	local root = model:FindFirstChild("HumanoidRootPart") :: BasePart
 	root.Anchored = true
 	model.Parent = info.model
 	CollectionService:AddTag(model, "Colossus")
-	boss = { model = model, hum = hum, root = root, info = info, state = "statue", target = nil, sniffAt = 0, until_ = 0, wanderAt = 0, path = nil, pathAt = 0, wp = 1 }
+	boss = { model = model, hum = hum, root = root, info = info, motors = motors, state = "statue", target = nil, sniffAt = 0, until_ = 0, wanderAt = 0, path = nil, pathAt = 0, wp = 1 }
 	return model
 end
 
@@ -1865,23 +1973,42 @@ local function bossGo(goal: Vector3)
 	end
 end
 
--- принюхивается: голова поворачивается из стороны в сторону
+-- принюхивается: шея и голова медленно водят из стороны в сторону
 local function sniffAnim(b)
-	local head = b.model:FindFirstChild("Head")
-	local neck = head and head:FindFirstChild("Neck")
-	if neck and neck:IsA("Motor6D") then
-		local base = neck.C0
-		task.spawn(function()
-			for _, a in { 0.5, -0.5, 0.35, 0 } do
-				TweenService:Create(neck, TweenInfo.new(Rules.COLOSSUS.sniffTime / 4, Enum.EasingStyle.Sine), { C0 = base * CFrame.Angles(-0.25, a, 0) }):Play()
-				task.wait(Rules.COLOSSUS.sniffTime / 4)
-			end
-			if neck.Parent then
-				neck.C0 = base
-			end
-		end)
-	end
+	b.sniffFrom = os.clock()
 	sound(b.root, SOUND.rumble, 1.4, 0.5)
+end
+
+-- ноги шагают, пока он идёт; голова качается, когда принюхивается
+local function animateBeast()
+	local b = boss
+	if not b or not b.motors or not b.root.Parent then
+		return
+	end
+	local t = os.clock()
+	local v = b.root.AssemblyLinearVelocity
+	local speed = Vector3.new(v.X, 0, v.Z).Magnitude
+	local amp = math.clamp(speed / 12, 0, 1) * 0.45
+	for _, leg in b.motors.legs do
+		local a = math.sin(t * (3 + speed * 0.25) + leg.phase) * amp
+		local c0 = leg.rest * CFrame.Angles(a, 0, 0)
+		leg[1].C0 = c0
+		leg[2].C0 = c0
+	end
+	local yaw, pitch = 0, 0
+	if b.sniffFrom and t - b.sniffFrom &lt; Rules.COLOSSUS.sniffTime then
+		local k = (t - b.sniffFrom) / Rules.COLOSSUS.sniffTime
+		yaw = math.sin(k * math.pi * 3) * 0.6
+		pitch = -0.25 * math.sin(k * math.pi)
+	elseif b.state == "hunt" or b.state == "bait" then
+		pitch = 0.12
+	end
+	for _, mt in b.motors.head do
+		local rest = mt:GetAttribute("Rest")
+		if typeof(rest) == "CFrame" then
+			mt.C0 = rest * CFrame.Angles(pitch, yaw, 0)
+		end
+	end
 end
 
 local function melt(b)
@@ -1899,8 +2026,8 @@ local function melt(b)
 	fire.LightEmission = 0.8
 	fire.Parent = b.root
 	for _, d in b.model:GetDescendants() do
-		if d:IsA("BasePart") then
-			TweenService:Create(d, TweenInfo.new(4), { Color = rgb(60, 40, 30), Transparency = if d.Name == "HumanoidRootPart" then 1 else 0.9 }):Play()
+		if d:IsA("BasePart") and d.Transparency &lt; 1 then
+			TweenService:Create(d, TweenInfo.new(4), { Color = rgb(60, 40, 30), Transparency = 0.9 }):Play()
 		end
 	end
 	task.delay(4.2, function()
@@ -1927,7 +2054,7 @@ local function stepColossus()
 			if radius &gt; 0 then
 				E.noise(r.Position, radius)
 			end
-			if flat(r.Position - b.root.Position).Magnitude &lt; 7 and b.state ~= "eat" then
+			if flat(r.Position - b.root.Position).Magnitude &lt; 8.5 and b.state ~= "eat" then
 				G.kill(p, "colossus")
 				sound(b.root, SOUND.stone, 1.6, 0.5)
 				if b.state == "hunt" then
@@ -2026,6 +2153,9 @@ end
 
 function E.init(game_)
 	G = game_
+	RunService.Heartbeat:Connect(function()
+		pcall(animateBeast)
+	end)
 	task.spawn(function()
 		while true do
 			task.wait(0.15)
@@ -2454,7 +2584,8 @@ local function hide(p: Player, part: BasePart)
 		p.Character:PivotTo(part.CFrame * CFrame.new(0, -part.Size.Y / 2 + 3, 0.2))
 		r.Anchored = true
 	end
-	p:SetAttribute("HiddenEye", part.CFrame * CFrame.new(0, math.min(1.6, part.Size.Y / 2 - 0.6), -part.Size.Z / 2 + 0.2))
+	-- глаза у самых прорезей дверцы: зал виден сквозь щели (их рисует клиент)
+	p:SetAttribute("HiddenEye", part.CFrame * CFrame.new(0, math.min(1.9, part.Size.Y / 2 - 0.5), -part.Size.Z / 2 - 0.55))
 end
 
 -- ---------------------------------------------------------------------------
@@ -2573,48 +2704,46 @@ end
 
 local wirePickups
 
-local function openDrawers(p: Player, info, sr)
-	if sr.opened then
+-- один ящик: выдвинуть или задвинуть. Находка лежит внутри и ездит вместе с ящиком
+local function toggleDrawer(info, sr, dr)
+	if dr.busy then
 		return
 	end
-	sr.opened = true
-	local pr = sr.hit:FindFirstChildOfClass("ProximityPrompt")
-	if pr then
-		pr.Enabled = false
-	end
-	sound(sr.hit, SOUND.door, 0.6, 1.4)
-	for _, dr in sr.drawers do
-		local base = dr.model.WorldPivot
-		local v = Instance.new("NumberValue")
-		v.Changed:Connect(function(a)
-			dr.model:PivotTo(base * CFrame.new(0, 0, -1.4 * a))
-		end)
-		local t = TweenService:Create(v, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Value = 1 })
-		t:Play()
-		t.Completed:Connect(function()
-			v:Destroy()
-		end)
-	end
-	task.delay(0.5, function()
-		if not sr.hit.Parent then
-			return
-		end
-		if sr.key then
-			local _, part = Props.pickup(info.model, sr.drawers[1].open, "key")
+	dr.busy = true
+	if not dr.rolled then
+		dr.rolled = true
+		local slot = Props.model(dr.model, "Loot")
+		if sr.key and sr.keyDrawer == dr then
+			local _, part = Props.pickup(slot, dr.inside * CFrame.new(-0.5, 0, 0), "key")
 			part:SetAttribute("KeyFor", sr.key)
 		end
 		local item, amount = Rules.loot(math.random(), run.front)
 		if item ~= "nothing" then
-			local dr = sr.drawers[math.random(1, #sr.drawers)]
-			local cf = dr.open * CFrame.new(if sr.key and dr == sr.drawers[1] then 0.8 else 0, 0, 0)
-			local _, part = Props.pickup(info.model, cf, item)
+			local _, part = Props.pickup(slot, dr.inside * CFrame.new(if sr.keyDrawer == dr then 0.6 else 0, 0, 0), item)
 			if item == "coins" then
 				part:SetAttribute("Amount", amount)
 			end
 		end
 		wirePickups(info)
+	end
+	dr.open = not dr.open
+	local base = dr.base or dr.model:GetPivot()
+	dr.base = base
+	local from, to = if dr.open then 0 else 1, if dr.open then 1 else 0
+	local v = Instance.new("NumberValue")
+	v.Value = from
+	v.Changed:Connect(function(a)
+		if dr.model.Parent then
+			dr.model:PivotTo(base * CFrame.new(0, 0, -1.3 * a))
+		end
 	end)
-	local _ = p
+	local t = TweenService:Create(v, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Value = to })
+	t:Play()
+	t.Completed:Connect(function()
+		v:Destroy()
+		dr.busy = false
+	end)
+	sound(dr.hit, SOUND.door, 0.5, if dr.open then 1.5 else 1.2)
 end
 
 function wirePickups(info)
@@ -2654,14 +2783,16 @@ local function wireRoom(info)
 		end
 	end
 	for _, sr in info.searchables do
-		local pr = sr.hit:FindFirstChildOfClass("ProximityPrompt")
-		if pr and not pr:GetAttribute("Wired") then
-			pr:SetAttribute("Wired", true)
-			pr.Triggered:Connect(function(p)
-				if G.isAlive(p) then
-					openDrawers(p, info, sr)
-				end
-			end)
+		for _, dr in sr.drawers do
+			local pr = dr.hit:FindFirstChildOfClass("ProximityPrompt")
+			if pr and not pr:GetAttribute("Wired") then
+				pr:SetAttribute("Wired", true)
+				pr.Triggered:Connect(function(p)
+					if G.isAlive(p) then
+						toggleDrawer(info, sr, dr)
+					end
+				end)
+			end
 		end
 	end
 	wirePickups(info)
@@ -2903,30 +3034,65 @@ end
 -- ---------------------------------------------------------------------------
 -- кодовый замок, арена, лифт
 
+local function panelDone(panel: BasePart)
+	panel.Color = Color3.fromRGB(60, 200, 90)
+	panel.Material = M.Neon
+	local pr = panel:FindFirstChildOfClass("ProximityPrompt")
+	if pr then
+		pr.Enabled = false
+	end
+	sound(panel, SOUND.pick, 1.2, 0.8)
+end
+
 local function wireCode(info)
 	info.codePanel:FindFirstChildOfClass("ProximityPrompt").Triggered:Connect(function(p)
-		if G.isAlive(p) and info.sealed then
+		if G.isAlive(p) and not info.locks.code then
 			send(p, { type = "keypad", order = info.code.order })
+		end
+	end)
+	info.orderPanel:FindFirstChildOfClass("ProximityPrompt").Triggered:Connect(function(p)
+		if G.isAlive(p) and not info.locks.order then
+			send(p, { type = "order", items = info.exhibits })
 		end
 	end)
 end
 
-function G.code(p: Player, text: string)
+local function nearPanel(p: Player, panel: BasePart): boolean
 	local r = rootOf(p)
+	return r ~= nil and G.isAlive(p) and (panel.Position - r.Position).Magnitude &lt; 18
+end
+
+-- замок с цифрами
+function G.code(p: Player, text: string)
 	local info = run.rooms[Rules.CODE_ROOM]
-	if not info or not info.sealed or not r or not G.isAlive(p) or (info.codePanel.Position - r.Position).Magnitude &gt; 16 then
+	if not info or info.locks.code or not nearPanel(p, info.codePanel) then
 		return { ok = false }
 	end
 	if text ~= info.code.text then
 		sound(info.codePanel, SOUND.locked, 1, 0.6)
 		return { ok = false }
 	end
-	info.sealed = false
-	info.codePanel.Color = Color3.fromRGB(60, 200, 90)
-	info.codePanel.Material = M.Neon
-	local pr = info.codePanel:FindFirstChildOfClass("ProximityPrompt")
-	pr.Enabled = false
-	sound(info.codePanel, SOUND.pick, 1.2, 0.8)
+	info.locks.code = true
+	info.sealed = not (info.locks.code and info.locks.order)
+	panelDone(info.codePanel)
+	return { ok = true }
+end
+
+-- замок с порядком экспонатов: list — номера экспонатов в том порядке, как их нажали
+function G.order(p: Player, list)
+	local info = run.rooms[Rules.CODE_ROOM]
+	if not info or info.locks.order or not nearPanel(p, info.orderPanel) or type(list) ~= "table" then
+		return { ok = false }
+	end
+	for i = 1, 8 do
+		if list[i] ~= info.code.sequence[i] then
+			sound(info.orderPanel, SOUND.locked, 1, 0.6)
+			return { ok = false }
+		end
+	end
+	info.locks.order = true
+	info.sealed = not (info.locks.code and info.locks.order)
+	panelDone(info.orderPanel)
 	return { ok = true }
 end
 
@@ -3063,7 +3229,10 @@ local function buildRoom(n: number)
 	end
 	if d.locked then
 		if #info.searchables &gt; 0 then
-			info.searchables[math.floor(rand() * #info.searchables) + 1].key = n + 1
+			-- ключ лежит в одном случайном ящике этого зала
+			local sr = info.searchables[math.floor(rand() * #info.searchables) + 1]
+			sr.key = n + 1
+			sr.keyDrawer = sr.drawers[math.floor(rand() * #sr.drawers) + 1]
 		else
 			-- ящиков нет: ключ лежит на полу у дальней стены
 			local side = if n % 2 == 0 then 1 else -1
@@ -3355,6 +3524,10 @@ local function loadCharacter(p: Player, cf: CFrame, inRun: boolean)
 	p:LoadCharacter()
 	local char = p.Character or p.CharacterAdded:Wait()
 	char:WaitForChild("HumanoidRootPart", 5)
+	-- персонаж чуть крупнее обычного: двери, витрины и шкафчики ему по росту
+	pcall(function()
+		char:ScaleTo(1.2)
+	end)
 	local hum = char:FindFirstChildOfClass("Humanoid")
 	if hum then
 		hum.WalkSpeed = Rules.SPEED.walk
@@ -3586,6 +3759,8 @@ function G.init()
 			return G.pay(p, arg)
 		elseif action == "Code" and type(arg) == "string" and #arg &lt;= 8 then
 			return G.code(p, arg)
+		elseif action == "Order" then
+			return G.order(p, arg)
 		elseif action == "Journal" then
 			return { ok = true, journal = Records.journal(p) }
 		elseif action == "Lobby" then
@@ -3947,7 +4122,7 @@ end
 
 -- Двери трёх размеров: служебная железная, обычная филёнчатая, парадная двустворчатая.
 -- cf — середина проёма на полу, LookVector — в следующий зал. Возвращает модель и створки
-Props.DOORS = { small = { w = 4, h = 8 }, normal = { w = 5, h = 9 }, grand = { w = 8, h = 12 } }
+Props.DOORS = { small = { w = 4, h = 7.5 }, normal = { w = 5, h = 8 }, grand = { w = 8, h = 11 } }
 function Props.door(parent, cf: CFrame, plate: string?, locked: boolean?, size: string?)
 	local m = model(parent, "Door")
 	local kind = size or "normal"
@@ -4023,7 +4198,7 @@ end
 function Props.locker(parent, cf: CFrame, color: Color3?)
 	local m = model(parent, "Locker")
 	local steel = color or rgb(84, 96, 92)
-	local w, d, h = 3.6, 2.8, 8.4
+	local w, d, h = 3.6, 2.8, 7.4
 	local base = cf * CFrame.new(0, 0, -0.05 - d / 2)
 	-- полость (невидимая, без столкновений) — для кнопки и укрытия
 	local cavity = P(m, "Cavity", Vector3.new(w - 0.4, h - 1, d - 0.4), base * CFrame.new(0, 0.6 + (h - 1) / 2, 0), rgb(0, 0, 0), M.SmoothPlastic, { Transparency = 1, CanCollide = false, CanQuery = true, CastShadow = false })
@@ -4112,18 +4287,20 @@ local function drawerCase(m, cf: CFrame, w: number, d: number, h: number, rows: 
 			P(dm, "BoxSide", Vector3.new(0.08, rowH * 0.45, innerD - 0.3), base * CFrame.new(s * (innerW / 2 - 0.1), boxY + 0.04 + rowH * 0.225, 0.05), Props.WOOD_LIGHT, M.Wood, nc())
 		end
 		dm.WorldPivot = front
-		-- место для находки внутри ящика (в открытом положении)
-		table.insert(drawers, { model = dm, open = base * CFrame.new(0, boxY + 0.1, 0.05 - 1.5), depth = innerD })
+		-- у каждого ящика своя кнопка: его можно выдвинуть и задвинуть отдельно
+		local hit = P(dm, "DrawerHit", Vector3.new(w - 2 * t - 0.2, rowH - 0.2, 0.3), front * CFrame.new(0, 0, -0.25), rgb(0, 0, 0), M.SmoothPlastic, { Transparency = 1, CanCollide = false, CanQuery = true, CastShadow = false })
+		Props.prompt(hit, "drawer", 0, 6)
+		-- inside — место находки в задвинутом ящике (предмет лежит внутри и едет вместе с ним)
+		table.insert(drawers, { model = dm, hit = hit, inside = base * CFrame.new(0, boxY + 0.05, 0.05), depth = innerD })
 	end
 	return drawers
 end
 
 -- кнопка «Обыскать» на передней части; drawers нужны игре для анимации
 local function searchable(m, cf, w, d, h, legs)
-	local hit = P(m, "Search", Vector3.new(w, h, 0.4), cf * CFrame.new(0, legs + h / 2, -d - 0.2), rgb(0, 0, 0), M.SmoothPlastic, { Transparency = 1, CanCollide = false, CanQuery = true, CastShadow = false })
-	Props.prompt(hit, "search", 0.6, 7)
 	CollectionService:AddTag(m, "Searchable")
-	return hit
+	local _ = { cf, w, d, h, legs }
+	return nil
 end
 
 function Props.dresser(parent, cf: CFrame, wood: Color3?)
@@ -4960,6 +5137,16 @@ function Props.sinkRow(parent, cf: CFrame, n: number)
 	end
 	P(m, "Mirror", Vector3.new(w - 0.4, 3, 0.1), cf * CFrame.new(0, 6, 0.2), rgb(170, 186, 196), M.Glass, { Reflectance = 0.3 })
 	P(m, "MirrorFrame", Vector3.new(w, 3.4, 0.06), cf * CFrame.new(0, 6, 0.27), Props.STEEL, M.Metal, nc())
+	-- зеркало разбито: трещины расходятся от места удара, одного осколка нет
+	local hitX = w * 0.18
+	for k = 0, 6 do
+		local a = k * 0.9 + 0.3
+		local len = 0.9 + (k % 3) * 0.5
+		local from = (cf * CFrame.new(hitX, 6.2, 0.14)).Position
+		local to = (cf * CFrame.new(math.clamp(hitX + math.cos(a) * len, -w / 2 + 0.3, w / 2 - 0.3), math.clamp(6.2 + math.sin(a) * len, 4.6, 7.4), 0.14)).Position
+		Props.rod(m, "Crack", from, to, 0.04, rgb(30, 34, 38), M.SmoothPlastic, nc())
+	end
+	P(m, "MissingShard", Vector3.new(0.7, 0.6, 0.03), cf * CFrame.new(hitX - 0.2, 6.1, 0.135) * CFrame.Angles(0, 0, 0.5), rgb(40, 40, 44), M.SmoothPlastic, nc())
 	return m
 end
 
@@ -5027,7 +5214,7 @@ local Builder = {}
 local F = 0.9 -- от середины стены до места мебели (панели и поручень заканчиваются на 0.84)
 local SKIN = 0.1
 local PANEL = 0.12
-local DOOR_HOLE = { w = 5, h = 9 }
+local DOOR_HOLE = { w = 5, h = 8 }
 
 -- ---------------------------------------------------------------------------
 -- оформление по глубине
@@ -5194,7 +5381,7 @@ local function shell(m, d, origin: CFrame, st, prevWall)
 		P(m, "Ceiling", Vector3.new(w, 1, l), at(origin, 0, top + 0.5, -l / 2), st.ceil, st.ceilMat)
 	end
 	-- проёмы: настоящий выход, ложные двери, окна
-	local exits = { d.exit }
+	local exits = if d.noExit then {} else { d.exit }
 	for _, e in d.decoys do
 		table.insert(exits, e)
 	end
@@ -5213,6 +5400,10 @@ local function shell(m, d, origin: CFrame, st, prevWall)
 			hole.zRoom = e.z
 			table.insert(sides[e.turn], hole)
 		end
+	end
+	-- дверь в пристройку (туалет при зале)
+	if d.annex then
+		table.insert(sides[d.annex.side], { zRoom = d.annex.z, w = Props.DOORS.small.w, y = 0, h = Props.DOORS.small.h })
 	end
 	-- проломы во всю высоту стены (аномальный коридор)
 	for _, g in d.gaps or {} do
@@ -5382,7 +5573,8 @@ local function search(ctx, kind: string, cf)
 	else
 		m, hit, drawers, top = Props.dresser(ctx.m, cf)
 	end
-	table.insert(ctx.info.searchables, { model = m, hit = hit, drawers = drawers })
+	local _ = hit
+	table.insert(ctx.info.searchables, { model = m, drawers = drawers })
 	if top then
 		table.insert(ctx.info.tops, top)
 	end
@@ -5723,6 +5915,19 @@ L.blank = function(c)
 	ceil(c, 0, -15)
 end
 
+-- переход к залу Колосса: парадный коридор со статуями
+L.passage = function(c)
+	local d, o = c.d, c.origin
+	for k, z in { -10, -22, -34 } do
+		statue(c, -5.6, z, k)
+		statue(c, 5.6, z, k + 2)
+	end
+	hide(c, slotL(d, o, -28))
+	Props.rug(c.m, spot(d, o, 0, -22), 5, 38, rgb(100, 26, 32))
+	chandelier(c, 0, -12, 3)
+	chandelier(c, 0, -32, 3)
+end
+
 L.figures = function(c)
 	bench(c, -1, -12, 7)
 	bench(c, 1, -12, 7)
@@ -5762,6 +5967,30 @@ L.voidhall = function(c)
 	P(shell, "Dark", Vector3.new(164, 2, d.l + 80), at(o, 0, 110, -d.l / 2), black, M.SmoothPlastic, nc())
 end
 
+-- Пристройка к залу: небольшой туалет за служебной дверью в боковой стене
+function Builder.annex(m, d, origin: CFrame, rand)
+	local A = Plan.ANNEX_SIZE
+	local s = d.annex.side
+	local o2 = origin * CFrame.new(s * d.w / 2, 0, d.annex.z) * CFrame.Angles(0, -s * math.pi / 2, 0)
+	local d2 = { kind = "restroom", door = d.door, zone = d.zone, w = A.w, l = A.l, h = A.h, dy = 0, decoys = {}, noExit = true, entry = Props.DOORS.small, exit = { x = 0, z = -A.l, turn = 0, y = 0 } }
+	local am = Props.model(m, "Annex")
+	local keep = Props.LIGHT
+	Props.LIGHT = d.light or 1
+	-- общую стену строит сам зал: пристройке она не нужна
+	shell(am, d2, o2, Builder.style(d2, rand), { x0 = -1e4, x1 = 1e4, top = 1e4, bottom = -1e4 })
+	Props.stallRow(am, slotL(d2, o2, -8.6), 2)
+	Props.sinkRow(am, slotR(d2, o2, -8.6), 2)
+	C(am, "Bin", 2, 1.2, at(o2, 6.6, 1, -14.2), rgb(120, 124, 126), M.Metal)
+	Props.ceilingLamp(am, at(o2, 0, A.h, -8).Position)
+	-- служебная дверь стоит открытой
+	local _, leaves = Props.door(m, o2, nil, false, "small")
+	for _, leaf in leaves do
+		leaf:PivotTo(leaf:GetPivot() * CFrame.Angles(0, math.rad(-100) * (leaf:GetAttribute("Dir") or 1), 0))
+	end
+	Props.LIGHT = keep
+	return am
+end
+
 -- ---------------------------------------------------------------------------
 
 function Builder.build(parent: Instance, d, origin: CFrame, prevInfo, rand)
@@ -5783,6 +6012,9 @@ function Builder.build(parent: Instance, d, origin: CFrame, prevInfo, rand)
 		info[k] = v
 	end
 	info.style = st
+	if d.annex then
+		Builder.annex(m, d, origin, rand)
+	end
 	-- путь для Тьмы и точки для существ
 	info.path = {
 		at(origin, 0, 5, -2).Position,
@@ -6146,12 +6378,45 @@ function Special.codeHall(parent, d, origin: CFrame, rand, prev)
 		end
 	end
 	Props.prompt(panel, "code", 0, 8)
-	-- ключ лежит на подушке в правом крыле; в левом — пустой постамент
-	local _, keyTop = Props.plinth(m, at(origin, 26, 0, -22), 2, 3)
-	P(m, "Cushion", Vector3.new(1.5, 0.2, 1.5), keyTop * CFrame.new(0, 0.1, 0), rgb(100, 20, 30), M.Fabric, nc())
-	local _, key = Props.pickup(m, keyTop * CFrame.new(0, 0.2, 0), "key")
+	-- второй щиток слева от двери: порядок экспонатов
+	local ocf = Builder.slotFront(d, origin, 8) * CFrame.new(0, 5, 0.1)
+	local orderPanel = P(m, "OrderPanel", Vector3.new(3.2, 3.6, 0.3), ocf, rgb(36, 36, 40), M.Metal)
+	for r = 0, 1 do
+		for col = 0, 3 do
+			P(m, "OrderCap", Vector3.new(0.5, 0.9, 0.08), ocf * CFrame.new(1.05 - col * 0.7, 0.7 - r * 1.3, -0.17), Props.BRASS, M.Metal, nc())
+		end
+	end
+	Props.prompt(orderPanel, "order", 0, 8)
+	-- восемь экспонатов с римскими номерами: по четыре в каждом крыле
+	local items = table.clone(Props.ODD)
+	for i = #items, 2, -1 do
+		local j = math.floor(rand() * i) + 1
+		items[i], items[j] = items[j], items[i]
+	end
+	local spots = { { -22, -16 }, { -31, -18 }, { -22, -37 }, { -31, -38 }, { 22, -16 }, { 31, -18 }, { 22, -37 }, { 31, -38 } }
+	local exhibits = {}
+	for k = 1, 8 do
+		local cf = at(origin, spots[k][1], 0, spots[k][2])
+		local cm = Props.displayCase(m, cf, items[k])
+		for _, face in { -1, 1 } do
+			local plate = P(cm, "RomanPlate", Vector3.new(1.3, 0.7, 0.08), cf * CFrame.new(0, 1.5, face * 1.34), Props.BRASS, M.Metal, nc())
+			surfaceText(plate, if face &lt; 0 then Enum.NormalId.Front else Enum.NormalId.Back, Rules.ROMAN[code.roman[k]], nil, rgb(36, 26, 14), 60)
+		end
+		exhibits[k] = items[k]
+	end
+	-- ключ: одно из четырёх мест, каждый раз другое
+	local keySpots = {}
+	for _, sx in { -1, 1 } do
+		local _, top = Props.plinth(m, at(origin, sx * 26, 0, -26), 2, 3)
+		P(m, "Cushion", Vector3.new(1.5, 0.2, 1.5), top * CFrame.new(0, 0.1, 0), rgb(100, 20, 30), M.Fabric, nc())
+		table.insert(keySpots, top * CFrame.new(0, 0.2, 0))
+		table.insert(keySpots, at(origin, sx * 35.5, 0, -4))
+	end
+	local _, key = Props.pickup(m, keySpots[math.floor(rand() * #keySpots) + 1], "key")
 	key:SetAttribute("KeyFor", d.door + 1)
-	Props.vase(m, at(origin, -26, 0, -22), 3)
+	info.exhibits = exhibits
+	info.orderPanel = orderPanel
+	info.locks = { code = false, order = false }
 	info.code = code
 	info.codePanel = panel
 	info.sealed = true
@@ -6166,6 +6431,13 @@ end
 function Special.arena(parent, d, origin: CFrame, rand, prev)
 	local m, info = begin(parent, d, origin, rand, prev)
 	local fy = d.dy
+	-- зал хорошо освещён: зверя видно издалека
+	Props.LIGHT = 1.5
+	for _, x in { -24, 24 } do
+		for _, z in { -46, -86 } do
+			chandelier(info, m, at(origin, x, d.h, z).Position, 6)
+		end
+	end
 	local function cell(i: number, j: number): CFrame
 		return at(origin, i * 10, fy, -(40 + j * 10))
 	end
@@ -6653,6 +6925,23 @@ local leaveBtn = Ui.button(gui, "", function()
 	task.spawn(request, "Unhide")
 end, { Size = UDim2.fromOffset(160, 48), Position = UDim2.new(0.5, -80, 1, -150), Visible = false, ZIndex = 30 })
 
+-- вид из шкафчика: тёмная дверца с узкими прорезями, сквозь которые видно зал
+local slits = Ui.frame(gui, { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 28 })
+do
+	local gap, bar = 0.035, 0.085
+	local y = 0.2
+	Ui.frame(slits, { BackgroundColor3 = Color3.fromRGB(8, 9, 9), Size = UDim2.fromScale(1, y), ZIndex = 28 })
+	for _ = 1, 5 do
+		y += gap
+		Ui.frame(slits, { BackgroundColor3 = Color3.fromRGB(8, 9, 9), Size = UDim2.fromScale(1, bar), Position = UDim2.fromScale(0, y), ZIndex = 28 })
+		y += bar
+	end
+	Ui.frame(slits, { BackgroundColor3 = Color3.fromRGB(8, 9, 9), Size = UDim2.fromScale(1, 1 - y), Position = UDim2.fromScale(0, y), ZIndex = 28 })
+	for _, x in { 0, 0.88 } do
+		Ui.frame(slits, { BackgroundColor3 = Color3.fromRGB(8, 9, 9), Size = UDim2.fromScale(0.12, 1), Position = UDim2.fromScale(x, 0), ZIndex = 28 })
+	end
+end
+
 local function refreshHud()
 	local char = player.Character
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
@@ -6719,6 +7008,7 @@ player:GetAttributeChangedSignal("HiddenEye"):Connect(function()
 	local eye = player:GetAttribute("HiddenEye")
 	hiddenEye = if typeof(eye) == "CFrame" then eye else nil
 	leaveBtn.Visible = hiddenEye ~= nil
+	slits.Visible = hiddenEye ~= nil
 	if not hiddenEye then
 		setCamera()
 	end
@@ -6727,7 +7017,7 @@ end)
 player:GetAttributeChangedSignal("Sneaking"):Connect(function()
 	local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
 	if hum then
-		TweenService:Create(hum, TweenInfo.new(0.25), { CameraOffset = if player:GetAttribute("Sneaking") then Vector3.new(0, -1.6, 0) else Vector3.zero }):Play()
+		TweenService:Create(hum, TweenInfo.new(0.25), { CameraOffset = if player:GetAttribute("Sneaking") then Vector3.new(0, -2, 0) else Vector3.zero }):Play()
 	end
 end)
 
@@ -6966,6 +7256,50 @@ local function openKeypad(order)
 	keyBox.Visible = true
 end
 
+-- третий замок: нажать восемь экспонатов по порядку их римских номеров
+local ODD_ICON = { wrench = "🔧", gear = "⚙️", teapot = "🫖", skull = "💀", crown = "👑", mask = "🎭", clock = "🕰️", boot = "🥾", bottle = "🍾", gem = "💎", bulb = "💡", bigkey = "🗝️" }
+local orderBox = panel(360, 400, 64)
+local function openOrder(items)
+	orderBox:ClearAllChildren()
+	Ui.corner(orderBox, 10)
+	Ui.pad(orderBox, 14)
+	local picked = {}
+	local buttons = {}
+	local title = Ui.label(orderBox, T("Order"), { Font = Ui.BOLD, TextSize = 17, Size = UDim2.new(1, -50, 0, 30), ZIndex = 65 })
+	local _ = title
+	Ui.button(orderBox, "✕", function()
+		orderBox.Visible = false
+	end, { Size = UDim2.fromOffset(40, 30), Position = UDim2.new(1, -40, 0, 0), ZIndex = 66 })
+	local function reset()
+		table.clear(picked)
+		for _, b in buttons do
+			b.BackgroundColor3 = Ui.C.panel
+		end
+	end
+	for k = 1, 8 do
+		local id = items[k]
+		local b = Ui.button(orderBox, (ODD_ICON[id] or "?") .. "\n" .. T("odd_" .. tostring(id)), nil, { Size = UDim2.fromOffset(76, 150), Position = UDim2.fromOffset(((k - 1) % 4) * 84, 40 + math.floor((k - 1) / 4) * 160), TextSize = 13, TextWrapped = true, ZIndex = 65 })
+		buttons[k] = b
+		b.Activated:Connect(function()
+			if table.find(picked, k) then
+				return
+			end
+			table.insert(picked, k)
+			b.BackgroundColor3 = Ui.C.line
+			if #picked == 8 then
+				local r = request("Order", picked)
+				if r and r.ok then
+					orderBox.Visible = false
+				else
+					flashRed(0.2)
+					reset()
+				end
+			end
+		end)
+	end
+	orderBox.Visible = true
+end
+
 local JOURNAL = { "darkness", "mimic", "coinkeeper", "colossus", "void" }
 local journalBox = panel(420, 420, 62)
 local function openJournal()
@@ -7056,6 +7390,7 @@ end)
 local function closePanels()
 	coinBox.Visible = false
 	keyBox.Visible = false
+	orderBox.Visible = false
 	journalBox.Visible = false
 end
 
@@ -7063,6 +7398,7 @@ local function onDead(msg)
 	app.dead = true
 	hiddenEye = nil
 	leaveBtn.Visible = false
+	slits.Visible = false
 	hud.Visible = false
 	closePanels()
 	deathTitle.Text = T("Died")
@@ -7315,6 +7651,8 @@ Remotes.event("Game").OnClientEvent:Connect(function(msg)
 		openCoin(msg.price or 0)
 	elseif msg.type == "keypad" then
 		openKeypad(msg.order or { 1, 2, 3, 4 })
+	elseif msg.type == "order" and type(msg.items) == "table" then
+		openOrder(msg.items)
 	elseif msg.type == "voice" then
 		say(T(msg.key), true)
 	elseif msg.type == "cutscene" then

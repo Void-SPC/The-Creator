@@ -11,30 +11,31 @@ local Plan = {}
 -- выходы, branch — сколько дверей (лишние ложные), min — с какой двери встречается,
 -- door — какие двери любит зал, hides — сколько шкафчиков самое большее
 Plan.TEMPLATES = {
-	corridor = { w = 12, l = 40, h = 13, weight = 12, exits = { "front", "side" }, door = "normal", hides = 1 },
-	longhall = { w = 12, l = 70, h = 13, weight = 5, min = 5, exits = { "front", "side" }, door = "normal", hides = 2 },
-	shorthall = { w = 12, l = 22, h = 13, weight = 5, exits = { "front" }, door = "normal", hides = 1 },
-	gallery = { w = 30, l = 44, h = 16, weight = 9, exits = { "front", "side" }, branch = 2, door = "grand", hides = 2 },
-	sculpture = { w = 36, l = 40, h = 18, weight = 8, exits = { "front", "frontL", "frontR", "side" }, door = "grand", hides = 2 },
-	cases = { w = 30, l = 34, h = 14, weight = 8, exits = { "front", "frontL", "frontR", "side" }, door = "normal", hides = 2 },
-	fossil = { w = 44, l = 56, h = 24, weight = 4, min = 8, exits = { "front", "side" }, door = "grand", hides = 3 },
-	armory = { w = 28, l = 36, h = 14, weight = 5, exits = { "front", "side" }, door = "normal", hides = 2 },
-	ceramics = { w = 26, l = 30, h = 14, weight = 6, exits = { "front", "frontL", "frontR" }, door = "normal", hides = 2 },
+	corridor = { w = 12, l = 40, h = 13, weight = 6, exits = { "front", "side" }, door = "normal", hides = 1 },
+	longhall = { w = 12, l = 70, h = 13, weight = 3, min = 5, exits = { "front", "side" }, door = "normal", hides = 2 },
+	shorthall = { w = 12, l = 22, h = 13, weight = 3, exits = { "front" }, door = "normal", hides = 1 },
+	gallery = { w = 30, l = 44, h = 16, weight = 10, exits = { "front", "side" }, branch = 2, door = "grand", hides = 2 },
+	sculpture = { w = 36, l = 40, h = 18, weight = 10, exits = { "front", "frontL", "frontR", "side" }, door = "grand", hides = 2 },
+	cases = { w = 30, l = 34, h = 14, weight = 9, exits = { "front", "frontL", "frontR", "side" }, door = "normal", hides = 2 },
+	fossil = { w = 44, l = 56, h = 24, weight = 7, min = 8, exits = { "front", "side" }, door = "grand", hides = 3 },
+	armory = { w = 28, l = 36, h = 14, weight = 7, exits = { "front", "side" }, door = "normal", hides = 2 },
+	ceramics = { w = 26, l = 30, h = 14, weight = 7, exits = { "front", "frontL", "frontR" }, door = "normal", hides = 2 },
 	archive = { w = 34, l = 40, h = 16, weight = 5, min = 6, exits = { "frontL", "frontR", "side" }, branch = 2, door = "normal", hides = 2 },
-	storage = { w = 30, l = 34, h = 14, weight = 5, min = 6, exits = { "frontL", "frontR", "side" }, branch = 2, door = "small", hides = 2 },
-	tech = { w = 12, l = 34, h = 10, weight = 4, min = 12, exits = { "front" }, door = "small", hides = 2 },
-	stairsup = { w = 16, l = 40, h = 13, weight = 3, min = 4, dy = 10, exits = { "front" }, door = "normal", hides = 1 },
-	stairsdown = { w = 16, l = 40, h = 13, weight = 3, min = 4, dy = -10, exits = { "front" }, door = "normal", hides = 1 },
-	restroom = { w = 24, l = 26, h = 12, weight = 4, exits = { "front" }, door = "small", hides = 1 },
+	storage = { w = 30, l = 34, h = 14, weight = 4, min = 6, exits = { "frontL", "frontR", "side" }, branch = 2, door = "small", hides = 2 },
+	tech = { w = 12, l = 34, h = 10, weight = 3, min = 12, exits = { "front" }, door = "small", hides = 2 },
+	stairsup = { w = 16, l = 40, h = 13, weight = 2, min = 4, dy = 10, exits = { "front" }, door = "normal", hides = 1 },
+	stairsdown = { w = 16, l = 40, h = 13, weight = 2, min = 4, dy = -10, exits = { "front" }, door = "normal", hides = 1 },
+	restroom = { w = 24, l = 26, h = 12, weight = 3, exits = { "front" }, door = "small", hides = 1 },
 	cafe = { w = 32, l = 32, h = 14, weight = 4, exits = { "front", "side" }, door = "normal", hides = 1 },
-	rotunda = { w = 46, l = 46, h = 24, weight = 4, min = 10, exits = { "front", "frontL", "frontR", "side" }, branch = 3, door = "grand", hides = 3 },
-	oddities = { w = 30, l = 30, h = 14, weight = 6, exits = { "front", "frontL", "frontR" }, door = "normal", hides = 2 },
+	rotunda = { w = 46, l = 46, h = 24, weight = 6, min = 10, exits = { "front", "frontL", "frontR", "side" }, branch = 3, door = "grand", hides = 3 },
+	oddities = { w = 30, l = 30, h = 14, weight = 7, exits = { "front", "frontL", "frontR" }, door = "normal", hides = 2 },
 	blank = { w = 30, l = 30, h = 14, weight = 2, min = 15, exits = { "front", "frontL", "frontR" }, door = "normal", hides = 1 },
 	-- особые: выбираются отдельно
 	figures = { w = 40, l = 40, h = 16, exits = { "front" }, door = "normal", hides = 0 },
 	voidhall = { w = 12, l = 180, h = 14, exits = { "front" }, door = "normal", hides = 2 },
 	start = { w = 30, l = 30, h = 16, exits = { "front" }, door = "grand", hides = 0 },
 	codehall = { w = 76, l = 44, h = 18, exits = { "front" }, door = "grand", hides = 2 },
+	passage = { w = 18, l = 44, h = 16, exits = { "front" }, door = "grand", hides = 1 },
 	arena = { w = 80, l = 104, h = 26, dy = -10, exits = { "front" }, door = "grand", hides = 0 },
 	lifthall = { w = 30, l = 30, h = 16, exits = { "front" }, door = "small", hides = 0 },
 	final = { w = 50, l = 60, h = 20, exits = { "front" }, door = "normal", hides = 0 },
@@ -42,10 +43,10 @@ Plan.TEMPLATES = {
 
 Plan.ORDER = { "corridor", "longhall", "shorthall", "gallery", "sculpture", "cases", "fossil", "armory", "ceramics", "archive", "storage", "tech", "stairsup", "stairsdown", "restroom", "cafe", "rotunda", "oddities", "blank" }
 
-Plan.DOORS = { small = { w = 4, h = 8 }, normal = { w = 5, h = 9 }, grand = { w = 8, h = 12 } }
+Plan.DOORS = { small = { w = 4, h = 7.5 }, normal = { w = 5, h = 8 }, grand = { w = 8, h = 11 } }
 local RANK = { small = 1, normal = 2, grand = 3 }
 
-local SPECIAL = { [0] = "start", [Rules.CODE_ROOM] = "codehall", [Rules.BOSS_ROOM] = "arena", [Rules.LIFT_ROOM] = "lifthall", [Rules.FINAL_ROOM] = "final" }
+local SPECIAL = { [0] = "start", [Rules.CODE_ROOM] = "codehall", [Rules.PASS_ROOM] = "passage", [Rules.BOSS_ROOM] = "arena", [Rules.LIFT_ROOM] = "lifthall", [Rules.FINAL_ROOM] = "final" }
 
 -- перед особыми залами путь прямой и спокойный
 local function straightZone(door: number): boolean
@@ -133,6 +134,10 @@ local function overlaps(state, r): boolean
 	return false
 end
 Plan.overlaps = overlaps
+
+-- залы, к которым сбоку может быть пристроен туалет: где в боковой стене дверь (z)
+Plan.ANNEX = { sculpture = -26, cases = -22, armory = -24.5, fossil = -44 }
+Plan.ANNEX_SIZE = { w = 18, l = 16, h = 11 }
 
 -- какой зал будет за дверью door (выбирается заранее, чтобы знать размер двери)
 local function pickKind(state, door: number): string
@@ -290,6 +295,29 @@ function Plan.room(state, door: number)
 		d.mono = door > 10 and rand() < 0.04
 	end
 	state.lastHides = hides
+	-- пристройка-туалет с той стороны, куда путь не поворачивает (если там свободно)
+	local az = Plan.ANNEX[d.kind]
+	if az and not special and door >= 3 and rand() < 0.45 then
+		local s = if state.heading == 0 then -state.side else state.heading
+		local A = Plan.ANNEX_SIZE
+		local fx, fz, rx, rz = frame(state.heading)
+		local xs, zs = {}, {}
+		for _, c in { { d.w / 2, -az - A.w / 2 }, { d.w / 2 + A.l + 1, -az - A.w / 2 }, { d.w / 2, -az + A.w / 2 }, { d.w / 2 + A.l + 1, -az + A.w / 2 } } do
+			table.insert(xs, state.ox + rx * s * c[1] + fx * c[2])
+			table.insert(zs, state.oz + rz * s * c[1] + fz * c[2])
+		end
+		local r = { math.min(table.unpack(xs)), math.min(table.unpack(zs)), math.max(table.unpack(xs)), math.max(table.unpack(zs)) }
+		local free = true
+		for _, o in state.rects do
+			if math.min(r[3], o[3]) - math.max(r[1], o[1]) > -Plan.GAP and math.min(r[4], o[4]) - math.max(r[2], o[2]) > -Plan.GAP then
+				free = false
+			end
+		end
+		if free then
+			d.annex = { side = s, z = az, rect = r }
+			table.insert(state.rects, r)
+		end
+	end
 	d.light = Rules.light(door)
 	-- размер дверей: вход — как выход прошлого зала; выход — по вкусу этого и следующего
 	d.entrySize = state.lastExit or "grand"
@@ -303,7 +331,7 @@ function Plan.room(state, door: number)
 	state.lastExit = d.exitSize
 	-- запомнить место и перейти к выходу
 	table.insert(state.rects, mine)
-	if #state.rects > 7 then
+	while #state.rects > 9 do
 		table.remove(state.rects, 1)
 	end
 	local nx = after(state, d.exit.x, d.exit.z, d.exit.turn)

@@ -16,7 +16,7 @@ local Builder = {}
 local F = 0.9 -- от середины стены до места мебели (панели и поручень заканчиваются на 0.84)
 local SKIN = 0.1
 local PANEL = 0.12
-local DOOR_HOLE = { w = 5, h = 9 }
+local DOOR_HOLE = { w = 5, h = 8 }
 
 -- ---------------------------------------------------------------------------
 -- оформление по глубине
@@ -183,7 +183,7 @@ local function shell(m, d, origin: CFrame, st, prevWall)
 		P(m, "Ceiling", Vector3.new(w, 1, l), at(origin, 0, top + 0.5, -l / 2), st.ceil, st.ceilMat)
 	end
 	-- проёмы: настоящий выход, ложные двери, окна
-	local exits = { d.exit }
+	local exits = if d.noExit then {} else { d.exit }
 	for _, e in d.decoys do
 		table.insert(exits, e)
 	end
@@ -202,6 +202,10 @@ local function shell(m, d, origin: CFrame, st, prevWall)
 			hole.zRoom = e.z
 			table.insert(sides[e.turn], hole)
 		end
+	end
+	-- дверь в пристройку (туалет при зале)
+	if d.annex then
+		table.insert(sides[d.annex.side], { zRoom = d.annex.z, w = Props.DOORS.small.w, y = 0, h = Props.DOORS.small.h })
 	end
 	-- проломы во всю высоту стены (аномальный коридор)
 	for _, g in d.gaps or {} do
@@ -371,7 +375,8 @@ local function search(ctx, kind: string, cf)
 	else
 		m, hit, drawers, top = Props.dresser(ctx.m, cf)
 	end
-	table.insert(ctx.info.searchables, { model = m, hit = hit, drawers = drawers })
+	local _ = hit
+	table.insert(ctx.info.searchables, { model = m, drawers = drawers })
 	if top then
 		table.insert(ctx.info.tops, top)
 	end
@@ -712,6 +717,19 @@ L.blank = function(c)
 	ceil(c, 0, -15)
 end
 
+-- переход к залу Колосса: парадный коридор со статуями
+L.passage = function(c)
+	local d, o = c.d, c.origin
+	for k, z in { -10, -22, -34 } do
+		statue(c, -5.6, z, k)
+		statue(c, 5.6, z, k + 2)
+	end
+	hide(c, slotL(d, o, -28))
+	Props.rug(c.m, spot(d, o, 0, -22), 5, 38, rgb(100, 26, 32))
+	chandelier(c, 0, -12, 3)
+	chandelier(c, 0, -32, 3)
+end
+
 L.figures = function(c)
 	bench(c, -1, -12, 7)
 	bench(c, 1, -12, 7)
@@ -751,6 +769,30 @@ L.voidhall = function(c)
 	P(shell, "Dark", Vector3.new(164, 2, d.l + 80), at(o, 0, 110, -d.l / 2), black, M.SmoothPlastic, nc())
 end
 
+-- Пристройка к залу: небольшой туалет за служебной дверью в боковой стене
+function Builder.annex(m, d, origin: CFrame, rand)
+	local A = Plan.ANNEX_SIZE
+	local s = d.annex.side
+	local o2 = origin * CFrame.new(s * d.w / 2, 0, d.annex.z) * CFrame.Angles(0, -s * math.pi / 2, 0)
+	local d2 = { kind = "restroom", door = d.door, zone = d.zone, w = A.w, l = A.l, h = A.h, dy = 0, decoys = {}, noExit = true, entry = Props.DOORS.small, exit = { x = 0, z = -A.l, turn = 0, y = 0 } }
+	local am = Props.model(m, "Annex")
+	local keep = Props.LIGHT
+	Props.LIGHT = d.light or 1
+	-- общую стену строит сам зал: пристройке она не нужна
+	shell(am, d2, o2, Builder.style(d2, rand), { x0 = -1e4, x1 = 1e4, top = 1e4, bottom = -1e4 })
+	Props.stallRow(am, slotL(d2, o2, -8.6), 2)
+	Props.sinkRow(am, slotR(d2, o2, -8.6), 2)
+	C(am, "Bin", 2, 1.2, at(o2, 6.6, 1, -14.2), rgb(120, 124, 126), M.Metal)
+	Props.ceilingLamp(am, at(o2, 0, A.h, -8).Position)
+	-- служебная дверь стоит открытой
+	local _, leaves = Props.door(m, o2, nil, false, "small")
+	for _, leaf in leaves do
+		leaf:PivotTo(leaf:GetPivot() * CFrame.Angles(0, math.rad(-100) * (leaf:GetAttribute("Dir") or 1), 0))
+	end
+	Props.LIGHT = keep
+	return am
+end
+
 -- ---------------------------------------------------------------------------
 
 function Builder.build(parent: Instance, d, origin: CFrame, prevInfo, rand)
@@ -772,6 +814,9 @@ function Builder.build(parent: Instance, d, origin: CFrame, prevInfo, rand)
 		info[k] = v
 	end
 	info.style = st
+	if d.annex then
+		Builder.annex(m, d, origin, rand)
+	end
 	-- путь для Тьмы и точки для существ
 	info.path = {
 		at(origin, 0, 5, -2).Position,

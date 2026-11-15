@@ -59,6 +59,15 @@ return function(T)
 		T.ok(count.hammer > 0 and count.hammer < 20)
 		T.ok(count.nothing > 300)
 	end)
+	T.test("third lock: eight exhibits get unique roman numbers", function()
+		local c = Rules.code(Plan.rng(9))
+		local seen = {}
+		for item = 1, 8 do
+			T.ok(c.roman[item] >= 1 and c.roman[item] <= 8 and not seen[c.roman[item]])
+			seen[c.roman[item]] = true
+			T.eq(c.sequence[c.roman[item]], item)
+		end
+	end)
 	T.test("code lock has four digits in colour order", function()
 		local c = Rules.code(Plan.rng(5))
 		T.eq(#c.text, 4)
@@ -102,11 +111,12 @@ return function(T)
 	T.test("special rooms stand at their doors", function()
 		local list = plan(7, 100)
 		T.eq(list[0].kind, "start")
-		T.eq(list[49].kind, "codehall")
+		T.eq(list[48].kind, "codehall")
+		T.eq(list[49].kind, "passage")
 		T.eq(list[50].kind, "arena")
 		T.eq(list[99].kind, "lifthall")
 		T.eq(list[100].kind, "final")
-		T.eq(list[49].exitSize, "grand")
+		T.eq(list[48].exitSize, "grand")
 	end)
 	T.test("many kinds of halls appear", function()
 		local seen, n = {}, 0
@@ -151,7 +161,7 @@ return function(T)
 			local firstDark = nil
 			for n = 2, 98 do
 				local d = list[n]
-				if n ~= 49 and n ~= 50 and n ~= 51 then
+				if n < 48 or n > 51 then
 					T.ok(d.hides > 0 or list[n - 1].hides > 0, "seed " .. seed .. " room " .. n)
 				end
 				if d.dark then
@@ -180,6 +190,34 @@ return function(T)
 				end
 			end
 		end
+	end)
+	T.test("restroom annexes appear and never touch other rooms", function()
+		local count = 0
+		for seed = 1, 60 do
+			local st = Plan.new(seed * 57)
+			local rects = {}
+			for n = 0, 98 do
+				local before = { ox = st.ox, oz = st.oz, heading = st.heading }
+				local d = Plan.room(st, n)
+				local mine = Plan.footprint(before, d.w, d.l)
+				if d.annex then
+					count += 1
+					T.ok(Plan.ANNEX[d.kind] ~= nil)
+				end
+				-- пристройки прошлых залов не пересекаются с новым залом
+				for _, a in rects do
+					if n - a.n <= 6 and n ~= a.n then
+						local ox = math.min(mine[3], a.r[3]) - math.max(mine[1], a.r[1])
+						local oz = math.min(mine[4], a.r[4]) - math.max(mine[2], a.r[2])
+						T.ok(not (ox > 0.5 and oz > 0.5), "seed " .. seed .. " room " .. n .. " hits annex of " .. a.n)
+					end
+				end
+				if d.annex then
+					table.insert(rects, { n = n, r = d.annex.rect })
+				end
+			end
+		end
+		T.ok(count > 40, "annexes " .. count)
 	end)
 	T.test("same seed gives the same museum", function()
 		local a, b = plan(99, 60), plan(99, 60)

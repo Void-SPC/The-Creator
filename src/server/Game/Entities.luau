@@ -495,45 +495,80 @@ function E.spawnColossus(info)
 	if not model then
 		return nil
 	end
-	marble(model, rgb(196, 192, 184))
-	local head = model:FindFirstChild("Head") :: BasePart?
-	local function weldTo(to: BasePart, name, size, offset: CFrame, color, mat)
+	-- человеческий каркас только двигает существо и остаётся невидимым; видно каменного
+	-- зверя из мраморных блоков: длинное тело, четыре ноги, шея, голова без глаз, хвост
+	for _, dsc in model:GetDescendants() do
+		if dsc:IsA("BasePart") then
+			dsc.Transparency = 1
+			dsc.CanQuery = false
+		elseif dsc:IsA("Decal") then
+			dsc:Destroy()
+		end
+	end
+	local hrp = model:FindFirstChild("HumanoidRootPart") :: BasePart
+	local stone, dark = rgb(206, 202, 194), rgb(120, 116, 110)
+	local motors = { legs = {} }
+	local function piece(name, size, offset: CFrame, color, jointAt: CFrame?)
 		local p = Instance.new("Part")
 		p.Name = name
 		p.Size = size
-		p.Color = color
-		p.Material = mat or M.Marble
+		p.Color = color or stone
+		p.Material = M.Marble
 		p.CanCollide = false
 		p.CanQuery = false
 		p.Massless = true
-		p.CFrame = to.CFrame * offset
-		local w = Instance.new("WeldConstraint")
-		w.Part0 = to
-		w.Part1 = p
-		w.Parent = p
+		p.TopSurface = Enum.SurfaceType.Smooth
+		p.BottomSurface = Enum.SurfaceType.Smooth
+		p.CFrame = hrp.CFrame * offset
+		local mt = Instance.new("Motor6D")
+		mt.Part0 = hrp
+		mt.Part1 = p
+		-- сустав: точка вращения в координатах корня и та же точка в координатах детали
+		local joint = jointAt or offset
+		mt.C0 = joint
+		mt.C1 = offset:Inverse() * joint
+		mt.Parent = p
 		p.Parent = model
+		return p, mt
 	end
-	if head then
-		local s = head.Size
-		-- гладкое лицо без глаз, трещины, широкие ноздри, каменные уши
-		weldTo(head, "Brow", Vector3.new(s.X * 1.02, s.Y * 0.22, s.Z * 1.02), CFrame.new(0, s.Y * 0.16, 0), rgb(170, 166, 158))
-		for _, x in { -1, 1 } do
-			weldTo(head, "Nostril", Vector3.new(s.X * 0.12, s.Y * 0.1, 0.2), CFrame.new(x * s.X * 0.1, -s.Y * 0.08, -s.Z / 2 - 0.05), rgb(40, 38, 36))
-			weldTo(head, "Ear", Vector3.new(0.4, s.Y * 0.6, s.Z * 0.45), CFrame.new(x * s.X * 0.56, 0, 0) * CFrame.Angles(0, x * 0.4, 0), rgb(196, 192, 184))
+	piece("Body", Vector3.new(7, 6, 15), CFrame.new(0, 1, 1))
+	piece("Chest", Vector3.new(8, 7, 5), CFrame.new(0, 1.4, -5.5))
+	for k = 0, 3 do
+		piece("Spine", Vector3.new(2.2 - k * 0.2, 2.6 - k * 0.3, 2.4), CFrame.new(0, 4.8 - k * 0.2, -5 + k * 3.6) * CFrame.Angles(0.3, 0, 0), dark)
+	end
+	piece("Crack", Vector3.new(0.25, 4.5, 6), CFrame.new(3.52, 1.4, 0) * CFrame.Angles(0.5, 0, 0), rgb(60, 58, 56))
+	piece("Crack", Vector3.new(0.25, 3.5, 5), CFrame.new(-3.52, 0.8, 3) * CFrame.Angles(-0.4, 0, 0), rgb(60, 58, 56))
+	-- шея и голова двигаются вместе, когда он принюхивается
+	local neckJoint = CFrame.new(0, 3, -7.5)
+	local _, neckM = piece("Neck", Vector3.new(3.6, 3.6, 6.5), CFrame.new(0, 4.6, -10) * CFrame.Angles(0.45, 0, 0), stone, neckJoint)
+	local _, headM = piece("Head", Vector3.new(4.6, 3.8, 6.8), CFrame.new(0, 6.6, -14.4), stone, neckJoint)
+	local _, jawM = piece("Jaw", Vector3.new(4, 1.1, 5.6), CFrame.new(0, 4.3, -14.6), dark, neckJoint)
+	local _, crestM = piece("Crest", Vector3.new(1, 2.4, 4.4), CFrame.new(0, 9, -13.2) * CFrame.Angles(-0.3, 0, 0), dark, neckJoint)
+	local _, n1 = piece("Nostril", Vector3.new(0.5, 0.9, 0.2), CFrame.new(-0.9, 6.3, -17.82), rgb(30, 28, 26), neckJoint)
+	local _, n2 = piece("Nostril", Vector3.new(0.5, 0.9, 0.2), CFrame.new(0.9, 6.3, -17.82), rgb(30, 28, 26), neckJoint)
+	local _, brow = piece("BlindBrow", Vector3.new(4.8, 1, 3), CFrame.new(0, 7.6, -15.6), dark, neckJoint)
+	motors.head = { neckM, headM, jawM, crestM, n1, n2, brow }
+	for _, mt in motors.head do
+		mt:SetAttribute("Rest", mt.C0)
+	end
+	-- ноги: бедро качается при ходьбе
+	for _, sx in { -1, 1 } do
+		for _, z in { -5, 6.5 } do
+			local hip = CFrame.new(sx * 3.6, 0, z)
+			local _, lm = piece("Leg", Vector3.new(2.6, 9.2, 3), CFrame.new(sx * 3.6, -4.6, z), stone, hip)
+			local _, fm = piece("Foot", Vector3.new(3.4, 1, 4.2), CFrame.new(sx * 3.6, -8.8, z - 0.5), dark, hip)
+			table.insert(motors.legs, { lm, fm, phase = if (sx < 0) == (z < 0) then 0 else math.pi, rest = hip })
 		end
-		weldTo(head, "Crack", Vector3.new(0.15, s.Y * 0.7, 0.1), CFrame.new(s.X * 0.2, 0.1, -s.Z / 2 - 0.03) * CFrame.Angles(0, 0, 0.35), rgb(60, 58, 56))
-		weldTo(head, "Mouth", Vector3.new(s.X * 0.5, s.Y * 0.07, 0.1), CFrame.new(0, -s.Y * 0.28, -s.Z / 2 - 0.03), rgb(50, 46, 44))
 	end
-	local torso = model:FindFirstChild("UpperTorso") :: BasePart?
-	if torso then
-		weldTo(torso, "Crack", Vector3.new(0.2, torso.Size.Y * 0.9, 0.1), CFrame.new(-torso.Size.X * 0.15, 0, -torso.Size.Z / 2 - 0.03) * CFrame.Angles(0, 0, -0.3), rgb(60, 58, 56))
+	for k = 0, 4 do
+		piece("Tail", Vector3.new(3 - k * 0.5, 2.6 - k * 0.4, 3.4), CFrame.new(0, 1 - k * 1.1, 9.5 + k * 3) * CFrame.Angles(-0.35, 0, 0), if k % 2 == 0 then stone else dark)
 	end
 	model:PivotTo(info.arena.spawn * CFrame.new(0, 3 * 3.1, 0))
 	local root = model:FindFirstChild("HumanoidRootPart") :: BasePart
 	root.Anchored = true
 	model.Parent = info.model
 	CollectionService:AddTag(model, "Colossus")
-	boss = { model = model, hum = hum, root = root, info = info, state = "statue", target = nil, sniffAt = 0, until_ = 0, wanderAt = 0, path = nil, pathAt = 0, wp = 1 }
+	boss = { model = model, hum = hum, root = root, info = info, motors = motors, state = "statue", target = nil, sniffAt = 0, until_ = 0, wanderAt = 0, path = nil, pathAt = 0, wp = 1 }
 	return model
 end
 
@@ -614,23 +649,42 @@ local function bossGo(goal: Vector3)
 	end
 end
 
--- принюхивается: голова поворачивается из стороны в сторону
+-- принюхивается: шея и голова медленно водят из стороны в сторону
 local function sniffAnim(b)
-	local head = b.model:FindFirstChild("Head")
-	local neck = head and head:FindFirstChild("Neck")
-	if neck and neck:IsA("Motor6D") then
-		local base = neck.C0
-		task.spawn(function()
-			for _, a in { 0.5, -0.5, 0.35, 0 } do
-				TweenService:Create(neck, TweenInfo.new(Rules.COLOSSUS.sniffTime / 4, Enum.EasingStyle.Sine), { C0 = base * CFrame.Angles(-0.25, a, 0) }):Play()
-				task.wait(Rules.COLOSSUS.sniffTime / 4)
-			end
-			if neck.Parent then
-				neck.C0 = base
-			end
-		end)
-	end
+	b.sniffFrom = os.clock()
 	sound(b.root, SOUND.rumble, 1.4, 0.5)
+end
+
+-- ноги шагают, пока он идёт; голова качается, когда принюхивается
+local function animateBeast()
+	local b = boss
+	if not b or not b.motors or not b.root.Parent then
+		return
+	end
+	local t = os.clock()
+	local v = b.root.AssemblyLinearVelocity
+	local speed = Vector3.new(v.X, 0, v.Z).Magnitude
+	local amp = math.clamp(speed / 12, 0, 1) * 0.45
+	for _, leg in b.motors.legs do
+		local a = math.sin(t * (3 + speed * 0.25) + leg.phase) * amp
+		local c0 = leg.rest * CFrame.Angles(a, 0, 0)
+		leg[1].C0 = c0
+		leg[2].C0 = c0
+	end
+	local yaw, pitch = 0, 0
+	if b.sniffFrom and t - b.sniffFrom < Rules.COLOSSUS.sniffTime then
+		local k = (t - b.sniffFrom) / Rules.COLOSSUS.sniffTime
+		yaw = math.sin(k * math.pi * 3) * 0.6
+		pitch = -0.25 * math.sin(k * math.pi)
+	elseif b.state == "hunt" or b.state == "bait" then
+		pitch = 0.12
+	end
+	for _, mt in b.motors.head do
+		local rest = mt:GetAttribute("Rest")
+		if typeof(rest) == "CFrame" then
+			mt.C0 = rest * CFrame.Angles(pitch, yaw, 0)
+		end
+	end
 end
 
 local function melt(b)
@@ -648,8 +702,8 @@ local function melt(b)
 	fire.LightEmission = 0.8
 	fire.Parent = b.root
 	for _, d in b.model:GetDescendants() do
-		if d:IsA("BasePart") then
-			TweenService:Create(d, TweenInfo.new(4), { Color = rgb(60, 40, 30), Transparency = if d.Name == "HumanoidRootPart" then 1 else 0.9 }):Play()
+		if d:IsA("BasePart") and d.Transparency < 1 then
+			TweenService:Create(d, TweenInfo.new(4), { Color = rgb(60, 40, 30), Transparency = 0.9 }):Play()
 		end
 	end
 	task.delay(4.2, function()
@@ -676,7 +730,7 @@ local function stepColossus()
 			if radius > 0 then
 				E.noise(r.Position, radius)
 			end
-			if flat(r.Position - b.root.Position).Magnitude < 7 and b.state ~= "eat" then
+			if flat(r.Position - b.root.Position).Magnitude < 8.5 and b.state ~= "eat" then
 				G.kill(p, "colossus")
 				sound(b.root, SOUND.stone, 1.6, 0.5)
 				if b.state == "hunt" then
@@ -775,6 +829,9 @@ end
 
 function E.init(game_)
 	G = game_
+	RunService.Heartbeat:Connect(function()
+		pcall(animateBeast)
+	end)
 	task.spawn(function()
 		while true do
 			task.wait(0.15)

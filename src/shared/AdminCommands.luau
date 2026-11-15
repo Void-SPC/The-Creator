@@ -11,7 +11,7 @@ C.LIST = {
 	{ id = "god", en = "Immortality on / off", ru = "Бессмертие вкл / выкл" },
 	{ id = "skip", en = "Open 5 doors ahead", ru = "Открыть 5 дверей вперёд" },
 	{ id = "skip20", en = "Open 20 doors ahead", ru = "Открыть 20 дверей вперёд" },
-	{ id = "to_code", en = "To door 049 (code lock hall)", ru = "К двери 049 (зал с кодовым замком)" },
+	{ id = "to_code", en = "To door 048 (hall of three locks)", ru = "К двери 048 (зал трёх замков)" },
 	{ id = "to_lift", en = "To door 099 (elevator and stairs)", ru = "К двери 099 (лифт и лестница)" },
 	{ id = "darkness", en = "Summon the Darkness", ru = "Вызвать Тьму" },
 	{ id = "unseal", en = "Solve the puzzle of this room", ru = "Решить загадку этого зала" },

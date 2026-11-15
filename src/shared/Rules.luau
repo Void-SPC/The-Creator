@@ -7,13 +7,14 @@ local Rules = {}
 -- локация --------------------------------------------------------------------
 
 Rules.CHAPTER = 100
-Rules.CODE_ROOM = 49 -- зал с кодовым замком (дверь 050 заперта)
+Rules.CODE_ROOM = 48 -- зал трёх замков (дверь 049 заперта)
+Rules.PASS_ROOM = 49 -- переход к залу Колосса
 Rules.BOSS_ROOM = 50 -- зал Колосса
 Rules.LIFT_ROOM = 99 -- лифт, загадка и лестница обслуживания
 Rules.FINAL_ROOM = 100 -- заброшенный зал
 
 function Rules.isSpecial(door: number): boolean
-	return door == 0 or door == Rules.CODE_ROOM or door == Rules.BOSS_ROOM or door == Rules.LIFT_ROOM or door == Rules.FINAL_ROOM
+	return door == 0 or door == Rules.CODE_ROOM or door == Rules.PASS_ROOM or door == Rules.BOSS_ROOM or door == Rules.LIFT_ROOM or door == Rules.FINAL_ROOM
 end
 
 function Rules.plate(door: number): string
@@ -134,15 +135,16 @@ end
 
 -- что лежит в ящике: r в [0, 1)
 function Rules.loot(r: number, door: number): (string, number)
-	if r < 0.4 then
-		return "coins", 3 + math.floor(r * 25) + math.floor(door / 10)
-	elseif r < 0.52 then
+	-- у каждого ящика своя находка, поэтому пустых больше
+	if r < 0.25 then
+		return "coins", 3 + math.floor(r * 40) + math.floor(door / 10)
+	elseif r < 0.33 then
 		return "battery", 1
-	elseif r < 0.56 then
+	elseif r < 0.355 then
 		return "lockpick", 1
-	elseif r < 0.575 then
+	elseif r < 0.365 then
 		return "plant", 1
-	elseif r < 0.585 then
+	elseif r < 0.372 then
 		return "hammer", 1
 	end
 	return "nothing", 0
@@ -168,6 +170,7 @@ Rules.COLOSSUS = { wander = 8, hunt = 16, sniffEvery = 11, sniffTime = 2.6, snif
 
 -- кодовый замок: четыре цифры 1–6 (сколько предметов на витрине каждого цвета)
 Rules.COLORS = { "red", "blue", "green", "yellow" }
+Rules.ROMAN = { "I", "II", "III", "IV", "V", "VI", "VII", "VIII" }
 
 function Rules.code(rand: () -> number)
 	local digits, order = {}, { 1, 2, 3, 4 }
@@ -182,8 +185,19 @@ function Rules.code(rand: () -> number)
 	for _, c in order do
 		text ..= digits[c]
 	end
-	-- digits[i] — число для цвета i; order — порядок цветов на замке; text — код
-	return { digits = digits, order = order, text = text }
+	-- третий замок: восемь экспонатов с римскими номерами I–VIII в случайном порядке
+	local roman = { 1, 2, 3, 4, 5, 6, 7, 8 }
+	for i = 8, 2, -1 do
+		local j = 1 + math.floor(rand() * i)
+		roman[i], roman[j] = roman[j], roman[i]
+	end
+	local sequence = {}
+	for item, num in roman do
+		sequence[num] = item
+	end
+	-- digits[i] — число для цвета i; order — порядок цветов на замке; text — код;
+	-- roman[k] — номер экспоната k; sequence — в каком порядке нажимать экспонаты
+	return { digits = digits, order = order, text = text, roman = roman, sequence = sequence }
 end
 
 -- зеркала: сетка клеток (i, j). Зеркало в состоянии 1 меняет местами оси луча,

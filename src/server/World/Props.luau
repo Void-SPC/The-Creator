@@ -149,7 +149,7 @@ end
 
 -- Двери трёх размеров: служебная железная, обычная филёнчатая, парадная двустворчатая.
 -- cf — середина проёма на полу, LookVector — в следующий зал. Возвращает модель и створки
-Props.DOORS = { small = { w = 4, h = 8 }, normal = { w = 5, h = 9 }, grand = { w = 8, h = 12 } }
+Props.DOORS = { small = { w = 4, h = 7.5 }, normal = { w = 5, h = 8 }, grand = { w = 8, h = 11 } }
 function Props.door(parent, cf: CFrame, plate: string?, locked: boolean?, size: string?)
 	local m = model(parent, "Door")
 	local kind = size or "normal"
@@ -225,7 +225,7 @@ end
 function Props.locker(parent, cf: CFrame, color: Color3?)
 	local m = model(parent, "Locker")
 	local steel = color or rgb(84, 96, 92)
-	local w, d, h = 3.6, 2.8, 8.4
+	local w, d, h = 3.6, 2.8, 7.4
 	local base = cf * CFrame.new(0, 0, -0.05 - d / 2)
 	-- полость (невидимая, без столкновений) — для кнопки и укрытия
 	local cavity = P(m, "Cavity", Vector3.new(w - 0.4, h - 1, d - 0.4), base * CFrame.new(0, 0.6 + (h - 1) / 2, 0), rgb(0, 0, 0), M.SmoothPlastic, { Transparency = 1, CanCollide = false, CanQuery = true, CastShadow = false })
@@ -314,18 +314,20 @@ local function drawerCase(m, cf: CFrame, w: number, d: number, h: number, rows: 
 			P(dm, "BoxSide", Vector3.new(0.08, rowH * 0.45, innerD - 0.3), base * CFrame.new(s * (innerW / 2 - 0.1), boxY + 0.04 + rowH * 0.225, 0.05), Props.WOOD_LIGHT, M.Wood, nc())
 		end
 		dm.WorldPivot = front
-		-- место для находки внутри ящика (в открытом положении)
-		table.insert(drawers, { model = dm, open = base * CFrame.new(0, boxY + 0.1, 0.05 - 1.5), depth = innerD })
+		-- у каждого ящика своя кнопка: его можно выдвинуть и задвинуть отдельно
+		local hit = P(dm, "DrawerHit", Vector3.new(w - 2 * t - 0.2, rowH - 0.2, 0.3), front * CFrame.new(0, 0, -0.25), rgb(0, 0, 0), M.SmoothPlastic, { Transparency = 1, CanCollide = false, CanQuery = true, CastShadow = false })
+		Props.prompt(hit, "drawer", 0, 6)
+		-- inside — место находки в задвинутом ящике (предмет лежит внутри и едет вместе с ним)
+		table.insert(drawers, { model = dm, hit = hit, inside = base * CFrame.new(0, boxY + 0.05, 0.05), depth = innerD })
 	end
 	return drawers
 end
 
 -- кнопка «Обыскать» на передней части; drawers нужны игре для анимации
 local function searchable(m, cf, w, d, h, legs)
-	local hit = P(m, "Search", Vector3.new(w, h, 0.4), cf * CFrame.new(0, legs + h / 2, -d - 0.2), rgb(0, 0, 0), M.SmoothPlastic, { Transparency = 1, CanCollide = false, CanQuery = true, CastShadow = false })
-	Props.prompt(hit, "search", 0.6, 7)
 	CollectionService:AddTag(m, "Searchable")
-	return hit
+	local _ = { cf, w, d, h, legs }
+	return nil
 end
 
 function Props.dresser(parent, cf: CFrame, wood: Color3?)
@@ -1162,6 +1164,16 @@ function Props.sinkRow(parent, cf: CFrame, n: number)
 	end
 	P(m, "Mirror", Vector3.new(w - 0.4, 3, 0.1), cf * CFrame.new(0, 6, 0.2), rgb(170, 186, 196), M.Glass, { Reflectance = 0.3 })
 	P(m, "MirrorFrame", Vector3.new(w, 3.4, 0.06), cf * CFrame.new(0, 6, 0.27), Props.STEEL, M.Metal, nc())
+	-- зеркало разбито: трещины расходятся от места удара, одного осколка нет
+	local hitX = w * 0.18
+	for k = 0, 6 do
+		local a = k * 0.9 + 0.3
+		local len = 0.9 + (k % 3) * 0.5
+		local from = (cf * CFrame.new(hitX, 6.2, 0.14)).Position
+		local to = (cf * CFrame.new(math.clamp(hitX + math.cos(a) * len, -w / 2 + 0.3, w / 2 - 0.3), math.clamp(6.2 + math.sin(a) * len, 4.6, 7.4), 0.14)).Position
+		Props.rod(m, "Crack", from, to, 0.04, rgb(30, 34, 38), M.SmoothPlastic, nc())
+	end
+	P(m, "MissingShard", Vector3.new(0.7, 0.6, 0.03), cf * CFrame.new(hitX - 0.2, 6.1, 0.135) * CFrame.Angles(0, 0, 0.5), rgb(40, 40, 44), M.SmoothPlastic, nc())
 	return m
 end
 
