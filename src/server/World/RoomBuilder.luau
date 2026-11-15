@@ -9,7 +9,7 @@ local M = require(Shared.Materials)
 local Plan = require(Shared.RoomPlan)
 local Props = require(script.Parent.Props)
 
-local P, nc, rgb = Props.P, Props.nc, Props.rgb
+local P, C, nc, rgb = Props.P, Props.C, Props.nc, Props.rgb
 
 local Builder = {}
 
@@ -22,64 +22,75 @@ local DOOR_HOLE = { w = 5, h = 9 }
 -- оформление по глубине
 
 local PAPER = {
-	hotel = { rgb(176, 156, 120), rgb(104, 46, 44), rgb(58, 84, 80), rgb(146, 116, 66), rgb(150, 110, 104), rgb(92, 92, 70) },
-	faded = { rgb(132, 128, 118), rgb(98, 106, 112), rgb(120, 108, 96), rgb(108, 116, 104) },
-	decay = { rgb(74, 68, 58), rgb(66, 58, 52), rgb(80, 76, 66) },
-	deep = { rgb(70, 72, 74), rgb(58, 60, 62) },
+	classic = { rgb(112, 38, 42), rgb(42, 68, 56), rgb(38, 50, 82), rgb(188, 176, 150), rgb(76, 46, 74), rgb(150, 120, 70) },
+	old = { rgb(74, 40, 40), rgb(44, 56, 50), rgb(40, 44, 60), rgb(110, 104, 92), rgb(60, 46, 58) },
+	ruin = { rgb(62, 70, 58), rgb(70, 68, 60) },
 }
-local CARPET = {
-	hotel = { rgb(108, 30, 30), rgb(40, 64, 48), rgb(82, 58, 40), rgb(38, 44, 72) },
-	faded = { rgb(92, 70, 66), rgb(70, 76, 72), rgb(84, 80, 74) },
-	decay = { rgb(56, 50, 44), rgb(48, 44, 40) },
-	deep = { rgb(50, 50, 52) },
+local FLOOR = {
+	classic = { { rgb(206, 200, 190), M.Marble }, { rgb(124, 86, 54), M.WoodPlanks }, { rgb(170, 160, 146), M.Marble }, { rgb(96, 64, 44), M.WoodPlanks } },
+	old = { { rgb(128, 124, 116), M.Marble }, { rgb(78, 56, 40), M.WoodPlanks }, { rgb(100, 96, 90), M.Slate } },
+	ruin = { { rgb(84, 88, 76), M.Slate } },
 }
 
 function Builder.style(d, rand)
-	local zone = d.zone or "hotel"
-	local papers, carpets = PAPER[zone], CARPET[zone]
+	local zone = d.zone or "classic"
+	local papers, floors = PAPER[zone] or PAPER.classic, FLOOR[zone] or FLOOR.classic
+	local fl = floors[math.floor(rand() * #floors) + 1]
 	local st = {
 		paper = papers[math.floor(rand() * #papers) + 1],
 		paperMat = M.Plaster,
-		panel = if zone == "hotel" then Props.WOOD_DARK elseif zone == "faded" then rgb(96, 90, 82) else rgb(60, 56, 50),
+		panel = if zone == "classic" then (if rand() < 0.5 then Props.WOOD_DARK else rgb(170, 164, 152)) else rgb(72, 66, 58),
 		panelMat = M.Wood,
-		floor = carpets[math.floor(rand() * #carpets) + 1],
-		floorMat = M.Carpet,
-		ceil = if zone == "hotel" then rgb(190, 182, 166) elseif zone == "faded" then rgb(150, 146, 138) else rgb(96, 94, 90),
+		floor = fl[1],
+		floorMat = fl[2],
+		ceil = if zone == "classic" then rgb(214, 208, 194) elseif zone == "old" then rgb(140, 134, 124) else rgb(84, 86, 78),
 		ceilMat = M.SmoothPlastic,
 		struct = rgb(110, 104, 96),
 		wainscot = true,
 	}
-	if zone == "decay" or zone == "deep" then
-		st.paperMat = if rand() < 0.5 then M.Concrete else M.Plaster
-		st.floorMat = if rand() < 0.5 then M.Concrete else M.WoodPlanks
-		st.floor = rgb(70, 64, 58)
+	if st.panel ~= Props.WOOD_DARK and zone == "classic" then
+		st.panelMat = M.Marble
 	end
 	local k = d.kind
-	if k == "bathroom" or k == "kitchen" or k == "laundry" then
-		st.paper = if zone == "hotel" then rgb(206, 206, 196) else rgb(150, 154, 146)
+	if k == "restroom" then
+		st.paper = if zone == "classic" then rgb(206, 210, 204) else rgb(140, 148, 142)
 		st.paperMat = M.CeramicTiles
-		st.floor = rgb(190, 188, 180):Lerp(rgb(60, 60, 60), if zone == "hotel" then 0 else 0.4)
+		st.floor = if zone == "classic" then rgb(186, 188, 184) else rgb(110, 114, 110)
 		st.floorMat = M.CeramicTiles
 		st.wainscot = false
-	elseif k == "library" or k == "office" then
-		st.paper = Props.WOOD:Lerp(rgb(0, 0, 0), if zone == "hotel" then 0.2 else 0.5)
+	elseif k == "archive" then
+		st.paper = Props.WOOD:Lerp(rgb(0, 0, 0), if zone == "classic" then 0.25 else 0.5)
 		st.paperMat = M.WoodPlanks
 		st.floor = rgb(84, 58, 40)
 		st.floorMat = M.WoodPlanks
-	elseif k == "storage" or k == "crawl" then
-		st.paper = rgb(96, 94, 90)
+	elseif k == "storage" or k == "tech" or k == "lifthall" then
+		st.paper = rgb(98, 98, 94)
 		st.paperMat = M.Concrete
 		st.floor = rgb(80, 80, 78)
 		st.floorMat = M.Concrete
+		st.ceil = rgb(90, 90, 88)
 		st.wainscot = false
-	elseif k == "gallery" or k == "pillarhall" then
+	elseif k == "arena" then
+		st.paper = rgb(72, 70, 68)
+		st.paperMat = M.Slate
+		st.floor = rgb(92, 90, 86)
 		st.floorMat = M.Marble
-		st.floor = rgb(170, 164, 154):Lerp(rgb(40, 40, 40), if zone == "hotel" then 0 else 0.45)
+		st.ceil = rgb(50, 50, 50)
+		st.wainscot = false
+	elseif k == "voidhall" then
+		st.paper = rgb(86, 82, 76)
+		st.floor = rgb(70, 66, 60)
+		st.floorMat = M.Slate
+	elseif k == "fossil" then
+		st.floor = rgb(176, 160, 130)
+		st.floorMat = M.Sand
+	elseif k == "final" then
+		st.paperMat = M.Slate
+		st.wainscot = false
 	end
-	if k == "crawl" then
-		st.paper = rgb(100, 102, 104)
+	if k == "tech" then
+		st.paper = rgb(96, 100, 102)
 		st.paperMat = M.DiamondPlate
-		st.ceil = rgb(80, 80, 82)
 		st.ceilMat = M.Metal
 	end
 	return st
@@ -168,7 +179,9 @@ local function shell(m, d, origin: CFrame, st, prevWall)
 			Props.rod(m, "Handrail", a, b, 0.25, Props.WOOD_DARK, M.Wood, nc())
 		end
 	end
-	P(m, "Ceiling", Vector3.new(w, 1, l), at(origin, 0, top + 0.5, -l / 2), st.ceil, st.ceilMat)
+	if not d.noCeiling then
+		P(m, "Ceiling", Vector3.new(w, 1, l), at(origin, 0, top + 0.5, -l / 2), st.ceil, st.ceilMat)
+	end
 	-- проёмы: настоящий выход, ложные двери, окна
 	local exits = { d.exit }
 	for _, e in d.decoys do
@@ -189,6 +202,10 @@ local function shell(m, d, origin: CFrame, st, prevWall)
 			hole.zRoom = e.z
 			table.insert(sides[e.turn], hole)
 		end
+	end
+	-- проломы во всю высоту стены (аномальный коридор)
+	for _, g in d.gaps or {} do
+		table.insert(sides[g.side], { zRoom = g.z, w = g.w, y = ybase, h = top })
 	end
 	-- окна: в свободных местах боковых стен, которые задаёт планировка
 	local windows = {}
@@ -232,7 +249,8 @@ local function shell(m, d, origin: CFrame, st, prevWall)
 	end
 	-- стена входа: только там, где нет стены прошлой комнаты, и выше неё
 	local bcf = at(origin, 0, 0, 0)
-	local entrance = if d.kind == "start" then {} else { { x = 0, w = DOOR_HOLE.w, y = 0, h = DOOR_HOLE.h } }
+	local eh = d.entry or DOOR_HOLE
+	local entrance = if d.kind == "start" then {} else { { x = 0, w = eh.w, y = 0, h = eh.h } }
 	if prevWall then
 		local c0, c1, ctop, cbot = prevWall.x0, prevWall.x1, prevWall.top, prevWall.bottom
 		local half = w / 2 + 0.5
@@ -259,10 +277,10 @@ local function shell(m, d, origin: CFrame, st, prevWall)
 	end
 	dress(m, bcf, { w - 1.2, w - 1.44, w - 1.68 }, 0, top, entrance, st)
 	-- карниз под потолком по периметру
-	for _, side in { -1, 1 } do
+	for _, side in (if d.noCeiling then {} else { -1, 1 }) do
 		P(m, "Crown", Vector3.new(0.3, 0.4, l - 1.8), at(origin, side * (w / 2 - 0.75), top - 0.2, -l / 2), st.ceil:Lerp(rgb(0, 0, 0), 0.15), M.SmoothPlastic, nc())
 	end
-	for _, z in { -0.75, -l + 0.75 } do
+	for _, z in (if d.noCeiling then {} else { -0.75, -l + 0.75 }) do
 		P(m, "Crown", Vector3.new(w - 1.2, 0.4, 0.3), at(origin, 0, top - 0.2, z), st.ceil:Lerp(rgb(0, 0, 0), 0.15), M.SmoothPlastic, nc())
 	end
 	-- кадры дверей и окон
@@ -326,10 +344,19 @@ Builder.slotL, Builder.slotR, Builder.slotFront, Builder.slotBack, Builder.spot 
 -- помощники планировок
 
 local function hide(ctx, cf)
+	-- шкафчики стоят не в каждом зале: сколько их, решает план
+	if ctx.hides <= 0 then
+		return
+	end
+	ctx.hides -= 1
 	local _, cavity = Props.locker(ctx.m, cf)
 	table.insert(ctx.info.hideSpots, cavity)
 end
 local function vent(ctx, cf)
+	if ctx.hides <= 0 then
+		return
+	end
+	ctx.hides -= 1
 	local _, cavity = Props.vent(ctx.m, cf)
 	table.insert(ctx.info.hideSpots, cavity)
 end
@@ -372,341 +399,356 @@ local function painting(ctx, side, z, y, w, h)
 end
 
 -- ---------------------------------------------------------------------------
--- планировки
+-- планировки залов музея
 
 local L = {}
 
+local STATUES = { "figure", "bust", "obelisk", "abstract", "broken" }
+local function statue(c, x, z, k: number, yaw: number?)
+	Props.statue(c.m, spot(c.d, c.origin, x, z, yaw), STATUES[(c.d.door + k) % #STATUES + 1], c.d.door)
+end
+local function case(c, x, z, k: number, item: string?)
+	Props.displayCase(c.m, spot(c.d, c.origin, x, z), item or Props.ODD[(c.d.door * 3 + k * 5) % #Props.ODD + 1])
+end
+local function wallCase(c, side: number, z: number, w: number?)
+	Props.wallCase(c.m, (if side < 0 then slotL else slotR)(c.d, c.origin, z), w or 6, c.d.door + math.floor(z))
+end
+local function bench(c, side: number, z: number, w: number)
+	Props.bench(c.m, (if side < 0 then slotL else slotR)(c.d, c.origin, z), w)
+end
+local function ropeAround(c, x0, x1, z0, z1)
+	local function p(x, z)
+		return at(c.origin, x, 0, z).Position
+	end
+	Props.rope(c.m, p(x0, z0), p(x1, z0))
+	Props.rope(c.m, p(x0, z1), p(x1, z1))
+	Props.rope(c.m, p(x0, z0), p(x0, z1))
+	Props.rope(c.m, p(x1, z0), p(x1, z1))
+end
+
 L.start = function(c)
 	local d, o = c.d, c.origin
-	Props.table(c.m, spot(d, o, 0, -10), 10, 2.6, rgb(90, 20, 24))
-	tableLamp(c, spot(d, o, -3.5, -10) * CFrame.new(0, 3.25, 0))
+	-- закрывшиеся входные двери за спиной
+	local back = slotBack(d, o, 0)
+	local dm = Props.model(c.m, "EntranceDoors")
 	for _, s in { -1, 1 } do
-		hide(c, slotBack(d, o, s * 9))
-		Props.sofa(c.m, (if s < 0 then slotL else slotR)(d, o, -16), rgb(90, 30, 34))
-		Props.plantPot(c.m, spot(d, o, s * 12, -26))
+		P(dm, "Leaf", Vector3.new(4.3, 12.4, 0.3), back * CFrame.new(s * 2.2, 6.2, -0.2), rgb(52, 34, 24), M.WoodPlanks, nc())
+		P(dm, "Panel", Vector3.new(3, 4.4, 0.06), back * CFrame.new(s * 2.2, 3.4, -0.38), rgb(40, 26, 18), M.Wood, nc())
+		P(dm, "Panel", Vector3.new(3, 4.4, 0.06), back * CFrame.new(s * 2.2, 8.8, -0.38), rgb(40, 26, 18), M.Wood, nc())
+		C(dm, "Ring", 0.1, 0.8, back * CFrame.new(s * 0.6, 5.6, -0.42) * CFrame.Angles(math.pi / 2, 0, 0), Props.BRASS, M.Metal, nc())
+		P(dm, "Post", Vector3.new(0.8, 13.2, 0.5), back * CFrame.new(s * 4.8, 6.6, -0.3), rgb(150, 144, 134), M.Marble, nc())
 	end
-	search(c, "dresser", slotFront(d, o, -9))
-	search(c, "dresser", slotFront(d, o, 9))
-	Props.rug(c.m, spot(d, o, 0, -16), 12, 14, rgb(100, 26, 30))
+	P(dm, "Lintel", Vector3.new(10.8, 0.9, 0.7), back * CFrame.new(0, 13.1, -0.42), rgb(150, 144, 134), M.Marble, nc())
+	Props.counter(c.m, slotL(d, o, -14), 10)
+	bench(c, 1, -12, 8)
+	Props.statue(c.m, spot(d, o, -9, -22), "bust", 1)
+	Props.statue(c.m, spot(d, o, 9, -22), "bust", 2)
+	Props.plantPot(c.m, spot(d, o, -12, -27.5))
+	Props.plantPot(c.m, spot(d, o, 12, -27.5))
+	Props.rug(c.m, spot(d, o, 0, -16), 10, 22, rgb(110, 28, 34))
 	chandelier(c, 0, -15, 3)
-	d.windowZ = { -6 }
 end
 
 L.corridor = function(c)
-	local d, o = c.d, c.origin
-	hide(c, slotL(d, o, -12))
-	search(c, "nightstand", slotR(d, o, -12))
-	hide(c, slotR(d, o, -24))
-	painting(c, 1, -12, 6.5, 2.6, 2)
-	painting(c, -1, -24, 6.5, 3.6, 2.6)
+	hide(c, slotL(c.d, c.origin, -12))
+	bench(c, 1, -11, 6)
+	wallCase(c, -1, -20)
+	painting(c, 1, -11, 8, 3, 2.4)
+	painting(c, 1, -22, 7, 3.6, 3)
 	ceil(c, 0, -10)
-	ceil(c, 0, -26)
-	d.windowZ = { -18 }
+	ceil(c, 0, -28)
 end
 
 L.longhall = function(c)
 	local d, o = c.d, c.origin
 	hide(c, slotL(d, o, -14))
-	search(c, "nightstand", slotR(d, o, -14))
-	search(c, "nightstand", slotL(d, o, -30))
-	hide(c, slotR(d, o, -30))
-	hide(c, slotL(d, o, -46))
-	search(c, "nightstand", slotR(d, o, -46))
+	hide(c, slotR(d, o, -44))
+	wallCase(c, 1, -14)
+	wallCase(c, -1, -28)
+	wallCase(c, 1, -34)
+	bench(c, -1, -46, 6)
+	painting(c, -1, -20.5, 7, 3, 2.6)
+	painting(c, 1, -24, 7, 3, 2.6)
+	painting(c, -1, -54, 7, 3.6, 3)
 	for _, z in { -8, -24, -40, -56 } do
 		ceil(c, 0, z)
 	end
-	painting(c, 1, -14, 6.5, 2.6, 2)
-	painting(c, -1, -30, 6.5, 2.6, 2)
-	d.windowZ = { -22, -38 }
 end
 
 L.shorthall = function(c)
-	local d, o = c.d, c.origin
-	hide(c, slotL(d, o, -10))
-	search(c, "nightstand", slotR(d, o, -10))
-	painting(c, 1, -10, 6.5, 2.6, 2)
-	ceil(c, 0, -10)
-end
-
-L.crawl = function(c)
-	local d, o = c.d, c.origin
-	vent(c, slotL(d, o, -10))
-	search(c, "cabinet", slotR(d, o, -10))
-	vent(c, slotR(d, o, -21))
-	Props.pipes(c.m, at(o, -d.w / 2 + 1.2, d.h - 0.6, -1).Position, at(o, -d.w / 2 + 1.2, d.h - 0.6, -d.l + 1).Position, 2)
-	ceil(c, 0, -8)
-	ceil(c, 0, -22)
-end
-
-local function stairsLayout(c)
-	local d, o = c.d, c.origin
-	hide(c, slotL(d, o, -6))
-	search(c, "nightstand", slotR(d, o, -6))
-	hide(c, slotR(d, o, -34))
-	ceil(c, 0, -6)
-	ceil(c, 0, -20)
-	ceil(c, 0, -34)
-	painting(c, -1, -34, d.dy + 6.5, 3, 2.4)
-end
-L.stairsup = stairsLayout
-L.stairsdown = stairsLayout
-
-L.bedroom = function(c)
-	local d, o = c.d, c.origin
-	Props.bed(c.m, slotBack(d, o, 7), Color3.fromHSV((d.door * 0.17) % 1, 0.35, 0.4))
-	local top = search(c, "nightstand", slotBack(d, o, 11))
-	if top then
-		tableLamp(c, top * CFrame.new(-0.4, 0, 0))
-	end
-	hide(c, slotL(d, o, -5))
-	search(c, "dresser", slotL(d, o, -12))
-	search(c, "desk", slotR(d, o, -13))
-	Props.chair(c.m, slotR(d, o, -13) * CFrame.new(0, 0, -4.2) * CFrame.Angles(0, math.pi, 0))
-	Props.rug(c.m, spot(d, o, -2, -14), 9, 7, rgb(90, 40, 40))
-	for _, x in { -11.4, 11.4 } do
-		Props.plantPot(c.m, spot(d, o, x, -d.l + 1.6))
-	end
-	ceil(c, 0, -14)
-	d.windowZ = { -21 }
-end
-
-L.suite = function(c)
-	local d, o = c.d, c.origin
-	hide(c, slotBack(d, o, -10))
-	hide(c, slotBack(d, o, 10))
-	Props.sofa(c.m, slotL(d, o, -12), rgb(70, 50, 80))
-	local _, ttop = Props.coffeeTable(c.m, slotL(d, o, -12) * CFrame.new(0, 0, -5))
-	table.insert(c.info.tops, ttop)
-	Props.bookshelf(c.m, slotR(d, o, -8), 6, 10, d.door)
-	search(c, "dresser", slotR(d, o, -16))
-	local top = search(c, "nightstand", slotR(d, o, -20.5))
-	if top then
-		tableLamp(c, top)
-	end
-	Props.bed(c.m, slotR(d, o, -25), rgb(90, 50, 60))
-	search(c, "desk", slotL(d, o, -24))
-	Props.chair(c.m, slotL(d, o, -24) * CFrame.new(0, 0, -4.2) * CFrame.Angles(0, math.pi, 0))
-	Props.rug(c.m, spot(d, o, 0, -18), 12, 10, rgb(70, 40, 50))
-	chandelier(c, 0, -20, 3)
-	ceil(c, 0, -8)
-	ceil(c, 0, -32)
-	d.windowZ = { -18 }
-end
-
-L.office = function(c)
-	local d, o = c.d, c.origin
-	search(c, "cabinet", slotBack(d, o, -9))
-	search(c, "cabinet", slotBack(d, o, 9))
-	for _, s in { -1, 1 } do
-		local slot = if s < 0 then slotL else slotR
-		Props.bookshelf(c.m, slot(d, o, -7), 6, 8, d.door + s)
-		hide(c, slot(d, o, -14))
-		search(c, "cabinet", slot(d, o, -20))
-		local top = search(c, "desk", spot(d, o, s * 5, -9))
-		Props.chair(c.m, spot(d, o, s * 5, -12.9, math.pi))
-		if top and s > 0 then
-			tableLamp(c, top * CFrame.new(-1.6, 0, 0))
-		end
-	end
-	ceil(c, -6, -13)
-	ceil(c, 6, -13)
-	d.windowZ = { -23.6 }
-end
-
-L.library = function(c)
-	local d, o = c.d, c.origin
-	hide(c, slotBack(d, o, -10))
-	hide(c, slotBack(d, o, 10))
-	-- полки у стен
-	for _, s in { -1, 1 } do
-		local slot = if s < 0 then slotL else slotR
-		for k, z in { -6, -12.4, -18.8 } do
-			Props.bookshelf(c.m, slot(d, o, z), 6, 12, d.door + k * 3 + s)
-		end
-	end
-	-- два ряда двусторонних стеллажей посередине
-	for _, x in { -8, 8 } do
-		for k, z in { -10, -16.4, -22.8 } do
-			Props.bookshelf(c.m, spot(d, o, x, z, -math.pi / 2) * CFrame.new(0, 0, 0.05), 6, 10, d.door + k)
-			Props.bookshelf(c.m, spot(d, o, x, z, math.pi / 2) * CFrame.new(0, 0, 0.05), 6, 10, d.door + k + 5)
-		end
-	end
-	Props.bookshelf(c.m, slotFront(d, o, 0), 6, 12, d.door + 9)
-	local _, ttop = Props.table(c.m, spot(d, o, 0, -30), 6, 3)
-	table.insert(c.info.tops, ttop)
-	tableLamp(c, ttop * CFrame.new(-2, 0, 0))
-	for _, x in { -1.5, 1.5 } do
-		Props.chair(c.m, spot(d, o, x, -32.4, math.pi))
-	end
-	search(c, "desk", slotL(d, o, -26))
-	chandelier(c, 0, -12, 3)
-	chandelier(c, 0, -26, 3)
-end
-
-L.lounge = function(c)
-	local d, o = c.d, c.origin
-	hide(c, slotBack(d, o, -10))
-	hide(c, slotBack(d, o, 10))
-	Props.piano(c.m, slotFront(d, o, -9))
-	Props.bookshelf(c.m, slotFront(d, o, 9), 6, 9, d.door)
-	Props.sofa(c.m, slotL(d, o, -10), rgb(60, 70, 50))
-	Props.sofa(c.m, slotR(d, o, -10), rgb(60, 70, 50))
-	local _, ttop = Props.coffeeTable(c.m, spot(d, o, 0, -12))
-	table.insert(c.info.tops, ttop)
-	Props.armchair(c.m, spot(d, o, -4.4, -12, -math.pi / 2), rgb(80, 40, 40))
-	Props.armchair(c.m, spot(d, o, 4.4, -12, math.pi / 2), rgb(80, 40, 40))
-	search(c, "dresser", slotL(d, o, -17))
-	search(c, "dresser", slotR(d, o, -17))
-	Props.rug(c.m, spot(d, o, 0, -12), 14, 9, rgb(80, 30, 40))
-	chandelier(c, 0, -14, 3)
-	d.windowZ = { -3.5 }
-end
-
-L.dining = function(c)
-	local d, o = c.d, c.origin
-	hide(c, slotBack(d, o, -9))
-	hide(c, slotBack(d, o, 9))
-	local _, ttop = Props.table(c.m, spot(d, o, 0, -17), 4, 16, rgb(220, 214, 196))
-	table.insert(c.info.tops, ttop * CFrame.new(0, 0, 5))
-	for _, z in { -11, -14, -17, -20, -23 } do
-		Props.chair(c.m, spot(d, o, -3.1, z, -math.pi / 2))
-		Props.chair(c.m, spot(d, o, 3.1, z, math.pi / 2))
-	end
-	Props.chair(c.m, spot(d, o, 0, -7.6, 0))
-	Props.chair(c.m, spot(d, o, 0, -26.4, math.pi))
-	for _, s in { -1, 1 } do
-		local slot = if s < 0 then slotL else slotR
-		search(c, "dresser", slot(d, o, -10))
-		search(c, "dresser", slot(d, o, -22))
-		Props.plantPot(c.m, spot(d, o, s * 12, -d.l + 1.6))
-	end
-	chandelier(c, 0, -11, 3)
-	chandelier(c, 0, -23, 3)
-	d.windowZ = { -16 }
-end
-
-L.kitchen = function(c)
-	local d, o = c.d, c.origin
-	hide(c, slotBack(d, o, -8))
-	hide(c, slotBack(d, o, 7))
-	local _, t1 = Props.counter(c.m, slotL(d, o, -9), 10)
-	table.insert(c.info.tops, t1)
-	Props.stove(c.m, slotL(d, o, -17))
-	Props.fridge(c.m, slotR(d, o, -6))
-	local _, t2 = Props.counter(c.m, slotR(d, o, -13), 8)
-	table.insert(c.info.tops, t2)
-	local _, t3 = Props.table(c.m, spot(d, o, 0, -16), 6, 3)
-	table.insert(c.info.tops, t3)
-	search(c, "cabinet", slotFront(d, o, -9))
-	Props.rack(c.m, slotFront(d, o, 9), 6, d.door)
-	ceil(c, 0, -8)
-	ceil(c, 0, -20)
-end
-
-L.storage = function(c)
-	local d, o = c.d, c.origin
-	hide(c, slotBack(d, o, -9.4))
-	hide(c, slotBack(d, o, 9.4))
-	for _, s in { -1, 1 } do
-		local slot = if s < 0 then slotL else slotR
-		Props.rack(c.m, slot(d, o, -6), 6, d.door + s)
-		Props.rack(c.m, slot(d, o, -13), 6, d.door + s * 2)
-		search(c, "cabinet", slot(d, o, -20))
-	end
-	Props.crate(c.m, spot(d, o, -6, -18, 0.3), 3)
-	Props.crate(c.m, spot(d, o, -6, -18, 0.3) * CFrame.new(0, 3, 0), 2.4)
-	Props.crate(c.m, spot(d, o, 6, -18, -0.2), 3)
-	Props.crate(c.m, spot(d, o, 0, -25, 0.5), 3)
-	Props.crate(c.m, slotFront(d, o, 0) * CFrame.new(0, 0, -1.6), 3)
-	ceil(c, -7, -10)
-	ceil(c, 7, -10)
-	ceil(c, 0, -24)
-end
-
-L.pillarhall = function(c)
-	local d, o = c.d, c.origin
-	for _, x in { -10, 10 } do
-		for _, z in { -10, -22, -34 } do
-			Props.pillar(c.m, spot(d, o, x, z), d.h)
-		end
-	end
-	search(c, "dresser", slotBack(d, o, -12))
-	search(c, "dresser", slotBack(d, o, 12))
-	for _, s in { -1, 1 } do
-		local slot = if s < 0 then slotL else slotR
-		Props.bench(c.m, slot(d, o, -10), 7)
-		hide(c, slot(d, o, -16))
-		Props.bench(c.m, slot(d, o, -22), 7)
-		hide(c, slot(d, o, -28))
-	end
-	Props.rug(c.m, spot(d, o, 0, -23), 7, 34, rgb(90, 24, 28))
-	chandelier(c, 0, -16, 4)
-	chandelier(c, 0, -30, 4)
-	d.windowZ = { -3.5, -33 }
-end
-
-L.bathroom = function(c)
-	local d, o = c.d, c.origin
-	for _, z in { -5, -10, -15 } do
-		Props.stall(c.m, slotL(d, o, z))
-	end
-	for _, z in { -6, -10, -14 } do
-		Props.sink(c.m, slotR(d, o, z))
-	end
-	hide(c, slotBack(d, o, 8))
-	search(c, "cabinet", slotFront(d, o, -8))
-	ceil(c, 0, -8)
-	ceil(c, 0, -16)
-end
-
-L.laundry = function(c)
-	local d, o = c.d, c.origin
-	for _, s in { -1, 1 } do
-		local slot = if s < 0 then slotL else slotR
-		for _, z in { -5.5, -8.7, -11.9 } do
-			Props.washer(c.m, slot(d, o, z))
-		end
-		search(c, "cabinet", slotFront(d, o, s * 9))
-	end
-	hide(c, slotBack(d, o, -8))
-	hide(c, slotBack(d, o, 8))
-	local _, ttop = Props.table(c.m, spot(d, o, 0, -12), 5, 3)
-	table.insert(c.info.tops, ttop)
-	ceil(c, 0, -7)
-	ceil(c, 0, -18)
-end
-
--- почти пустая комната: стул посередине смотрит на вход
-L.empty = function(c)
-	local d, o = c.d, c.origin
-	Props.chair(c.m, spot(d, o, 0, -15, math.pi))
-	hide(c, slotBack(d, o, 10))
-	Props.painting(c.m, slotFront(d, o, 0) * CFrame.new(0, 11.5, F - 0.6), 3, 2, 3)
-	ceil(c, 0, -15)
+	hide(c, slotL(c.d, c.origin, -11))
+	Props.vase(c.m, spot(c.d, c.origin, 3.8, -11), c.d.door)
+	painting(c, 1, -11, 8.5, 3, 2.4)
+	ceil(c, 0, -11)
 end
 
 L.gallery = function(c)
 	local d, o = c.d, c.origin
 	for _, s in { -1, 1 } do
-		for _, z in { -6, -12, -18, -24 } do
-			painting(c, s, z, 7, 4, 3.4)
+		for k, z in { -8, -16, -24 } do
+			painting(c, s, z, 7.5, 5, 4)
+			local _ = k
 		end
-		search(c, "cabinet", slotFront(d, o, s * 11))
+		statue(c, s * 11, -30, if s < 0 then 0 else 2)
+		hide(c, slotBack(d, o, s * 9))
 	end
+	for _, z in { -14, -26 } do
+		Props.bench(c.m, spot(d, o, 0.05, z, -math.pi / 2), 6)
+		Props.bench(c.m, spot(d, o, -0.05, z, math.pi / 2), 6)
+	end
+	chandelier(c, 0, -12, 3)
+	chandelier(c, 0, -30, 3)
+end
+
+L.sculpture = function(c)
+	local d, o = c.d, c.origin
+	statue(c, -9, -11, 0)
+	statue(c, 9, -11, 1)
+	statue(c, 0, -18, 2)
+	statue(c, -9, -26, 3)
+	statue(c, 9, -26, 4)
+	bench(c, -1, -18, 6)
+	bench(c, 1, -18, 6)
+	hide(c, slotBack(d, o, -13))
+	hide(c, slotBack(d, o, 13))
+	chandelier(c, 0, -18, 4)
+	ceil(c, -10, -33)
+	ceil(c, 10, -33)
+end
+
+L.cases = function(c)
+	local d, o = c.d, c.origin
+	case(c, -8, -9, 1)
+	case(c, 8, -9, 2)
+	case(c, 0, -16, 3)
+	case(c, -8, -23, 4)
+	case(c, 8, -23, 5)
+	wallCase(c, -1, -14)
+	wallCase(c, 1, -14)
+	hide(c, slotBack(d, o, -10))
+	hide(c, slotBack(d, o, 10))
+	ceil(c, 0, -9)
+	ceil(c, 0, -24)
+end
+
+L.fossil = function(c)
+	local d, o = c.d, c.origin
+	Props.fossil(c.m, spot(d, o, 0, -28), 24)
+	ropeAround(c, -5.5, 5.5, -13.5, -42.5)
+	for _, s in { -1, 1 } do
+		bench(c, s, -22, 7)
+		bench(c, s, -36, 7)
+		case(c, s * 14, -9, if s < 0 then 1 else 2, if s < 0 then "skull" else "gem")
+		case(c, s * 14, -46, if s < 0 then 3 else 4)
+		hide(c, slotBack(d, o, s * 15))
+		ceil(c, s * 14, -28)
+	end
+	hide(c, slotL(d, o, -29))
+	chandelier(c, 0, -9, 5)
+	chandelier(c, 0, -47, 5)
+end
+
+L.armory = function(c)
+	local d, o = c.d, c.origin
+	for _, z in { -8, -14, -20 } do
+		Props.armor(c.m, slotL(d, o, z))
+		Props.armor(c.m, slotR(d, o, z))
+	end
+	local _, top = Props.table(c.m, spot(d, o, 0, -16), 4, 10, rgb(90, 20, 26))
+	for k = -1, 1 do
+		P(c.m, "Blade", Vector3.new(0.25, 0.06, 3.2), top * CFrame.new(k * 1.1, 0.06, k * 1.4) * CFrame.Angles(0, 0.3 * k, 0), rgb(170, 174, 180), M.Metal, nc())
+		P(c.m, "Hilt", Vector3.new(0.9, 0.1, 0.2), top * CFrame.new(k * 1.1, 0.07, k * 1.4) * CFrame.Angles(0, 0.3 * k, 0) * CFrame.new(0, 0, 1.3), Props.BRASS, M.Metal, nc())
+	end
+	Props.wallCase(c.m, slotFront(d, o, -9), 6, d.door)
+	Props.wallCase(c.m, slotFront(d, o, 9), 6, d.door + 4)
 	hide(c, slotBack(d, o, -9))
 	hide(c, slotBack(d, o, 9))
-	for _, z in { -12, -24 } do
-		-- две скамьи спинка к спинке
-		Props.bench(c.m, spot(d, o, 0.05, z, -math.pi / 2), 5)
-		Props.bench(c.m, spot(d, o, -0.05, z, math.pi / 2), 5)
+	ceil(c, 0, -9)
+	ceil(c, 0, -25)
+end
+
+L.ceramics = function(c)
+	local d, o = c.d, c.origin
+	for k, p in { { -7, -9 }, { 7, -9 }, { 0, -15 }, { -7, -21 }, { 7, -21 } } do
+		Props.vase(c.m, spot(d, o, p[1], p[2]), d.door + k)
 	end
-	-- статуя без лица на постаменте
-	local base = spot(d, o, 0, -18)
-	P(c.m, "Plinth", Vector3.new(2.4, 3, 2.4), base * CFrame.new(0, 1.5, 0), rgb(170, 164, 152), M.Marble)
-	P(c.m, "Torso", Vector3.new(1.4, 2.4, 0.9), base * CFrame.new(0, 4.2, 0), rgb(200, 196, 186), M.Marble)
-	Props.S(c.m, "Head", 1.1, base * CFrame.new(0, 6, 0), rgb(200, 196, 186), M.Marble)
-	ceil(c, 0, -10)
-	ceil(c, 0, -26)
+	wallCase(c, -1, -15)
+	wallCase(c, 1, -15)
+	hide(c, slotBack(d, o, -9))
+	hide(c, slotBack(d, o, 9))
+	Props.rug(c.m, spot(d, o, 0, -15), 8, 16, rgb(40, 60, 90))
+	ceil(c, 0, -15)
+end
+
+L.archive = function(c)
+	local d, o = c.d, c.origin
+	for _, s in { -1, 1 } do
+		local slot = if s < 0 then slotL else slotR
+		for k, z in { -7, -13.4, -19.8 } do
+			Props.bookshelf(c.m, slot(d, o, z), 6, 12, d.door + k * 3 + s)
+		end
+		search(c, "cabinet", slotBack(d, o, s * 7))
+		hide(c, slotBack(d, o, s * 13))
+		ceil(c, s * 8, -14)
+		ceil(c, s * 8, -30)
+	end
+	for k, z in { -12, -18.4, -24.8 } do
+		Props.bookshelf(c.m, spot(d, o, 0, z, -math.pi / 2) * CFrame.new(0, 0, 0.05), 6, 10, d.door + k)
+		Props.bookshelf(c.m, spot(d, o, 0, z, math.pi / 2) * CFrame.new(0, 0, 0.05), 6, 10, d.door + k + 5)
+	end
+	local top = search(c, "desk", slotL(d, o, -27.6))
+	if top then
+		tableLamp(c, top * CFrame.new(-1.6, 0, 0))
+	end
+end
+
+L.storage = function(c)
+	local d, o = c.d, c.origin
+	for _, s in { -1, 1 } do
+		local slot = if s < 0 then slotL else slotR
+		Props.rack(c.m, slot(d, o, -7), 6, d.door + s)
+		Props.rack(c.m, slot(d, o, -14), 6, d.door + s * 2)
+		search(c, "cabinet", slot(d, o, -20))
+		hide(c, slotBack(d, o, s * 10))
+	end
+	-- экспонат, который так и не выставили
+	Props.statue(c.m, spot(d, o, 0, -11), "broken", 1)
+	Props.crate(c.m, spot(d, o, -5.5, -18, 0.3), 3)
+	Props.crate(c.m, spot(d, o, -5.5, -18, 0.3) * CFrame.new(0, 3, 0), 2.4)
+	Props.crate(c.m, spot(d, o, 5.5, -18, -0.2), 3)
+	Props.crate(c.m, spot(d, o, 0, -25, 0.5), 3)
+	ceil(c, 0, -9)
+	ceil(c, 0, -24)
+end
+
+L.tech = function(c)
+	local d, o = c.d, c.origin
+	vent(c, slotL(d, o, -10))
+	vent(c, slotR(d, o, -22))
+	search(c, "cabinet", slotR(d, o, -10))
+	P(c.m, "FuseBox", Vector3.new(2.2, 3, 0.5), slotL(d, o, -21) * CFrame.new(0, 5, -0.3), rgb(110, 114, 116), M.Metal)
+	C(c.m, "Valve", 0.2, 1.2, slotR(d, o, -29) * CFrame.new(0, 4.5, -0.4) * CFrame.Angles(math.pi / 2, 0, 0), rgb(150, 40, 34), M.Metal, nc())
+	for _, s in { -1, 1 } do
+		Props.pipes(c.m, at(o, s * 4.6, d.h - 0.6, -1).Position, at(o, s * 4.6, d.h - 0.6, -d.l + 1).Position, 2)
+	end
+	ceil(c, 0, -8)
+	ceil(c, 0, -24)
+end
+
+local function stairsLayout(c)
+	local d, o = c.d, c.origin
+	hide(c, slotL(d, o, -6))
+	bench(c, 1, -6, 5)
+	painting(c, -1, -34, 7, 3, 2.4)
+	painting(c, 1, -34, 7, 3, 2.4)
+	ceil(c, 0, -6)
+	ceil(c, 0, -20)
+	ceil(c, 0, -34)
+end
+L.stairsup = stairsLayout
+L.stairsdown = stairsLayout
+
+L.restroom = function(c)
+	local d, o = c.d, c.origin
+	Props.stallRow(c.m, slotL(d, o, -11), 3)
+	Props.sinkRow(c.m, slotR(d, o, -11), 3)
+	hide(c, slotFront(d, o, 8))
+	search(c, "cabinet", slotFront(d, o, -8))
+	C(c.m, "Bin", 2, 1.4, spot(d, o, 9.6, -20.5) * CFrame.new(0, 1, 0), rgb(120, 124, 126), M.Metal)
+	ceil(c, 0, -8)
+	ceil(c, 0, -19)
+end
+
+L.cafe = function(c)
+	local d, o = c.d, c.origin
+	local _, top = Props.counter(c.m, slotL(d, o, -10), 10)
+	table.insert(c.info.tops, top)
+	Props.fridge(c.m, slotL(d, o, -18.5))
+	for _, p in { { 5, -8 }, { 10, -16 }, { 4, -23 }, { -5, -23 } } do
+		local _, t = Props.cafeTable(c.m, spot(d, o, p[1], p[2]))
+		table.insert(c.info.tops, t)
+	end
+	hide(c, slotBack(d, o, 11))
+	ceil(c, 0, -9)
+	ceil(c, 0, -23)
+end
+
+L.rotunda = function(c)
+	local d, o = c.d, c.origin
+	for k = 0, 7 do
+		local a = math.rad(22.5 + k * 45)
+		Props.pillar(c.m, spot(d, o, math.cos(a) * 14, -23 + math.sin(a) * 14), d.h)
+	end
+	Props.statue(c.m, spot(d, o, 0, -23), "obelisk", d.door)
+	for _, s in { -1, 1 } do
+		bench(c, s, -14, 7)
+		bench(c, s, -27, 7)
+		case(c, s * 16, -36, if s < 0 then 1 else 2)
+		hide(c, slotBack(d, o, s * 16))
+	end
+	hide(c, slotL(d, o, -20.5))
+	chandelier(c, 0, -23, 6)
+end
+
+-- вещи, которым в музее не место
+L.oddities = function(c)
+	local d, o = c.d, c.origin
+	case(c, -8, -9, 1, "wrench")
+	case(c, 8, -9, 2, "boot")
+	case(c, 0, -15, 3, "teapot")
+	case(c, -8, -21, 4, "bulb")
+	case(c, 8, -21, 5, "gear")
+	wallCase(c, -1, -15)
+	wallCase(c, 1, -15)
+	hide(c, slotBack(d, o, -10))
+	hide(c, slotBack(d, o, 10))
+	ceil(c, 0, -15)
+end
+
+-- пустой зал: один постамент, на котором ничего нет
+L.blank = function(c)
+	Props.plinth(c.m, spot(c.d, c.origin, 0, -15), 3, 3)
+	hide(c, slotBack(c.d, c.origin, 10))
+	ceil(c, 0, -15)
+end
+
+L.figures = function(c)
+	bench(c, -1, -12, 7)
+	bench(c, 1, -12, 7)
+	chandelier(c, 0, -20, 3)
+	ceil(c, -10, -32)
+	ceil(c, 10, -32)
+end
+
+-- очень длинный коридор без потолка: в стенах проломы, за ними только тьма
+L.voidhall = function(c)
+	local d, o = c.d, c.origin
+	d.noCeiling = true
+	d.gaps = { { side = -1, z = -40, w = 16 }, { side = 1, z = -80, w = 16 }, { side = -1, z = -118, w = 16 }, { side = 1, z = -152, w = 16 } }
+	hide(c, slotL(d, o, -66))
+	hide(c, slotR(d, o, -102))
+	for k, g in d.gaps do
+		local gp = P(c.m, "VoidGap", Vector3.new(1, d.h, g.w), at(o, g.side * (d.w / 2 + 1.5), d.h / 2, g.z), rgb(0, 0, 0), M.SmoothPlastic, nc({ Transparency = 1 }))
+		gp:SetAttribute("Dir", o.RightVector * g.side)
+		gp:SetAttribute("Width", g.w)
+		game:GetService("CollectionService"):AddTag(gp, "VoidGap")
+		-- обломки стены у пролома
+		for j = -1, 1, 2 do
+			P(c.m, "Rubble", Vector3.new(1.6, 1, 1.2), at(o, g.side * (d.w / 2 - 1.6), 0.5, g.z + j * (g.w / 2 + 0.2 + k * 0.1)) * CFrame.Angles(0, k + j, 0), rgb(96, 90, 84), M.Slate, nc())
+		end
+	end
+	for k, z in { -18, -52, -96, -134, -168 } do
+		local slot = if k % 2 == 1 then slotL else slotR
+		local _, shade = Props.sconce(c.m, slot(d, o, z) * CFrame.new(0, 8, F - 0.6))
+		table.insert(c.info.lights, shade)
+	end
+	-- чёрная оболочка далеко вокруг: в проломах и над головой только тьма
+	local shell = Props.model(c.m, "VoidShell")
+	local black = rgb(0, 0, 0)
+	for _, s in { -1, 1 } do
+		P(shell, "Dark", Vector3.new(2, 240, d.l + 80), at(o, s * 80, 0, -d.l / 2), black, M.SmoothPlastic, nc())
+	end
+	P(shell, "Dark", Vector3.new(164, 2, d.l + 80), at(o, 0, 110, -d.l / 2), black, M.SmoothPlastic, nc())
 end
 
 -- ---------------------------------------------------------------------------
@@ -716,32 +758,38 @@ function Builder.build(parent: Instance, d, origin: CFrame, prevInfo, rand)
 	local st = Builder.style(d, rand)
 	local m = Props.model(parent, string.format("Room_%03d", d.door))
 	local info = { desc = d, model = m, origin = origin, hideSpots = {}, searchables = {}, tops = {}, lights = {} }
-	Props.LIGHT = if d.blackout then 0 else (d.light or 1)
-	-- окна задаёт планировка, поэтому сначала планировка, потом стены
-	local layout = L[d.kind] or L.corridor
-	local sh
-	-- верх комнаты нужен лампам до сборки стен
+	Props.LIGHT = d.light or 1
+	d.exitHole = d.exitHole or Props.DOORS[d.exitSize or "normal"]
+	d.entry = d.entry or Props.DOORS[d.entrySize or "normal"]
 	info.top = math.max(0, d.dy) + d.h
-	local ctx = { d = d, origin = origin, m = m, info = info }
-	layout(ctx)
-	sh = shell(m, d, origin, st, Builder.prevWallFor(prevInfo, origin))
+	local ctx = { d = d, origin = origin, m = m, info = info, hides = d.hides or 0 }
+	local layout = L[d.kind]
+	if layout then
+		layout(ctx)
+	end
+	local sh = shell(m, d, origin, st, Builder.prevWallFor(prevInfo, origin))
 	for k, v in sh do
 		info[k] = v
 	end
-	-- окна в пустоту
-	for _, wdw in info.windows do
-		local cf = origin * CFrame.new(wdw.side * d.w / 2, wdw.y, wdw.z) * CFrame.Angles(0, if wdw.side < 0 then -math.pi / 2 else math.pi / 2, 0)
-		Props.window(m, cf, 1.2)
-	end
-	-- путь для Гула и точки для существ
+	info.style = st
+	-- путь для Тьмы и точки для существ
 	info.path = {
-		at(origin, 0, 4, -2).Position,
-		at(origin, 0, floorAt(d, -d.l / 2) + 4, -d.l / 2).Position,
-		(info.exitCF * CFrame.new(0, 4, 2.5)).Position,
+		at(origin, 0, 5, -2).Position,
+		at(origin, 0, floorAt(d, -d.l / 2) + 5, -d.l / 2).Position,
+		(info.exitCF * CFrame.new(0, 5, 2.5)).Position,
 	}
-	info.watcherSpawn = at(origin, (if d.door % 2 == 0 then 1 else -1) * (d.w / 2 - 3), floorAt(d, -d.l + 3), -d.l + 3)
 	info.center = at(origin, 0, info.top / 2, -d.l / 2)
 	info.size = Vector3.new(d.w, info.top - info.ybase, d.l)
+	-- аномалия: весь зал одного цвета (кроме стекла и ламп)
+	if d.mono then
+		local col = Color3.fromHSV(rand(), 0.25, 0.3 + rand() * 0.4)
+		for _, p in m:GetDescendants() do
+			if p:IsA("BasePart") and (p.Transparency or 0) < 0.5 and p.Material ~= M.Glass and p.Material ~= M.Neon then
+				p.Color = col
+				p.Material = M.SmoothPlastic
+			end
+		end
+	end
 	Props.LIGHT = 1
 	return info
 end

@@ -1,6 +1,5 @@
 --!nonstrict
--- Админ-панель: быстрые проверки игры одному (монеты, предметы, пропуск дверей,
--- вызов существ). Доступ только создателям, проверка на сервере
+-- Админ-панель: быстрые проверки игры одному. Доступ только создателям, проверка на сервере
 
 local Shared = game:GetService("ReplicatedStorage").Workshop.Shared
 local Commands = require(Shared.AdminCommands)
@@ -8,7 +7,6 @@ local Rules = require(Shared.Rules)
 local Remotes = require(Shared.Roblox.Remotes)
 
 local Access = require(script.Parent.Parent.Access)
-local Builder = require(script.Parent.Parent.World.RoomBuilder)
 local Entities = require(script.Parent.Entities)
 local G = require(script.Parent.Game)
 
@@ -23,12 +21,14 @@ local function skip(count: number)
 	for _ = 1, count do
 		local n = run.front + 1
 		local info = run.rooms[n - 1]
-		if not info or not info.door or n > Rules.CHAPTER then
+		if not info or not info.door or n >= Rules.FINAL_ROOM then
 			break
 		end
+		info.sealed = false
 		if info.toll then
 			info.toll.paid = true
 			info.toll.model:Destroy()
+			info.toll.block:Destroy()
 		end
 		G.openDoor(n, true)
 	end
@@ -49,13 +49,9 @@ local RUN = {
 		G.give(p, "coins", 100)
 	end,
 	items = function(p)
-		for _, it in { "battery", "plant", "lockpick" } do
+		for _, it in { "battery", "plant", "lockpick", "hammer" } do
 			G.give(p, it)
 		end
-	end,
-	fuses = function(p)
-		G.give(p, "fuse")
-		G.give(p, "fuse")
 	end,
 	heal = function(p)
 		local hum = G.humOf(p)
@@ -76,27 +72,25 @@ local RUN = {
 	skip20 = function()
 		skip(20)
 	end,
-	to_boss = function()
-		skip(math.max(0, Rules.BOSS_DOOR - 1 - G.run.front))
+	to_code = function()
+		skip(math.max(0, Rules.CODE_ROOM - G.run.front))
 	end,
-	hum = function()
-		task.spawn(Entities.hum)
+	to_lift = function()
+		skip(math.max(0, Rules.LIFT_ROOM - G.run.front))
 	end,
-	watcher = function(p)
-		local r = G.rootOf(p)
-		for _, info in G.run.rooms do
-			if r and not info.boss and Builder.contains(info, r.Position) then
-				Entities.spawnWatcher(info)
-				return
+	darkness = function()
+		task.spawn(Entities.darkness)
+	end,
+	unseal = function()
+		local info = G.run.rooms[G.run.front]
+		if info then
+			info.sealed = false
+			if info.door then
+				info.door.locked = false
 			end
-		end
-	end,
-	fix_gens = function()
-		for _, info in G.run.rooms do
-			if info.generators then
-				for _, g in info.generators do
-					g.fused = true
-					g.progress = 99
+			if info.gate and not info.gate.opened then
+				for _, l in info.levers do
+					l.need = l.on
 				end
 			end
 		end
@@ -119,7 +113,7 @@ function Admin.init()
 		end
 		local ok, err = pcall(RUN[id], p)
 		if not ok then
-			warn("[Labyrinth] admin " .. id .. ": " .. tostring(err))
+			warn("[Museum] admin " .. id .. ": " .. tostring(err))
 		end
 		return { ok = ok }
 	end

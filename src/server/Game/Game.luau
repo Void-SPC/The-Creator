@@ -1,16 +1,16 @@
 --!nonstrict
--- «The Labyrinth»: лобби и забег.
--- Лобби (обычный сервер): холл с рабочим лифтом. Кто зашёл в кабину, через 12 секунд
--- переносится в отдельный сервер этого же места — там идёт забег (как в DOORS).
--- Забег: 100 дверей 001–100, комнаты строятся впереди и убираются позади, двери
--- открываются сами, когда подходишь (если не заперты и не стоит Монетчик), ложные
--- двери в развилках переносят к настоящей, ящики выдвигаются с находками, предметы
--- лежат в обычном инвентаре Roblox. За дверью 100 — зал Слепого, погоня и пустота
+-- «The Museum»: лобби и забег.
+-- Лобби (обычный сервер): ночная улица перед музеем. Кто зашёл в тёмные двери,
+-- переносится в отдельный сервер этого же места — там идёт забег.
+-- Забег: залы строятся впереди и убираются позади; двери открываются сами (кроме
+-- запертых и загадок); Тьма, тебЯ, Монетчик, Колосс; журнал существ; на двери 050 —
+-- кодовый замок и зал зеркал, на 099 — лифт, рычаги и длинная лестница к двери 100
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local TeleportService = game:GetService("TeleportService")
 local RunService = game:GetService("RunService")
+local BadgeService = game:GetService("BadgeService")
 
 local Shared = game:GetService("ReplicatedStorage").Workshop.Shared
 local Rules = require(Shared.Rules)
@@ -19,6 +19,7 @@ local Remotes = require(Shared.Roblox.Remotes)
 local Lang = require(Shared.Lang)
 local M = require(Shared.Materials)
 
+local Config = require(script.Parent.Parent.Config)
 local Props = require(script.Parent.Parent.World.Props)
 local Builder = require(script.Parent.Parent.World.RoomBuilder)
 local Special = require(script.Parent.Parent.World.Special)
@@ -30,22 +31,11 @@ local G = {}
 local event: RemoteEvent
 local world: Folder
 
--- забег идёт в зарезервированном сервере; в Studio лифт превращает этот сервер в забег
 G.mode = if game.PrivateServerId ~= "" and game.PrivateServerOwnerId == 0 then "run" else "lobby"
 
-local KEEP_BEHIND = 3
+local KEEP_BEHIND = 4
 
-local run = {
-	active = false,
-	seed = 0,
-	plan = nil,
-	descs = {},
-	rooms = {},
-	front = 0,
-	ending = false,
-	chasing = false,
-	keepers = {},
-}
+local run = { active = false, seed = 0, plan = nil, descs = {}, rooms = {}, front = 0, ending = false, done = false, keepers = {} }
 G.run = run
 
 local players: { [Player]: any } = {}
@@ -82,14 +72,9 @@ local function toast(p: Player, key: string, ...)
 end
 G.toast = toast
 
-local function announce(key: string, ...)
-	G.sendAll({ type = "announce", key = key, args = { ... } })
-end
-G.announce = announce
-
 function G.isAlive(p: Player): boolean
 	local s = players[p]
-	return s ~= nil and s.alive and not s.finished
+	return s ~= nil and s.alive
 end
 
 function G.isHidden(p: Player): boolean
@@ -105,7 +90,7 @@ end
 function G.alivePlayers(): { Player }
 	local list = {}
 	for p, s in players do
-		if s.alive and not s.finished and p.Parent then
+		if s.alive and p.Parent then
 			table.insert(list, p)
 		end
 	end
@@ -113,18 +98,28 @@ function G.alivePlayers(): { Player }
 end
 
 function G.inRoom(info, pos: Vector3): boolean
-	return Builder.contains(info, pos)
+	return Builder.contains(info, pos) or Special.onStairs(info, pos)
 end
 
+-- залы, через которые летит Тьма: от самого старого до последнего открытого
 function G.loadedRooms()
 	local list = {}
-	for n = math.max(1, run.front - KEEP_BEHIND), run.front do
+	for n = math.max(0, run.front - KEEP_BEHIND), run.front do
 		local info = run.rooms[n]
-		if info and not info.boss then
+		if info and not Rules.isSpecial(n) or (info and n == 0) then
 			table.insert(list, info)
 		end
 	end
 	return list
+end
+
+local function roomOf(pos: Vector3)
+	for _, info in run.rooms do
+		if G.inRoom(info, pos) then
+			return info
+		end
+	end
+	return nil
 end
 
 local function teleport(p: Player, cf: CFrame)
@@ -154,32 +149,43 @@ local SOUND = {
 	door = "rbxasset://sounds/swoosh.wav",
 	locked = "rbxasset://sounds/clickfast.wav",
 	pick = "rbxasset://sounds/electronicpingshort.wav",
-	drawer = "rbxasset://sounds/swoosh.wav",
-	hit = "rbxasset://sounds/collide.wav",
+	switch = "rbxasset://sounds/switch.wav",
+	slam = "rbxasset://sounds/collide.wav",
 }
 
+-- журнал: новая запись, значок
+local function badge(p: Player, id: string)
+	local badgeId = Config.BADGES[id]
+	if type(badgeId) == "number" and badgeId > 0 then
+		task.spawn(function()
+			pcall(function()
+				BadgeService:AwardBadge(p.UserId, badgeId)
+			end)
+		end)
+	end
+end
+
+function G.discover(p: Player, id: string)
+	if players[p] and Records.discover(p, id) then
+		send(p, { type = "journal", id = id, new = true })
+		badge(p, id)
+	end
+end
+
 -- ---------------------------------------------------------------------------
--- инвентарь: обычные инструменты Roblox в нижней панели
+-- инвентарь: обычные инструменты Roblox
 
 local ITEM_LOOK = {
 	flashlight = { size = Vector3.new(0.45, 0.45, 1.5), color = Color3.fromRGB(46, 46, 50), mat = M.Metal },
 	battery = { size = Vector3.new(0.4, 0.8, 0.4), color = Color3.fromRGB(40, 130, 60), mat = M.Metal },
 	plant = { size = Vector3.new(0.7, 0.6, 0.7), color = Color3.fromRGB(140, 76, 54), mat = M.Brick },
-	whistle = { size = Vector3.new(0.3, 0.3, 0.8), color = Color3.fromRGB(190, 190, 196), mat = M.Metal },
 	lockpick = { size = Vector3.new(0.1, 0.1, 1.1), color = Color3.fromRGB(170, 170, 176), mat = M.Metal },
 	key = { size = Vector3.new(0.15, 0.15, 1), color = Color3.fromRGB(190, 156, 88), mat = M.Metal },
-	fuse = { size = Vector3.new(0.5, 0.5, 1), color = Color3.fromRGB(60, 110, 170), mat = M.Glass },
+	hammer = { size = Vector3.new(0.2, 0.2, 1.6), color = Color3.fromRGB(112, 78, 52), mat = M.Wood },
+	meat = { size = Vector3.new(0.9, 0.5, 1.2), color = Color3.fromRGB(150, 40, 40), mat = M.SmoothPlastic },
 }
 
-local function itemName(s, item: string, count: number): string
-	local name = Lang.t(s.lang or "en", "item_" .. item)
-	if count > 1 then
-		name ..= " ×" .. count
-	end
-	return name
-end
-
-local setFlash -- ниже
+local setFlash
 
 local function makeTool(p: Player, item: string)
 	local look = ITEM_LOOK[item]
@@ -228,10 +234,12 @@ local function makeTool(p: Player, item: string)
 		l.Parent = h
 	elseif item == "plant" then
 		extra("Leaves", Vector3.new(0.9, 0.9, 0.9), CFrame.new(0, 0.6, 0), Color3.fromRGB(80, 170, 90), M.Grass, Enum.PartType.Ball)
-	elseif item == "fuse" then
-		extra("Cap", Vector3.new(0.6, 0.6, 0.15), CFrame.new(0, 0, -0.55), Color3.fromRGB(190, 156, 88), M.Metal)
 	elseif item == "key" then
 		extra("Bow", Vector3.new(0.15, 0.5, 0.5), CFrame.new(0, 0, 0.6), Color3.fromRGB(190, 156, 88), M.Metal)
+	elseif item == "hammer" then
+		extra("Head", Vector3.new(0.9, 0.4, 0.4), CFrame.new(0, 0, -0.8), Color3.fromRGB(90, 92, 96), M.Metal)
+	elseif item == "meat" then
+		extra("Bone", Vector3.new(0.2, 0.2, 1.9), CFrame.new(0, 0, 0), Color3.fromRGB(230, 224, 204), M.SmoothPlastic)
 	end
 	tool.Activated:Connect(function()
 		G.use(p, item)
@@ -248,7 +256,6 @@ local function makeTool(p: Player, item: string)
 	return tool
 end
 
--- инструменты по содержимому инвентаря: появляются, исчезают, подписаны числом
 local function syncTools(p: Player)
 	local s = players[p]
 	if not s or not s.alive then
@@ -279,8 +286,8 @@ local function syncTools(p: Player)
 			tool = makeTool(p, item)
 			s.tools[item] = tool
 		end
-		tool.Name = itemName(s, item, count)
-		tool.ToolTip = Lang.t(s.lang or "en", "tip_" .. item)
+		local name = Lang.t(s.lang or "en", "item_" .. item)
+		tool.Name = if count > 1 then name .. " ×" .. count else name
 	end
 	p:SetAttribute("Coins", s.coins)
 	p:SetAttribute("Lockpicks", s.inv.lockpick or 0)
@@ -299,7 +306,7 @@ end
 function G.damage(p: Player, amount: number, cause: string?)
 	local s = players[p]
 	local hum = humOf(p)
-	if not s or not G.isAlive(p) or not hum or s.god then
+	if not s or not s.alive or not hum or s.god then
 		return
 	end
 	s.cause = cause
@@ -309,7 +316,7 @@ end
 function G.kill(p: Player, cause: string?)
 	local s = players[p]
 	local hum = humOf(p)
-	if not s or not G.isAlive(p) or not hum or s.god then
+	if not s or not s.alive or not hum or s.god then
 		return
 	end
 	s.cause = cause
@@ -317,10 +324,7 @@ function G.kill(p: Player, cause: string?)
 end
 
 local endRun
-
-local function anyoneLeft(): boolean
-	return #G.alivePlayers() > 0
-end
+local dropFigure
 
 local function onDied(p: Player)
 	local s = players[p]
@@ -334,15 +338,15 @@ local function onDied(p: Player)
 		occupied[part] = nil
 		s.hidden = nil
 	end
+	dropFigure(p)
 	send(p, { type = "dead", cause = s.cause or "unknown", door = run.front })
-	announce("PlayerDied", p.DisplayName, Rules.plate(run.front))
-	if not anyoneLeft() and run.active then
+	if #G.alivePlayers() == 0 and run.active and not run.done then
 		task.spawn(endRun)
 	end
 end
 
 -- ---------------------------------------------------------------------------
--- фонарик в руке
+-- фонарик
 
 function setFlash(p: Player, on: boolean)
 	local s = players[p]
@@ -358,10 +362,9 @@ function setFlash(p: Player, on: boolean)
 	p:SetAttribute("FlashOn", s.flashOn)
 	p:SetAttribute("Flash", math.ceil(s.flash))
 end
-G.setFlash = setFlash
 
 -- ---------------------------------------------------------------------------
--- укрытия: шкафчики и ниши
+-- шкафчики
 
 local function unhide(p: Player)
 	local s = players[p]
@@ -383,7 +386,7 @@ G.unhide = unhide
 
 local function hide(p: Player, part: BasePart)
 	local s = players[p]
-	if not s or not G.isAlive(p) then
+	if not s or not s.alive then
 		return
 	end
 	if s.hidden == part then
@@ -391,9 +394,9 @@ local function hide(p: Player, part: BasePart)
 		return
 	end
 	if s.hidden or occupied[part] then
-		toast(p, "ClosetTaken")
 		return
 	end
+	dropFigure(p)
 	s.hidden = part
 	occupied[part] = p
 	local r = rootOf(p)
@@ -428,44 +431,32 @@ local function give(p: Player, item: string, amount: number?): boolean
 end
 G.give = give
 
+local solveFigures
+
 function G.use(p: Player, item: string)
 	local s = players[p]
-	if not s or not G.isAlive(p) then
+	if not s or not s.alive then
 		return
 	end
 	if item == "flashlight" then
-		if s.flash <= 0 then
-			toast(p, "FlashEmpty")
-		end
 		setFlash(p, not s.flashOn)
 	elseif item == "plant" then
 		local hum = humOf(p)
-		if not hum or hum.Health >= hum.MaxHealth - 1 then
-			toast(p, "HealthFull")
-			return
-		end
-		if Rules.take(s.inv, "plant") then
+		if hum and hum.Health < hum.MaxHealth - 1 and Rules.take(s.inv, "plant") then
 			hum.Health = math.min(hum.MaxHealth, hum.Health + Rules.PLANT_HEAL)
-			toast(p, "Healed")
 		end
 	elseif item == "battery" then
-		if s.flash >= Rules.FLASH_MAX - 1 then
-			toast(p, "FlashFull")
-			return
-		end
-		if Rules.take(s.inv, "battery") then
+		if s.flash < Rules.FLASH_MAX - 1 and Rules.take(s.inv, "battery") then
 			s.flash = Rules.recharge(s.flash)
 			setFlash(p, s.flashOn)
-			toast(p, "Recharged")
 		end
-	elseif item == "whistle" then
-		local now = os.clock()
-		if now - (s.whistleAt or 0) < 8 then
-			toast(p, "WhistleWait")
-			return
+	elseif item == "hammer" then
+		-- молотком можно разбить статую тебЯ, если подойти вплотную
+		local r = rootOf(p)
+		local info = r and roomOf(r.Position)
+		if info and info.puzzle and not info.puzzle.solved and Entities.mimicNear(info, r.Position) and Rules.take(s.inv, "hammer") then
+			solveFigures(info)
 		end
-		s.whistleAt = now
-		Entities.whistle(p)
 	else
 		return
 	end
@@ -473,7 +464,7 @@ function G.use(p: Player, item: string)
 end
 
 -- ---------------------------------------------------------------------------
--- комнаты
+-- двери
 
 local function descOf(n: number)
 	while run.descs[0] == nil or #run.descs < n do
@@ -483,15 +474,13 @@ local function descOf(n: number)
 	return run.descs[n]
 end
 
-local openDoor -- ниже
+local openDoor
 
--- создать дверь с номером n в комнате info (у ложных дверей — тот же номер)
-local function makeDoor(info, n: number, cf: CFrame, locked: boolean, decoy: boolean)
-	local m, leaf = Props.door(info.model, cf, Rules.plate(n), locked)
-	local door = { model = m, leaf = leaf, number = n, locked = locked, cf = cf, opened = false, decoy = decoy }
-	if locked then
-		-- отмычка: кнопка видна только тем, у кого она есть (это решает клиент)
-		local trig = Props.P(m, "LockTrigger", Vector3.new(1, 1, 1), cf * CFrame.new(1.6, 4.5, 0.6), Color3.new(0, 0, 0), M.SmoothPlastic, Props.nc({ Transparency = 1 }))
+local function makeDoor(info, n: number, cf: CFrame, opts)
+	local m, leaves = Props.door(info.model, cf, opts.plate, opts.locked, opts.size)
+	local door = { model = m, leaves = leaves, number = n, locked = opts.locked, cf = cf, opened = false, decoy = opts.decoy, size = opts.size or "normal" }
+	if opts.locked and not opts.noPick then
+		local trig = Props.P(m, "LockTrigger", Vector3.new(1, 1, 1), cf * CFrame.new(1.2, 4.5, 0.6), Color3.new(0, 0, 0), M.SmoothPlastic, Props.nc({ Transparency = 1 }))
 		local pr = Props.prompt(trig, "lockpick", 2.5, 7)
 		door.lockPrompt = pr
 		pr.Triggered:Connect(function(p)
@@ -501,7 +490,39 @@ local function makeDoor(info, n: number, cf: CFrame, locked: boolean, decoy: boo
 	return door
 end
 
--- выдвинуть ящики и положить находки
+-- створки поворачиваются на петлях (open = 1 — открыть, 0 — закрыть)
+local function swing(door, open: boolean, time: number?)
+	for _, leaf in door.leaves do
+		local base = leaf:GetAttribute("Base")
+		if typeof(base) ~= "CFrame" then
+			base = leaf:GetPivot()
+			leaf:SetAttribute("Base", base)
+		end
+		local dir = leaf:GetAttribute("Dir") or 1
+		local v = Instance.new("NumberValue")
+		v.Value = if open then 0 else 1
+		v.Changed:Connect(function(a)
+			leaf:PivotTo(base * CFrame.Angles(0, math.rad(-100) * a * dir, 0))
+		end)
+		local t = TweenService:Create(v, TweenInfo.new(time or 0.55, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Value = if open then 1 else 0 })
+		t:Play()
+		t.Completed:Connect(function()
+			v:Destroy()
+		end)
+		for _, d in leaf:GetDescendants() do
+			if d:IsA("BasePart") and d.Name == "Slab" then
+				d.CanCollide = not open
+			end
+		end
+	end
+	sound(door.model:FindFirstChildWhichIsA("BasePart"), if open then SOUND.door else SOUND.slam, if open then 0.8 else 1.6, 0.6)
+end
+
+-- ---------------------------------------------------------------------------
+-- ящики и находки
+
+local wirePickups
+
 local function openDrawers(p: Player, info, sr)
 	if sr.opened then
 		return
@@ -511,7 +532,7 @@ local function openDrawers(p: Player, info, sr)
 	if pr then
 		pr.Enabled = false
 	end
-	sound(sr.hit, SOUND.drawer, 0.6, 1.4)
+	sound(sr.hit, SOUND.door, 0.6, 1.4)
 	for _, dr in sr.drawers do
 		local base = dr.model.WorldPivot
 		local v = Instance.new("NumberValue")
@@ -528,13 +549,10 @@ local function openDrawers(p: Player, info, sr)
 		if not sr.hit.Parent then
 			return
 		end
-		-- ключ от двери этой комнаты
 		if sr.key then
-			local dr = sr.drawers[1]
-			local _, part = Props.pickup(info.model, dr.open, "key")
+			local _, part = Props.pickup(info.model, sr.drawers[1].open, "key")
 			part:SetAttribute("KeyFor", sr.key)
 		end
-		-- одна находка на предмет мебели, в случайном ящике
 		local item, amount = Rules.loot(math.random(), run.front)
 		if item ~= "nothing" then
 			local dr = sr.drawers[math.random(1, #sr.drawers)]
@@ -543,36 +561,30 @@ local function openDrawers(p: Player, info, sr)
 			if item == "coins" then
 				part:SetAttribute("Amount", amount)
 			end
-		elseif not sr.key then
-			toast(p, "Empty")
 		end
-		G.wirePickups(info)
+		wirePickups(info)
 	end)
+	local _ = p
 end
 
-function G.wirePickups(info)
+function wirePickups(info)
 	for _, d in info.model:GetDescendants() do
 		if d:IsA("ProximityPrompt") and not d:GetAttribute("Wired") and d:GetAttribute("Kind") == "pick" then
 			d:SetAttribute("Wired", true)
 			local part = d.Parent
 			d.Triggered:Connect(function(p)
 				local s = players[p]
-				if not s or not G.isAlive(p) or not part.Parent then
+				if not s or not s.alive or not part.Parent then
 					return
 				end
 				local item = part:GetAttribute("Item")
 				if item == "key" then
 					s.keys[part:GetAttribute("KeyFor")] = true
-					toast(p, "KeyTaken")
 					sound(part, SOUND.pick, 0.8)
 					syncTools(p)
 				elseif item == "coins" then
-					local a = part:GetAttribute("Amount") or 3
-					give(p, "coins", a)
-					toast(p, "Found_coins", a)
-				elseif give(p, item) then
-					toast(p, "Found_" .. item)
-				else
+					give(p, "coins", part:GetAttribute("Amount") or 3)
+				elseif not give(p, item) then
 					return
 				end
 				part.Parent:Destroy()
@@ -602,8 +614,355 @@ local function wireRoom(info)
 			end)
 		end
 	end
-	G.wirePickups(info)
+	wirePickups(info)
 end
+
+-- ---------------------------------------------------------------------------
+-- зал с фигурками и тебЯ
+
+function dropFigure(p: Player)
+	local s = players[p]
+	local fig = s and s.carry
+	if not fig then
+		return
+	end
+	s.carry = nil
+	local w = fig.part:FindFirstChild("CarryWeld")
+	if w then
+		w:Destroy()
+	end
+	if fig.model.Parent and not fig.placed then
+		fig.part.Anchored = true
+		fig.model:PivotTo(fig.home)
+		fig.held = false
+	end
+end
+
+function solveFigures(info)
+	local puzzle = info.puzzle
+	if puzzle.solved then
+		return
+	end
+	puzzle.solved = true
+	Entities.crumbleMimic(info)
+	info.sealed = false
+	sound(info.model, SOUND.pick, 1.2, 0.7)
+end
+
+local function wireFigures(info)
+	local puzzle = info.puzzle
+	for _, fig in puzzle.figs do
+		local pr = fig.part:FindFirstChildOfClass("ProximityPrompt")
+		pr.Triggered:Connect(function(p)
+			local s = players[p]
+			if not s or not s.alive or s.carry or fig.held or fig.placed then
+				return
+			end
+			local r = rootOf(p)
+			if not r then
+				return
+			end
+			-- фигурка в руках: держится перед игроком
+			fig.held = true
+			s.carry = fig
+			fig.part.Anchored = false
+			for _, d in fig.model:GetDescendants() do
+				if d:IsA("BasePart") then
+					d.Anchored = false
+					d.Massless = true
+					if d ~= fig.part then
+						local wd = d:FindFirstChild("W") or Instance.new("WeldConstraint")
+						wd.Name = "W"
+						wd.Part0 = fig.part
+						wd.Part1 = d
+						wd.Parent = d
+					end
+				end
+			end
+			fig.model:PivotTo(r.CFrame * CFrame.new(0.9, 0.2, -1.6))
+			local w = Instance.new("WeldConstraint")
+			w.Name = "CarryWeld"
+			w.Part0 = r
+			w.Part1 = fig.part
+			w.Parent = fig.part
+			pr.Enabled = false
+			sound(r, SOUND.pick, 0.6, 1.2)
+		end)
+	end
+	for _, socket in puzzle.sockets do
+		local pr = socket.part:FindFirstChildOfClass("ProximityPrompt")
+		pr.Triggered:Connect(function(p)
+			local s = players[p]
+			local fig = s and s.carry
+			if not fig or socket.filled or puzzle.solved then
+				return
+			end
+			if fig.color == socket.color then
+				s.carry = nil
+				local w = fig.part:FindFirstChild("CarryWeld")
+				if w then
+					w:Destroy()
+				end
+				for _, d in fig.model:GetDescendants() do
+					if d:IsA("BasePart") then
+						d.Anchored = true
+					end
+				end
+				fig.model:PivotTo(socket.top * CFrame.new(0, 0.15, 0))
+				fig.placed = true
+				socket.filled = true
+				pr.Enabled = false
+				puzzle.placed += 1
+				sound(socket.part, SOUND.pick, 0.9, 1 + puzzle.placed * 0.08)
+				if puzzle.placed >= puzzle.n then
+					solveFigures(info)
+				end
+			else
+				-- не тот постамент: фигурка возвращается туда, где лежала
+				sound(socket.part, SOUND.locked, 0.9, 0.7)
+				dropFigure(p)
+				for _, d in fig.model:GetDescendants() do
+					if d:IsA("BasePart") then
+						d.Anchored = true
+					end
+				end
+				fig.model:PivotTo(fig.home)
+				local fp = fig.part:FindFirstChildOfClass("ProximityPrompt")
+				if fp then
+					fp.Enabled = true
+				end
+			end
+		end)
+	end
+end
+
+-- ---------------------------------------------------------------------------
+-- Монетчик
+
+local function removeKeeper(t)
+	t.paid = true
+	local i = table.find(run.keepers, t)
+	if i then
+		table.remove(run.keepers, i)
+	end
+	if t.block.Parent then
+		t.block:Destroy()
+	end
+end
+
+-- убегает в норку (когда летит Тьма или когда получил своё)
+local function keeperLeaves(t, fast: boolean)
+	if t.gone then
+		return
+	end
+	t.gone = true
+	removeKeeper(t)
+	local m = t.model
+	for _, d in m:GetDescendants() do
+		if d:IsA("ProximityPrompt") then
+			d.Enabled = false
+		end
+	end
+	local from = m:GetPivot()
+	local to = t.hole * CFrame.new(0, 0, 1.6) * CFrame.Angles(0, math.pi, 0)
+	local v = Instance.new("NumberValue")
+	v.Changed:Connect(function(a)
+		if m.Parent then
+			local cf = from:Lerp(to, a) * CFrame.new(0, math.abs(math.sin(a * math.pi * 5)) * 0.8, 0) * CFrame.Angles(0, 0, math.sin(a * math.pi * 6) * 0.25)
+			m:PivotTo(cf)
+			pcall(function()
+				m:ScaleTo(1 - a * 0.45)
+			end)
+		end
+	end)
+	local tw = TweenService:Create(v, TweenInfo.new(if fast then 0.9 else 1.6, Enum.EasingStyle.Sine), { Value = 1 })
+	tw:Play()
+	tw.Completed:Connect(function()
+		v:Destroy()
+		m:Destroy()
+	end)
+	sound(t.holePart, SOUND.pick, 0.7, 1.8)
+end
+
+function G.fleeKeepers()
+	for _, t in table.clone(run.keepers) do
+		keeperLeaves(t, true)
+	end
+end
+
+function G.pay(p: Player, how: string)
+	local s = players[p]
+	local r = rootOf(p)
+	if not s or not s.alive or not r then
+		return { ok = false }
+	end
+	local t = nil
+	for _, k in run.keepers do
+		if not k.paid and (k.model:GetPivot().Position - r.Position).Magnitude < 16 then
+			t = k
+		end
+	end
+	if not t then
+		return { ok = false }
+	end
+	if how == "gold" then
+		if s.coins < t.price then
+			return { ok = false, error = "coins" }
+		end
+		s.coins -= t.price
+	else
+		local hum = humOf(p)
+		if not hum then
+			return { ok = false }
+		end
+		local left = Rules.afterSelfToll(hum.Health)
+		send(p, { type = "fx", kind = "blood" })
+		if left <= 0 then
+			s.cause = "coinkeeper"
+			hum.Health = 0
+		else
+			hum.Health = left
+		end
+	end
+	syncTools(p)
+	keeperLeaves(t, false)
+	return { ok = true }
+end
+
+-- место для норки: рядом с дверью, с той стороны, где до угла дальше
+local function holeFor(info, size: string): CFrame
+	local dw = Props.DOORS[size].w
+	local best, bestRoom = nil, -math.huge
+	for _, sgn in { -1, 1 } do
+		local cf = info.doorCF * CFrame.new(sgn * (dw / 2 + 4.13), 0, 0)
+		local lp = info.origin:PointToObjectSpace(cf.Position)
+		local d = info.desc
+		local room = math.min(d.w / 2 - math.abs(lp.X), -lp.Z, lp.Z + d.l)
+		if info.desc.exit.turn == 0 then
+			room = d.w / 2 - math.abs(lp.X)
+		else
+			room = math.min(-lp.Z, lp.Z + d.l)
+		end
+		if room > bestRoom then
+			best, bestRoom = cf, room
+		end
+	end
+	return best
+end
+
+-- ---------------------------------------------------------------------------
+-- кодовый замок, арена, лифт
+
+local function wireCode(info)
+	info.codePanel:FindFirstChildOfClass("ProximityPrompt").Triggered:Connect(function(p)
+		if G.isAlive(p) and info.sealed then
+			send(p, { type = "keypad", order = info.code.order })
+		end
+	end)
+end
+
+function G.code(p: Player, text: string)
+	local r = rootOf(p)
+	local info = run.rooms[Rules.CODE_ROOM]
+	if not info or not info.sealed or not r or not G.isAlive(p) or (info.codePanel.Position - r.Position).Magnitude > 16 then
+		return { ok = false }
+	end
+	if text ~= info.code.text then
+		sound(info.codePanel, SOUND.locked, 1, 0.6)
+		return { ok = false }
+	end
+	info.sealed = false
+	info.codePanel.Color = Color3.fromRGB(60, 200, 90)
+	info.codePanel.Material = M.Neon
+	local pr = info.codePanel:FindFirstChildOfClass("ProximityPrompt")
+	pr.Enabled = false
+	sound(info.codePanel, SOUND.pick, 1.2, 0.8)
+	return { ok = true }
+end
+
+function G.eatBait(info)
+	local a = info.arena
+	if a.meat then
+		a.meat:Destroy()
+		a.meat = nil
+	end
+end
+
+function G.bossDead(info)
+	info.sealed = false
+	for _, p in G.alivePlayers() do
+		badge(p, "colossus_down")
+		give(p, "coins", 40)
+	end
+	G.sendAll({ type = "fx", kind = "calm" })
+end
+
+local function wireArena(info)
+	local a = info.arena
+	Special.drawBeam(info)
+	for _, mr in a.mirrors do
+		mr.glass:FindFirstChildOfClass("ProximityPrompt").Triggered:Connect(function(p)
+			if not G.isAlive(p) or mr.busy then
+				return
+			end
+			mr.busy = true
+			local from = mr.state
+			mr.state = (mr.state + 1) % 4
+			local v = Instance.new("NumberValue")
+			v.Changed:Connect(function(x)
+				mr.head:PivotTo(mr.cf * CFrame.Angles(0, (from + x) * math.pi / 4, 0))
+			end)
+			local t = TweenService:Create(v, TweenInfo.new(0.35), { Value = 1 })
+			t:Play()
+			t.Completed:Connect(function()
+				v:Destroy()
+				mr.busy = false
+				Special.drawBeam(info)
+			end)
+			sound(mr.glass, SOUND.switch, 0.8)
+			Entities.noise(mr.cf.Position, 30)
+		end)
+	end
+	a.plate:FindFirstChildOfClass("ProximityPrompt").Triggered:Connect(function(p)
+		local s = players[p]
+		if not s or not s.alive or a.meat or not Rules.take(s.inv, "meat") then
+			return
+		end
+		syncTools(p)
+		local mm = Props.model(info.model, "Bait")
+		Props.P(mm, "Meat", Vector3.new(1.6, 0.7, 1.1), a.plateCF * CFrame.new(0, 0.55, 0), Color3.fromRGB(150, 40, 40), M.SmoothPlastic, Props.nc())
+		Props.P(mm, "Bone", Vector3.new(2.3, 0.22, 0.22), a.plateCF * CFrame.new(0, 0.55, 0), Color3.fromRGB(230, 224, 204), M.SmoothPlastic, Props.nc())
+		a.meat = mm
+		Entities.bait(a.plateCF.Position + Vector3.new(0, 3, 0))
+	end)
+end
+
+local function wireLift(info)
+	info.model:FindFirstChild("CallButton"):FindFirstChildOfClass("ProximityPrompt").Triggered:Connect(function(p)
+		sound(info.model:FindFirstChild("CallButton"), SOUND.locked, 1, 0.5)
+		send(p, { type = "voice", key = "LiftLocked" })
+	end)
+	for _, lv in info.levers do
+		lv.handle:FindFirstChildOfClass("ProximityPrompt").Triggered:Connect(function(p)
+			if not G.isAlive(p) or info.gate.opened then
+				return
+			end
+			lv.on = not lv.on
+			lv.model:PivotTo(lv.base * CFrame.Angles(math.rad(if lv.on then 35 else -35), 0, 0))
+			sound(lv.handle, SOUND.switch, 1)
+			for _, l in info.levers do
+				if l.on ~= l.need then
+					return
+				end
+			end
+			info.gate.opened = true
+			swing(info.gate, true, 1.2)
+		end)
+	end
+end
+
+-- ---------------------------------------------------------------------------
+-- комнаты
 
 local function buildRoom(n: number)
 	if run.rooms[n] or n > Rules.CHAPTER then
@@ -614,48 +973,76 @@ local function buildRoom(n: number)
 	local origin = if prev then prev.doorCF else CFrame.new(0, 0, 0)
 	local rand = Plan.rng(run.seed + n * 7919)
 	local info
-	if d.kind == "boss" then
-		info = Special.boss(world, d, origin, rand, prev)
+	if d.kind == "codehall" then
+		info = Special.codeHall(world, d, origin, rand, prev)
+	elseif d.kind == "arena" then
+		info = Special.arena(world, d, origin, rand, prev)
+	elseif d.kind == "lifthall" then
+		info = Special.liftHall(world, d, origin, rand, prev)
+	elseif d.kind == "final" then
+		info = Special.final(world, d, origin, rand, prev)
 	else
 		info = Builder.build(world, d, origin, prev, rand)
 	end
 	info.n = n
 	info.doorCF = info.exitCF
 	run.rooms[n] = info
-	if d.kind ~= "boss" then
-		info.door = makeDoor(info, n + 1, info.doorCF, d.locked == true, false)
+	if d.kind == "figures" then
+		Special.figures(info, rand)
+		info.sealed = true
+		wireFigures(info)
+		task.spawn(Entities.spawnMimic, info)
+	end
+	if d.kind ~= "final" then
+		local special = d.kind == "codehall"
+		local size = if d.kind == "lifthall" then "normal" else d.exitSize
+		info.door = makeDoor(info, n + 1, info.doorCF, { plate = Rules.plate(n + 1), locked = d.locked == true or special, size = size, noPick = special })
 		info.decoys = {}
 		for _, cf in info.decoyCFs do
-			table.insert(info.decoys, makeDoor(info, n + 1, cf, false, true))
+			table.insert(info.decoys, makeDoor(info, n + 1, cf, { plate = Rules.plate(n + 1), decoy = true }))
+		end
+		if d.kind == "lifthall" then
+			-- последнюю дверь открывают сами: удержанием кнопки
+			local trig = Props.P(info.door.model, "HoldTrigger", Vector3.new(1, 1, 1), info.doorCF * CFrame.new(0, 4, 0.8), Color3.new(0, 0, 0), M.SmoothPlastic, Props.nc({ Transparency = 1 }))
+			local pr = Props.prompt(trig, "open", 2.5, 8)
+			info.door.hold = pr
+			pr.Triggered:Connect(function(p)
+				G.finale(p)
+			end)
 		end
 	end
-	-- ключ в одном из ящиков этой комнаты (или на виду, если ящиков нет)
 	if d.locked then
 		if #info.searchables > 0 then
 			info.searchables[math.floor(rand() * #info.searchables) + 1].key = n + 1
 		else
-			local _, part = Props.pickup(info.model, info.watcherSpawn * CFrame.new(0, 0, 2), "key")
+			-- ящиков нет: ключ лежит на полу у дальней стены
+			local side = if n % 2 == 0 then 1 else -1
+			local cf = origin * CFrame.new(side * (d.w / 2 - 3.2), Builder.floorAt(d, -d.l + 3), -d.l + 3.4)
+			local _, part = Props.pickup(info.model, cf, "key")
 			part:SetAttribute("KeyFor", n + 1)
 		end
 	end
 	if d.coin then
 		local price = Rules.coinPrice(n + 1)
-		local keeper, pc, pb = Special.coinKeeper(info.model, info.doorCF * CFrame.new(0, 0, 2.6) * CFrame.Angles(0, math.pi, 0), price)
-		info.toll = { model = keeper, price = price, paid = false, base = keeper:GetPivot() }
+		local hole = holeFor(info, d.exitSize)
+		local keeper, pr, block, holeModel = Special.coinKeeper(info.model, info.doorCF * CFrame.new(0, 0, 3) * CFrame.Angles(0, math.pi, 0), price, hole)
+		info.toll = { model = keeper, price = price, paid = false, base = keeper:GetPivot(), block = block, hole = hole, holePart = holeModel:FindFirstChildWhichIsA("BasePart") }
 		table.insert(run.keepers, info.toll)
-		pc.Triggered:Connect(function(p)
-			G.payToll(p, info, "coins")
+		pr.Triggered:Connect(function(p)
+			if G.isAlive(p) and not info.toll.paid then
+				G.discover(p, "coinkeeper")
+				send(p, { type = "coin", price = price })
+			end
 		end)
-		pb.Triggered:Connect(function(p)
-			G.payToll(p, info, "blood")
-		end)
-	end
-	if d.watcher then
-		Entities.spawnWatcher(info)
 	end
 	wireRoom(info)
-	if info.boss then
-		G.wireBoss(info)
+	if d.kind == "codehall" then
+		wireCode(info)
+	elseif d.kind == "arena" then
+		wireArena(info)
+		task.spawn(Entities.spawnColossus, info)
+	elseif d.kind == "lifthall" then
+		wireLift(info)
 	end
 	return info
 end
@@ -672,11 +1059,13 @@ local function destroyRoom(n: number)
 			unhide(p)
 		end
 	end
-	if info.toll then
-		local i = table.find(run.keepers, info.toll)
-		if i then
-			table.remove(run.keepers, i)
+	for p, s in players do
+		if s.carry and s.carry.model:IsDescendantOf(info.model) then
+			dropFigure(p)
 		end
+	end
+	if info.toll and not info.toll.paid then
+		removeKeeper(info.toll)
 	end
 	info.model:Destroy()
 	run.rooms[n] = nil
@@ -696,7 +1085,8 @@ local function cleanup()
 			if target then
 				for _, p in G.alivePlayers() do
 					local r = rootOf(p)
-					if r and Builder.contains(info, r.Position) then
+					if r and G.inRoom(info, r.Position) then
+						unhide(p)
 						teleport(p, target.origin * CFrame.new(0, 3, -4))
 					end
 				end
@@ -704,26 +1094,6 @@ local function cleanup()
 			destroyRoom(n)
 		end
 	end
-end
-
-local function swing(door)
-	local leaf = door.leaf
-	local base = leaf:GetPivot()
-	local v = Instance.new("NumberValue")
-	v.Changed:Connect(function(a)
-		leaf:PivotTo(base * CFrame.Angles(0, math.rad(-100) * a, 0))
-	end)
-	local t = TweenService:Create(v, TweenInfo.new(0.55, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Value = 1 })
-	t:Play()
-	t.Completed:Connect(function()
-		v:Destroy()
-	end)
-	for _, d in leaf:GetDescendants() do
-		if d:IsA("BasePart") then
-			d.CanCollide = false
-		end
-	end
-	sound(leaf:FindFirstChild("Slab"), SOUND.door, 0.8, 0.6)
 end
 
 function openDoor(n: number, force: boolean?)
@@ -740,14 +1110,17 @@ function openDoor(n: number, force: boolean?)
 	if door.lockPrompt then
 		door.lockPrompt.Enabled = false
 	end
-	swing(door)
+	if door.hold then
+		door.hold.Enabled = false
+	end
+	swing(door, true)
 	run.front = math.max(run.front, n)
 	workspace:SetAttribute("Door", run.front)
 	for _, s in players do
 		s.keys[n] = nil
 	end
 	for p, s in players do
-		if G.isAlive(p) then
+		if s.alive then
 			if Records.offer(p, n) then
 				local ls = p:FindFirstChild("leaderstats")
 				local b = ls and ls:FindFirstChild("Best")
@@ -763,17 +1136,24 @@ function openDoor(n: number, force: boolean?)
 	buildRoom(n + 1)
 	cleanup()
 	workspace:SetAttribute("Light", entered.desc.light or 1)
-	Entities.noise(door.model:GetPivot().Position, Rules.NOISE.door)
-	if entered.boss then
-		Entities.startBlind(entered)
-		announce("BossHall")
-	elseif entered.desc.blackout and not (run.descs[n - 1] and run.descs[n - 1].blackout) then
-		announce("Blackout")
+	Entities.noise(door.model:GetPivot().Position, 50)
+	if entered.desc.kind == "arena" then
+		-- сцена: огромная статуя сходит с постамента
+		local model = entered.model:FindFirstChild("Colossus")
+		G.sendAll({ type = "cutscene", kind = "boss", focus = entered.arena.spawn, model = model })
+		for _, p in G.alivePlayers() do
+			G.discover(p, "colossus")
+		end
+		task.delay(5.5, Entities.wakeColossus)
+	elseif entered.desc.kind == "voidhall" then
+		for _, p in G.alivePlayers() do
+			G.discover(p, "void")
+		end
 	end
-	if entered.desc.hum and not force then
-		task.delay(1.5 + math.random() * 3, function()
-			if run.active and run.front >= n then
-				Entities.hum()
+	if entered.desc.dark and not force then
+		task.delay(2 + math.random() * 4, function()
+			if run.active and not run.done then
+				Entities.darkness()
 			end
 		end)
 	end
@@ -781,32 +1161,44 @@ function openDoor(n: number, force: boolean?)
 end
 G.openDoor = openDoor
 
+-- Тьма долетела до последней двери: открывает её, если это обычная дверь
+function G.darkOpen()
+	local n = run.front + 1
+	local info = run.rooms[run.front]
+	if not info or not info.door or info.door.opened or info.door.hold or info.sealed or info.door.locked or Rules.isSpecial(n) or Rules.isSpecial(run.front) then
+		return nil
+	end
+	if not run.active or run.done then
+		return nil
+	end
+	openDoor(n, true)
+	return run.rooms[n]
+end
+
 local lockedToastAt: { [Player]: number } = {}
 
--- игрок подошёл к двери n
 function G.tryOpen(p: Player, n: number)
 	local s = players[p]
-	if not s or not G.isAlive(p) or s.hidden then
+	if not s or not s.alive or s.hidden then
 		return
 	end
 	local info = run.rooms[n - 1]
-	if not info or not info.door or info.door.opened then
+	if not info or not info.door or info.door.opened or info.door.hold or info.sealed then
 		return
 	end
-	local now = os.clock()
 	if info.toll and not info.toll.paid then
 		return
 	end
 	if info.door.locked then
 		if s.keys[n] then
 			s.keys[n] = nil
-			toast(p, "Unlocked")
 			syncTools(p)
 		else
+			local now = os.clock()
 			if now - (lockedToastAt[p] or 0) > 4 then
 				lockedToastAt[p] = now
 				sound(info.door.model:FindFirstChildWhichIsA("BasePart"), SOUND.locked, 0.8)
-				toast(p, if (s.inv.lockpick or 0) > 0 then "LockedPick" else "Locked")
+				toast(p, "Locked")
 			end
 			return
 		end
@@ -814,26 +1206,22 @@ function G.tryOpen(p: Player, n: number)
 	openDoor(n)
 end
 
--- отмычка у запертой двери
 function G.pick(p: Player, n: number)
 	local s = players[p]
 	local info = run.rooms[n - 1]
-	if not s or not G.isAlive(p) or not info or not info.door or info.door.opened then
+	if not s or not s.alive or not info or not info.door or info.door.opened or info.sealed then
 		return
 	end
 	if Rules.take(s.inv, "lockpick") then
-		toast(p, "Picked")
 		syncTools(p)
 		openDoor(n)
-	else
-		toast(p, "NoLockpick")
 	end
 end
 
--- ложная дверь в развилке: глюк, и игрока переносит к настоящей двери (или назад)
+-- ложная дверь: глюк, и игрок оказывается у настоящей (или в середине зала)
 function G.decoy(p: Player, info)
 	local s = players[p]
-	if not s or not G.isAlive(p) then
+	if not s or not s.alive then
 		return
 	end
 	local now = os.clock()
@@ -844,9 +1232,8 @@ function G.decoy(p: Player, info)
 	send(p, { type = "glitch" })
 	task.wait(0.35)
 	local n = info.n + 1
-	local blocked = info.door.locked and not s.keys[n] or (info.toll and not info.toll.paid)
+	local blocked = info.sealed or (info.door.locked and not s.keys[n]) or (info.toll and not info.toll.paid)
 	if blocked or not G.isAlive(p) then
-		-- настоящая дверь закрыта: лабиринт возвращает в середину комнаты
 		teleport(p, info.center * CFrame.new(0, -info.size.Y / 2 + 3, 0))
 		return
 	end
@@ -861,161 +1248,31 @@ function G.decoy(p: Player, info)
 	end
 end
 
--- ---------------------------------------------------------------------------
--- Монетчик
-
-function G.payToll(p: Player, info, how: string)
-	local s = players[p]
-	local t = info.toll
-	if not s or not G.isAlive(p) or not t or t.paid then
+-- дверь 100: открывается, все входят, дверь захлопывается; дальше — заброшенный зал
+function G.finale(p: Player)
+	local info = run.rooms[Rules.LIFT_ROOM]
+	if not G.isAlive(p) or not info or info.door.opened then
 		return
 	end
-	if how == "coins" then
-		if s.coins < t.price then
-			toast(p, "NotEnoughCoins", t.price)
-			return
-		end
-		s.coins -= t.price
-		toast(p, "PaidCoins", t.price)
-	else
-		local hum = humOf(p)
-		if not hum then
-			return
-		end
-		hum.Health = Rules.afterBloodToll(hum.Health)
-		send(p, { type = "fx", kind = "blood" })
-		toast(p, "PaidBlood")
+	openDoor(Rules.FINAL_ROOM, true)
+	local final = run.rooms[Rules.FINAL_ROOM]
+	G.sendAll({ type = "cutscene", kind = "final", door = info.doorCF })
+	task.wait(2.4)
+	local k = 0
+	for _, q in G.alivePlayers() do
+		k += 1
+		unhide(q)
+		teleport(q, final.origin * CFrame.new(((k - 1) % 3 - 1) * 3, 3, -8 - math.floor((k - 1) / 3) * 3))
 	end
-	t.paid = true
-	syncTools(p)
-	for _, d in t.model:GetDescendants() do
-		if d:IsA("BasePart") then
-			d.CanCollide = false
-			TweenService:Create(d, TweenInfo.new(1.2), { Transparency = 1 }):Play()
-		elseif d:IsA("ProximityPrompt") then
-			d.Enabled = false
-		elseif d:IsA("PointLight") or d:IsA("BillboardGui") then
-			d.Enabled = false
-		end
-	end
-	task.delay(1.4, function()
-		t.model:Destroy()
-	end)
-end
-
--- ---------------------------------------------------------------------------
--- зал Слепого и погоня
-
-local function openBigGate(info)
-	if info.gateOpen then
-		return
-	end
-	info.gateOpen = true
-	announce("GateOpen")
-	local gate = info.bigGate
-	local base = info.bigGateHome
-	local v = Instance.new("NumberValue")
-	v.Changed:Connect(function(a)
-		gate:PivotTo(base * CFrame.new(0, 12 * a, 0))
-	end)
-	local t = TweenService:Create(v, TweenInfo.new(3.5, Enum.EasingStyle.Sine), { Value = 1 })
-	t:Play()
-	t.Completed:Connect(function()
-		v:Destroy()
-		for _, d in gate:GetDescendants() do
-			if d:IsA("BasePart") then
-				d.CanCollide = false
-			end
-		end
-		-- Слепой больше не слушает — он бежит
-		run.chasing = true
-		Entities.chase(info)
-		announce("Run")
-		G.sendAll({ type = "chase" })
-	end)
-	sound(gate:FindFirstChildWhichIsA("BasePart"), SOUND.hit, 2, 0.4)
-end
-
-local function repair(p: Player, info, g)
-	local s = players[p]
-	if not s or not G.isAlive(p) or g.done then
-		return
-	end
-	if not g.fused then
-		if Rules.take(s.inv, "fuse") then
-			g.fused = true
-			toast(p, "FuseIn")
-			sound(g.body, SOUND.pick, 1)
-			syncTools(p)
-		else
-			toast(p, "NeedFuse")
-		end
-		return
-	end
-	g.progress = Rules.repair(g.progress)
-	local sp = g.body:FindFirstChild("Sparks")
-	if sp then
-		(sp :: ParticleEmitter):Emit(25)
-	end
-	sound(g.body, SOUND.hit, 1.2, 0.8)
-	Entities.noise(g.body.Position, Rules.NOISE.repair, "repair")
-	if g.progress >= 100 then
-		g.done = true
-		g.lamp.Color = Color3.fromRGB(60, 230, 90)
-		local l = g.lamp:FindFirstChildOfClass("PointLight")
-		if l then
-			l.Color = Color3.fromRGB(90, 255, 120)
-		end
-		local done = 0
-		for _, gg in info.generators do
-			if gg.done then
-				done += 1
-			end
-		end
-		announce("GeneratorFixed", done, #info.generators)
-		if done >= #info.generators then
-			openBigGate(info)
-		end
-	else
-		toast(p, "Repairing", g.progress)
+	swing(info.door, false, 0.25)
+	run.done = true
+	task.wait(9)
+	for _, q in G.alivePlayers() do
+		Records.complete(q)
+		badge(q, "finale")
+		send(q, { type = "tbc" })
 	end
 end
-
-function G.wireBoss(info)
-	for _, g in info.generators do
-		local pr = g.body:FindFirstChildOfClass("ProximityPrompt")
-		if pr then
-			pr.Triggered:Connect(function(p)
-				repair(p, info, g)
-			end)
-		end
-	end
-end
-
--- добежал до края: финальная сцена у игрока, дальше «Продолжение следует»
-local function finish(p: Player)
-	local s = players[p]
-	if not s or s.finished or not s.alive then
-		return
-	end
-	s.finished = true
-	p:SetAttribute("Finished", true)
-	unhide(p)
-	Records.offer(p, Rules.CHAPTER)
-	Records.complete(p)
-	local boss = run.rooms[Rules.BOSS_DOOR]
-	local edge = boss and boss.chase and boss.chase.edge
-	local r = rootOf(p)
-	if r and edge then
-		r.Anchored = true
-		p.Character:PivotTo(edge * CFrame.new(0, 3, 2))
-	end
-	send(p, { type = "ending", edge = edge })
-	if not anyoneLeft() then
-		task.spawn(endRun)
-	end
-end
-G.finish = finish
 
 -- ---------------------------------------------------------------------------
 -- начало и конец забега
@@ -1023,15 +1280,15 @@ G.finish = finish
 local function resetPlayer(p: Player)
 	local s = players[p]
 	s.alive = true
-	s.finished = false
 	s.cause = nil
 	s.coins = 0
-	s.inv = { whistle = 1 }
+	s.inv = {}
 	s.keys = {}
 	s.flash = Rules.FLASH_MAX
 	s.flashOn = false
 	s.sneaking = false
 	s.hidden = nil
+	s.carry = nil
 	for _, t in s.tools do
 		if t.Parent then
 			t:Destroy()
@@ -1039,7 +1296,6 @@ local function resetPlayer(p: Player)
 	end
 	s.tools = {}
 	p:SetAttribute("Alive", true)
-	p:SetAttribute("Finished", nil)
 	p:SetAttribute("HiddenEye", nil)
 	p:SetAttribute("Sneaking", false)
 end
@@ -1052,7 +1308,6 @@ local function loadCharacter(p: Player, cf: CFrame, inRun: boolean)
 	local hum = char:FindFirstChildOfClass("Humanoid")
 	if hum then
 		hum.WalkSpeed = Rules.SPEED.walk
-		-- прыжков нет: проходы в лабиринте всегда без прыжка
 		hum.UseJumpPower = true
 		hum.JumpPower = 0
 		hum.Died:Connect(function()
@@ -1072,7 +1327,7 @@ end
 local function startRun()
 	run.active = true
 	run.ending = false
-	run.chasing = false
+	run.done = false
 	run.seed = math.random(1, 2 ^ 30)
 	run.plan = Plan.new(run.seed)
 	run.descs = {}
@@ -1087,12 +1342,12 @@ local function startRun()
 	buildRoom(1)
 end
 
+-- у закрывшихся входных дверей, лицом в музей
 local function startPoint(): CFrame
 	local start = run.rooms[0]
-	return start.origin * CFrame.new(math.random(-6, 6), 3, -20 + math.random(-3, 3))
+	return start.origin * CFrame.new(math.random(-3, 3), 3, -5 - math.random(0, 2))
 end
 
--- в лобби (или заново в Studio)
 local function toLobby(p: Player)
 	if RunService:IsStudio() then
 		return
@@ -1101,7 +1356,6 @@ local function toLobby(p: Player)
 		TeleportService:TeleportAsync(game.PlaceId, { p })
 	end)
 end
-G.toLobby = toLobby
 
 function endRun()
 	if run.ending then
@@ -1110,8 +1364,7 @@ function endRun()
 	run.ending = true
 	G.sendAll({ type = "results", door = run.front })
 	task.wait(10)
-	if RunService:IsStudio() or G.mode == "lobby" then
-		-- в Studio забег просто начинается заново
+	if RunService:IsStudio() then
 		Entities.clear()
 		table.clear(occupied)
 		startRun()
@@ -1137,7 +1390,7 @@ end
 G.endRun = endRun
 
 -- лобби превращается в забег прямо в этом сервере (Studio и кнопка админа)
-function G.startHere(list: { Player }?)
+function G.startHere()
 	if G.mode == "run" then
 		return
 	end
@@ -1152,14 +1405,10 @@ function G.startHere(list: { Player }?)
 			task.spawn(loadCharacter, p, startPoint(), true)
 		end
 	end
-	local _ = list
 end
 
--- ---------------------------------------------------------------------------
--- лифт в лобби: кто в кабине, через 12 секунд уезжает в отдельный сервер
-
-local LIFT_TIME = 12
-local liftAt = nil
+-- вход в музей из лобби: кто стоит во тьме за дверями три секунды, уходит в забег
+local enterAt = nil
 local function lobbyStep()
 	if G.mode ~= "lobby" or not lobby then
 		return
@@ -1176,25 +1425,26 @@ local function lobbyStep()
 		end
 	end
 	if #inside == 0 then
-		liftAt = nil
-		lobby.board.Text = "001"
+		enterAt = nil
 		return
 	end
 	local now = os.clock()
-	liftAt = liftAt or now + LIFT_TIME
-	local left = math.max(0, math.ceil(liftAt - now))
-	lobby.board.Text = string.format("00:%02d  %d/4", left, math.min(#inside, 4))
-	if left > 0 then
+	if not enterAt then
+		enterAt = now + 3
+		for _, p in inside do
+			send(p, { type = "enter" })
+		end
+	end
+	if now < enterAt then
 		return
 	end
-	liftAt = nil
+	enterAt = nil
 	local group = {}
 	for i = 1, math.min(4, #inside) do
 		table.insert(group, inside[i])
-		send(inside[i], { type = "lift" })
 	end
 	if RunService:IsStudio() then
-		G.startHere(group)
+		G.startHere()
 		return
 	end
 	task.spawn(function()
@@ -1205,9 +1455,10 @@ local function lobbyStep()
 			TeleportService:TeleportAsync(game.PlaceId, group, opts)
 		end)
 		if not ok then
-			warn("[Labyrinth] teleport: " .. tostring(err))
+			warn("[Museum] teleport: " .. tostring(err))
 			for _, p in group do
-				toast(p, "LiftFailed")
+				send(p, { type = "enterFailed" })
+				teleport(p, lobby.spawn)
 			end
 		end
 	end)
@@ -1219,7 +1470,7 @@ function G.init()
 	Players.CharacterAutoLoads = false
 	event = Remotes.event("Game")
 	world = Instance.new("Folder")
-	world.Name = "Labyrinth"
+	world.Name = "Museum"
 	world.Parent = workspace
 	Records.init()
 	Entities.init(G)
@@ -1240,7 +1491,6 @@ function G.init()
 		players[p] = { alive = false, coins = 0, inv = {}, keys = {}, flash = Rules.FLASH_MAX, tools = {}, lang = "en" }
 		best.Value = Records.load(p)
 		if G.mode == "run" then
-			-- опоздавший попадает к остальным
 			local cf = if run.front >= 2 then frontSpawn() else startPoint()
 			loadCharacter(p, cf, true)
 		else
@@ -1253,10 +1503,11 @@ function G.init()
 	end
 	Players.PlayerRemoving:Connect(function(p)
 		unhide(p)
+		dropFigure(p)
 		players[p] = nil
 		lockedToastAt[p] = nil
 		Records.forget(p)
-		if G.mode == "run" and run.active and not anyoneLeft() and #Players:GetPlayers() > 1 then
+		if G.mode == "run" and run.active and not run.done and #G.alivePlayers() == 0 and #Players:GetPlayers() > 1 then
 			task.spawn(endRun)
 		end
 	end)
@@ -1281,11 +1532,17 @@ function G.init()
 		elseif action == "Unhide" then
 			unhide(p)
 			return { ok = true }
-		elseif action == "Seen" and type(arg) == "number" then
-			Entities.seen(p, arg)
-			return nil
+		elseif action == "Pay" and (arg == "gold" or arg == "self") then
+			return G.pay(p, arg)
+		elseif action == "Code" and type(arg) == "string" and #arg <= 8 then
+			return G.code(p, arg)
+		elseif action == "Journal" then
+			return { ok = true, journal = Records.journal(p) }
 		elseif action == "Lobby" then
-			toLobby(p)
+			-- вернуться на улицу можно только после смерти или в конце локации
+			if not s.alive or run.done or G.mode == "lobby" then
+				toLobby(p)
+			end
 			return { ok = true }
 		elseif action == "Status" then
 			syncTools(p)
@@ -1294,7 +1551,6 @@ function G.init()
 		return { ok = false }
 	end
 
-	-- двери у подошедших, ложные двери, фонарик, Монетчики, край пустоты, упавшие
 	task.spawn(function()
 		local t = 0
 		while true do
@@ -1303,14 +1559,14 @@ function G.init()
 			pcall(lobbyStep)
 			if G.mode == "run" and run.active then
 				local info = run.rooms[run.front]
-				local boss = run.rooms[Rules.BOSS_DOOR]
 				for _, p in G.alivePlayers() do
 					local s = players[p]
 					local r = rootOf(p)
 					if r and not s.hidden then
-						if info and info.door and not info.door.opened then
+						if info and info.door and not info.door.opened and not run.done then
+							local hw = Props.DOORS[info.door.size].w / 2 + 1.5
 							local lp = info.door.cf:PointToObjectSpace(r.Position)
-							if lp.Z > -0.5 and lp.Z < 7 and math.abs(lp.X) < 4 and lp.Y > -1 and lp.Y < 8 then
+							if lp.Z > -0.5 and lp.Z < 7 and math.abs(lp.X) < hw and lp.Y > -1 and lp.Y < 10 then
 								G.tryOpen(p, info.n + 1)
 							end
 							for _, dc in info.decoys or {} do
@@ -1320,36 +1576,33 @@ function G.init()
 								end
 							end
 						end
-						-- край пустоты
-						if boss and boss.chase and run.chasing then
-							local ep = boss.chase.edge:PointToObjectSpace(r.Position)
-							if ep.Z < 1.5 and math.abs(ep.X) < 6 then
-								finish(p)
-							end
-						end
 						if s.flashOn then
 							s.flash = Rules.drain(s.flash, dt, true)
 							if s.flash <= 0 then
 								setFlash(p, false)
-								toast(p, "FlashEmpty")
 							else
 								p:SetAttribute("Flash", math.ceil(s.flash))
 							end
 						end
-						local base = (run.rooms[run.front] or run.rooms[0]).origin.Y
-						if r.Position.Y < base - 60 then
-							if run.chasing then
-								finish(p)
+						-- упал: из пролома в пустоту — гибель, иначе возврат к последней двери
+						local here = roomOf(r.Position)
+						if here then
+							s.lastKind = here.desc.kind
+							s.lastY = here.origin.Y + math.min(0, here.desc.dy)
+						end
+						local floorY = if s.lastKind == "lifthall" then r.Position.Y - 1 else (s.lastY or r.Position.Y)
+						if not here and r.Position.Y < floorY - 30 then
+							if s.lastKind == "voidhall" then
+								G.kill(p, "void")
 							else
 								teleport(p, frontSpawn())
 							end
 						end
 					end
 				end
-				-- Монетчики покачиваются в воздухе
 				for _, k in run.keepers do
 					if not k.paid and k.model.Parent then
-						k.model:PivotTo(k.base * CFrame.new(0, math.sin(t * 2) * 0.35, 0))
+						k.model:PivotTo(k.base * CFrame.new(0, 0.3 + math.sin(t * 2.4) * 0.3, 0) * CFrame.Angles(0, 0, math.sin(t * 1.7) * 0.08))
 					end
 				end
 			end

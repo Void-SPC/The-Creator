@@ -1,8 +1,8 @@
 --!nonstrict
--- Клиент «The Labyrinth». Без главного меню: в лобби — свой персонаж и лифт, в забеге —
--- вид от первого лица и минимум кнопок: здоровье, монеты, «тихо», выход из укрытия.
--- Предметы — в обычном инвентаре Roblox. Эффекты: Гул, глюк ложной двери, пустота за
--- окнами, погоня, финальная сцена у обрыва
+-- Клиент «The Museum». Меню нет: на улице — свой персонаж, в музее — вид от первого
+-- лица и минимум кнопок: здоровье, монеты, «тихо», журнал, выход из шкафчика.
+-- Предметы — в инвентаре Roblox. Диалоги, кодовый замок, журнал существ, сцены,
+-- Тьма, проломы в пустоту, звук шагов по разным полам
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -27,10 +27,15 @@ local app = {
 	lang = if string.sub(player.LocaleId or "", 1, 2) == "ru" then "ru" else "en",
 	sneaking = false,
 	dead = false,
-	ending = false,
+	scene = false, -- идёт сцена: камерой управляет она
+	tbc = false,
 	spectating = nil :: Player?,
 	shake = 0,
 	lastHp = 100,
+	steps = true,
+	ambience = true,
+	journal = {} :: { [string]: boolean },
+	arrived = false,
 }
 
 local function T(key: string, ...)
@@ -53,35 +58,62 @@ pcall(function()
 	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true)
 end)
 task.spawn(request, "Lang", app.lang)
-
--- темнота: свет только от ламп и фонарика, туман гуще с глубиной
-Lighting.Ambient = Color3.fromRGB(10, 9, 9)
-Lighting.OutdoorAmbient = Color3.fromRGB(0, 0, 0)
-Lighting.Brightness = 0
-Lighting.ClockTime = 0
-Lighting.FogColor = Color3.fromRGB(3, 3, 4)
-Lighting.FogStart = 20
-Lighting.FogEnd = 160
-pcall(function()
-	Lighting.EnvironmentDiffuseScale = 0
-	Lighting.EnvironmentSpecularScale = 0
+task.spawn(function()
+	local r = request("Journal")
+	if r and r.journal then
+		for id in r.journal do
+			app.journal[id] = true
+		end
+	end
 end)
+
+-- ---------------------------------------------------------------------------
+-- свет: на улице ночь с луной, в музее темно; за проломами и окнами только чернота
+
 local tint = Instance.new("ColorCorrectionEffect")
-tint.Saturation = -0.2
-tint.Contrast = 0.12
 tint.Parent = Lighting
-local function updateFog()
-	local light = workspace:GetAttribute("Light") or 1
-	Lighting.FogEnd = 70 + 100 * light
-	tint.Saturation = -0.2 - (1 - light) * 0.3
+local sky = Instance.new("Sky")
+sky.Name = "VoidSky"
+sky.StarCount = 0
+sky.CelestialBodiesShown = false
+for _, face in { "SkyboxBk", "SkyboxDn", "SkyboxFt", "SkyboxLf", "SkyboxRt", "SkyboxUp" } do
+	(sky :: any)[face] = "rbxasset://textures/blackBkg_square.png"
 end
-workspace:GetAttributeChangedSignal("Light"):Connect(updateFog)
+local function applyLighting()
+	local light = workspace:GetAttribute("Light") or 1
+	Lighting.ClockTime = 0
+	Lighting.FogColor = Color3.fromRGB(3, 3, 4)
+	pcall(function()
+		Lighting.EnvironmentDiffuseScale = 0
+		Lighting.EnvironmentSpecularScale = 0
+	end)
+	if inRun() then
+		Lighting.Ambient = Color3.fromRGB(10, 9, 9)
+		Lighting.OutdoorAmbient = Color3.fromRGB(0, 0, 0)
+		Lighting.Brightness = 0
+		Lighting.FogStart = 20
+		Lighting.FogEnd = 80 + 100 * light
+		tint.Saturation = -0.2 - (1 - light) * 0.3
+		tint.Contrast = 0.12
+		sky.Parent = Lighting
+	else
+		Lighting.Ambient = Color3.fromRGB(34, 38, 54)
+		Lighting.OutdoorAmbient = Color3.fromRGB(44, 50, 72)
+		Lighting.Brightness = 1.2
+		Lighting.FogStart = 60
+		Lighting.FogEnd = 320
+		tint.Saturation = -0.1
+		tint.Contrast = 0.05
+		sky.Parent = nil
+	end
+end
+workspace:GetAttributeChangedSignal("Light"):Connect(applyLighting)
 
 -- ---------------------------------------------------------------------------
 -- экран
 
 local gui = Instance.new("ScreenGui")
-gui.Name = "Labyrinth"
+gui.Name = "Museum"
 gui.ResetOnSpawn = false
 gui.IgnoreGuiInset = true
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -90,12 +122,17 @@ gui.Parent = playerGui
 local black = Ui.frame(gui, { BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 40 })
 local red = Ui.frame(gui, { BackgroundColor3 = Color3.fromRGB(140, 0, 0), BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 41 })
 
-local toastBox = Ui.frame(gui, { BackgroundTransparency = 1, Size = UDim2.new(0.9, 0, 0, 160), Position = UDim2.new(0.05, 0, 0.66, 0), ZIndex = 50 })
+local function flashRed(strength: number)
+	red.BackgroundTransparency = 1 - strength
+	TweenService:Create(red, TweenInfo.new(0.9), { BackgroundTransparency = 1 }):Play()
+end
+
+local toastBox = Ui.frame(gui, { BackgroundTransparency = 1, Size = UDim2.new(0.9, 0, 0, 120), Position = UDim2.new(0.05, 0, 0.62, 0), ZIndex = 50 })
 Ui.list(toastBox, 4)
 local function toast(text: string, color: Color3?, seconds: number?)
 	local l = Ui.label(toastBox, text, { Size = UDim2.new(0, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.XY, TextSize = 16, TextColor3 = color or Ui.C.text, ZIndex = 51 })
 	l.TextStrokeTransparency = 0.5
-	task.delay(seconds or 2.6, function()
+	task.delay(seconds or 2.4, function()
 		TweenService:Create(l, TweenInfo.new(0.5), { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
 		task.delay(0.6, function()
 			l:Destroy()
@@ -103,26 +140,46 @@ local function toast(text: string, color: Color3?, seconds: number?)
 	end)
 end
 
-local banner = Ui.label(gui, "", { Font = Ui.TITLE, TextSize = 34, TextColor3 = Ui.C.text, Size = UDim2.new(1, 0, 0, 60), Position = UDim2.new(0, 0, 0.24, 0), TextTransparency = 1, ZIndex = 52 })
-banner.TextStrokeTransparency = 1
-local function showBanner(text: string, seconds: number?)
-	banner.Text = text
-	banner.TextTransparency = 0
-	banner.TextStrokeTransparency = 0.5
-	task.delay(seconds or 3, function()
-		if banner.Text == text then
-			TweenService:Create(banner, TweenInfo.new(0.8), { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
+-- реплика внизу экрана: буквы появляются по одной
+local lineBox = Ui.frame(gui, { BackgroundTransparency = 0.25, Size = UDim2.new(0.7, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, Position = UDim2.new(0.15, 0, 0.78, 0), Visible = false, ZIndex = 55 })
+Ui.corner(lineBox, 8)
+Ui.pad(lineBox, 12)
+local lineText = Ui.label(lineBox, "", { TextSize = 18, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, ZIndex = 56 })
+local lineId = 0
+local function say(text: string, robotic: boolean?)
+	lineId += 1
+	local id = lineId
+	lineBox.Visible = true
+	lineText.Font = if robotic then Enum.Font.Code else Ui.FONT
+	lineText.Text = text
+	lineText.MaxVisibleGraphemes = 0
+	local beep = Instance.new("Sound")
+	beep.SoundId = "rbxasset://sounds/electronicpingshort.wav"
+	beep.Volume = if robotic then 0.5 else 0
+	beep.Parent = gui
+	task.spawn(function()
+		local n = utf8.len(text) or #text
+		for i = 1, n do
+			if lineId ~= id then
+				break
+			end
+			lineText.MaxVisibleGraphemes = i
+			if robotic and i % 3 == 0 then
+				beep.PlaybackSpeed = 0.5 + (i % 5) * 0.06
+				beep:Play()
+			end
+			task.wait(if robotic then 0.05 else 0.035)
+		end
+		task.wait(3.5)
+		beep:Destroy()
+		if lineId == id then
+			lineBox.Visible = false
 		end
 	end)
 end
 
-local function flashRed(strength: number)
-	red.BackgroundTransparency = 1 - strength
-	TweenService:Create(red, TweenInfo.new(0.9), { BackgroundTransparency = 1 }):Play()
-end
-
 -- ---------------------------------------------------------------------------
--- интерфейс забега: тонкая полоска здоровья и монеты слева, «тихо» справа
+-- интерфейс забега
 
 local hud = Ui.frame(gui, { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 10 })
 local hpBack = Ui.frame(hud, { BackgroundColor3 = Color3.fromRGB(30, 26, 24), BackgroundTransparency = 0.4, Size = UDim2.fromOffset(150, 6), Position = UDim2.new(0, 16, 0, 52), ZIndex = 11 })
@@ -136,7 +193,6 @@ Ui.corner(flBack, 2)
 local flFill = Ui.frame(flBack, { BackgroundColor3 = Color3.fromRGB(230, 210, 120), Size = UDim2.fromScale(1, 1), ZIndex = 12 })
 Ui.corner(flFill, 2)
 
--- «тихо»: человечек стоит или пригнулся
 local sneakBtn = Ui.button(hud, "🧍", nil, { Size = UDim2.fromOffset(64, 64), Position = UDim2.new(1, -84, 1, -210), TextSize = 34, BackgroundTransparency = 0.45, ZIndex = 11 })
 local function setSneak(on: boolean)
 	app.sneaking = on
@@ -148,7 +204,6 @@ sneakBtn.Activated:Connect(function()
 	setSneak(not app.sneaking)
 end)
 
--- выход из шкафчика
 local leaveBtn = Ui.button(gui, "", function()
 	task.spawn(request, "Unhide")
 end, { Size = UDim2.fromOffset(160, 48), Position = UDim2.new(0.5, -80, 1, -150), Visible = false, ZIndex = 30 })
@@ -169,13 +224,13 @@ player:GetAttributeChangedSignal("Coins"):Connect(refreshHud)
 player:GetAttributeChangedSignal("Flash"):Connect(refreshHud)
 
 -- ---------------------------------------------------------------------------
--- подписи кнопок и табличек на языке игрока; отмычку видно, только если она есть
+-- подписи кнопок и вывесок на языке игрока
 
 local function localize(d: Instance)
 	if d:IsA("ProximityPrompt") then
 		local kind = d:GetAttribute("Kind")
 		if kind then
-			d.ActionText = T("p_" .. kind, d:GetAttribute("Price") or 0)
+			d.ActionText = T("p_" .. kind)
 			if kind == "lockpick" then
 				d.Enabled = (player:GetAttribute("Lockpicks") or 0) > 0
 			end
@@ -202,7 +257,7 @@ end)
 -- камера
 
 local function setCamera()
-	if app.ending then
+	if app.scene or app.tbc then
 		return
 	end
 	if inRun() and not app.dead then
@@ -213,7 +268,6 @@ local function setCamera()
 	camera.CameraType = Enum.CameraType.Custom
 	camera.FieldOfView = 75
 end
-workspace:GetAttributeChangedSignal("Mode"):Connect(setCamera)
 
 local hiddenEye = nil
 player:GetAttributeChangedSignal("HiddenEye"):Connect(function()
@@ -228,14 +282,13 @@ end)
 player:GetAttributeChangedSignal("Sneaking"):Connect(function()
 	local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
 	if hum then
-		-- пригнулся: камера ниже
 		TweenService:Create(hum, TweenInfo.new(0.25), { CameraOffset = if player:GetAttribute("Sneaking") then Vector3.new(0, -1.6, 0) else Vector3.zero }):Play()
 	end
 end)
 
--- свет фонарика идёт от камеры (у себя); у других — из фонарика в руке
+-- свет своего фонарика идёт от камеры
 local camLight = Instance.new("Part")
-camLight.Name = "LabCamLight"
+camLight.Name = "CamLight"
 camLight.Anchored = true
 camLight.CanCollide = false
 camLight.CanQuery = false
@@ -253,43 +306,15 @@ beam.Enabled = false
 beam.Parent = camLight
 
 -- ---------------------------------------------------------------------------
--- взгляд на Смотрителя
+-- звуки: гул музея, дыхание пустоты у проломов, шаги по разным полам
 
-local seenAt = {}
-local rayParams = RaycastParams.new()
-rayParams.FilterType = Enum.RaycastFilterType.Exclude
-local function checkWatchers()
-	if app.dead or not inRun() then
-		return
-	end
-	local now = os.clock()
-	for _, m in CollectionService:GetTagged("Watcher") do
-		local id = m:GetAttribute("WatcherId")
-		local head = m:FindFirstChild("Head")
-		if id and head then
-			local from = camera.CFrame.Position
-			for _, partName in { "Head", "Chest", "Body" } do
-				local part = m:FindFirstChild(partName)
-				if part then
-					local vp, onScreen = camera:WorldToViewportPoint(part.Position)
-					if onScreen and vp.Z > 0 and (part.Position - from).Magnitude < 90 then
-						rayParams.FilterDescendantsInstances = { player.Character, m, camLight }
-						local hit = workspace:Raycast(from, part.Position - from, rayParams)
-						if not hit and now - (seenAt[id] or 0) > 0.12 then
-							seenAt[id] = now
-							task.spawn(request, "Seen", id)
-							break
-						end
-					end
-				end
-			end
-		end
-	end
-end
-
--- ---------------------------------------------------------------------------
--- пустота за окнами: тяжёлое неровное дыхание, громче у окна
-
+local drone = Instance.new("Sound")
+drone.SoundId = "rbxasset://sounds/swoosh.wav"
+drone.Looped = true
+drone.PlaybackSpeed = 0.05
+drone.Volume = 0
+drone.Parent = gui
+drone:Play()
 local voidSound = Instance.new("Sound")
 voidSound.SoundId = "rbxasset://sounds/swoosh.wav"
 voidSound.Looped = true
@@ -297,28 +322,86 @@ voidSound.PlaybackSpeed = 0.09
 voidSound.Volume = 0
 voidSound.Parent = gui
 voidSound:Play()
-local drone = Instance.new("Sound")
-drone.SoundId = "rbxasset://sounds/swoosh.wav"
-drone.Looped = true
-drone.PlaybackSpeed = 0.05
-drone.Volume = 0.15
-drone.Parent = gui
-drone:Play()
 
-local function voidStep(t: number)
+-- высота и громкость шагов для материала пола
+local STEP = {
+	[Enum.Material.Marble] = { 1.2, 0.8 },
+	[Enum.Material.Slate] = { 1.05, 0.7 },
+	[Enum.Material.WoodPlanks] = { 0.9, 0.65 },
+	[Enum.Material.Wood] = { 0.9, 0.65 },
+	[Enum.Material.Carpet] = { 0.7, 0.2 },
+	[Enum.Material.Fabric] = { 0.7, 0.2 },
+	[Enum.Material.Concrete] = { 0.95, 0.6 },
+	[Enum.Material.CeramicTiles] = { 1.3, 0.75 },
+	[Enum.Material.DiamondPlate] = { 1.5, 0.9 },
+	[Enum.Material.Metal] = { 1.5, 0.9 },
+	[Enum.Material.Sand] = { 0.6, 0.3 },
+	[Enum.Material.Grass] = { 0.65, 0.3 },
+	[Enum.Material.Cobblestone] = { 1, 0.6 },
+}
+local function stepSound()
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	local snd = root and root:FindFirstChild("Running")
+	if not snd or not hum or not snd:IsA("Sound") then
+		return
+	end
+	local prof = STEP[hum.FloorMaterial] or { 1, 0.6 }
+	local v = root.AssemblyLinearVelocity
+	local speed = Vector3.new(v.X, 0, v.Z).Magnitude
+	-- медленный шаг — редкие и тихие шаги
+	snd.PlaybackSpeed = 1.85 * prof[1] * math.clamp(speed / 15, 0.45, 1.1)
+	snd.Volume = if app.steps then prof[2] * (if app.sneaking then 0.3 else 1) else 0
+end
+
+local function voidStep(t: number, dt: number)
 	local pos = camera.CFrame.Position
-	local best = math.huge
-	for _, g in CollectionService:GetTagged("VoidWindow") do
+	local near = 0
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	for _, g in CollectionService:GetTagged("VoidGap") do
 		if g:IsA("BasePart") then
-			best = math.min(best, (g.Position - pos).Magnitude)
+			local lp = g.CFrame:PointToObjectSpace(pos)
+			local half = (g:GetAttribute("Width") or 16) / 2
+			local along = math.max(0, math.abs(lp.Z) - half)
+			local dist = math.sqrt(lp.X * lp.X + along * along)
+			near = math.max(near, math.clamp(1 - dist / 40, 0, 1))
+			-- пустота тянет к пролому: сильнее всего прямо напротив дыры
+			if root and not hiddenEye and not app.dead and along < 5 and math.abs(lp.X) < 16 then
+				local dir = g:GetAttribute("Dir")
+				if typeof(dir) == "Vector3" then
+					local strength = (5 + 7 * math.clamp(1 - math.abs(lp.X) / 13, 0, 1)) * (1 - along / 5)
+					root.CFrame += dir * strength * dt
+				end
+			end
 		end
 	end
-	local near = math.clamp(1 - best / 26, 0, 1)
-	-- дыхание: вдох-выдох неровный
 	local breath = 0.6 + 0.4 * math.sin(t * 1.3) * math.sin(t * 0.37 + 1)
-	voidSound.Volume = near * 0.9 * breath
+	voidSound.Volume = if app.ambience then near * 1.1 * breath else 0
 	voidSound.PlaybackSpeed = 0.08 + 0.02 * math.sin(t * 0.9)
-	drone.Volume = if inRun() then 0.12 + (1 - (workspace:GetAttribute("Light") or 1)) * 0.25 else 0.06
+	drone.Volume = if not app.ambience then 0 elseif inRun() then 0.1 + (1 - (workspace:GetAttribute("Light") or 1)) * 0.25 else 0.04
+end
+
+-- Тьма: плоское лицо дрожит, глаза и рот дёргаются
+local function darkStep(t: number)
+	for _, d in CollectionService:GetTagged("Darkness") do
+		local face = d:FindFirstChild("Face")
+		if face then
+			for _, f in face:GetChildren() do
+				if f.Name == "Tendril" then
+					f.Rotation += 6 + math.random() * 8
+					f.Size = UDim2.fromScale(0.12 + math.random() * 0.1, 0.4 + math.random() * 0.25)
+				elseif f.Name == "EyeL" or f.Name == "EyeR" then
+					f.Size = UDim2.fromScale(0.13, 0.12 + math.abs(math.sin(t * 9)) * 0.1)
+				elseif f.Name == "Mouth" then
+					f.Size = UDim2.fromScale(0.26 + math.sin(t * 13) * 0.06, 0.08 + math.abs(math.sin(t * 7)) * 0.16)
+				elseif f.Name == "Body" then
+					f.Size = UDim2.fromScale(0.64 + math.sin(t * 17) * 0.03, 0.64 + math.cos(t * 15) * 0.03)
+				end
+			end
+		end
+	end
 end
 
 -- ---------------------------------------------------------------------------
@@ -334,12 +417,11 @@ local function playGlitch()
 	for _ = 1, 10 do
 		glitch:ClearAllChildren()
 		for _ = 1, 9 do
-			local y = math.random()
 			Ui.frame(glitch, {
 				BackgroundColor3 = Color3.fromHSV(math.random(), 0.8, math.random() * 0.8 + 0.2),
 				BackgroundTransparency = 0.2 + math.random() * 0.5,
 				Size = UDim2.new(1, 0, 0, math.random(4, 40)),
-				Position = UDim2.new(math.random() * 0.2 - 0.1, 0, y, 0),
+				Position = UDim2.new(math.random() * 0.2 - 0.1, 0, math.random(), 0),
 				ZIndex = 46,
 			})
 		end
@@ -355,7 +437,136 @@ local function playGlitch()
 end
 
 -- ---------------------------------------------------------------------------
--- смерть, наблюдение, возврат в лобби
+-- окна: Монетчик, кодовый замок, журнал
+
+local function panel(w: number, h: number, z: number)
+	local f = Ui.frame(gui, { BackgroundTransparency = 0.06, Size = UDim2.fromOffset(w, h), Position = UDim2.new(0.5, -w / 2, 0.5, -h / 2), Visible = false, ZIndex = z })
+	Ui.corner(f, 10)
+	Ui.pad(f, 14)
+	return f
+end
+
+local coinBox = panel(340, 250, 64)
+local function openCoin(price: number)
+	coinBox:ClearAllChildren()
+	Ui.corner(coinBox, 10)
+	Ui.pad(coinBox, 14)
+	Ui.list(coinBox, 10)
+	Ui.label(coinBox, T("CoinLine"), { TextSize = 18, Size = UDim2.new(1, 0, 0, 56), ZIndex = 65, LayoutOrder = 1 })
+	Ui.label(coinBox, T("CoinPrice", price), { Font = Ui.BOLD, TextColor3 = Ui.C.gold, TextSize = 20, ZIndex = 65, LayoutOrder = 2 })
+	Ui.button(coinBox, T("PayGold"), function()
+		local r = request("Pay", "gold")
+		if r and r.ok then
+			coinBox.Visible = false
+		elseif r and r.error == "coins" then
+			toast(T("NoGold"), Ui.C.red)
+		else
+			coinBox.Visible = false
+		end
+	end, { ZIndex = 65, LayoutOrder = 3, BackgroundColor3 = Ui.C.line })
+	Ui.button(coinBox, T("PaySelf"), function()
+		coinBox.Visible = false
+		request("Pay", "self")
+	end, { ZIndex = 65, LayoutOrder = 4 })
+	coinBox.Visible = true
+end
+
+local CODE_RGB = { Color3.fromRGB(190, 40, 40), Color3.fromRGB(50, 90, 200), Color3.fromRGB(50, 150, 70), Color3.fromRGB(226, 190, 60) }
+local keyBox = panel(280, 380, 64)
+local function openKeypad(order)
+	keyBox:ClearAllChildren()
+	Ui.corner(keyBox, 10)
+	Ui.pad(keyBox, 14)
+	local entered = ""
+	local slots = {}
+	for i = 1, 4 do
+		local f = Ui.frame(keyBox, { BackgroundColor3 = CODE_RGB[order[i]], Size = UDim2.fromOffset(54, 54), Position = UDim2.fromOffset((i - 1) * 64, 0), ZIndex = 65 })
+		Ui.corner(f, 6)
+		slots[i] = Ui.label(f, "", { Font = Ui.BOLD, TextSize = 30, Size = UDim2.fromScale(1, 1), ZIndex = 66, TextColor3 = Color3.new(1, 1, 1) })
+	end
+	local function show()
+		for i = 1, 4 do
+			slots[i].Text = string.sub(entered, i, i)
+		end
+	end
+	local function press(ch: string)
+		if #entered >= 4 then
+			return
+		end
+		entered ..= ch
+		show()
+		if #entered == 4 then
+			local r = request("Code", entered)
+			if r and r.ok then
+				keyBox.Visible = false
+			else
+				flashRed(0.2)
+				entered = ""
+				show()
+			end
+		end
+	end
+	for n = 1, 9 do
+		Ui.button(keyBox, tostring(n), function()
+			press(tostring(n))
+		end, { Size = UDim2.fromOffset(76, 56), Position = UDim2.fromOffset(((n - 1) % 3) * 86, 70 + math.floor((n - 1) / 3) * 64), TextSize = 22, ZIndex = 65 })
+	end
+	Ui.button(keyBox, T("Clear"), function()
+		entered = ""
+		show()
+	end, { Size = UDim2.fromOffset(120, 48), Position = UDim2.fromOffset(0, 270), ZIndex = 65 })
+	Ui.button(keyBox, "✕", function()
+		keyBox.Visible = false
+	end, { Size = UDim2.fromOffset(120, 48), Position = UDim2.fromOffset(132, 270), ZIndex = 65 })
+	keyBox.Visible = true
+end
+
+local JOURNAL = { "darkness", "mimic", "coinkeeper", "colossus", "void" }
+local journalBox = panel(420, 420, 62)
+local function openJournal()
+	journalBox:ClearAllChildren()
+	Ui.corner(journalBox, 10)
+	Ui.pad(journalBox, 14)
+	journalBox.BackgroundColor3 = Color3.fromRGB(46, 38, 28)
+	Ui.label(journalBox, T("Journal"), { Font = Ui.TITLE, TextSize = 28, TextColor3 = Ui.C.gold, Size = UDim2.new(1, -50, 0, 34), ZIndex = 63 })
+	Ui.button(journalBox, "✕", function()
+		journalBox.Visible = false
+	end, { Size = UDim2.fromOffset(40, 34), Position = UDim2.new(1, -40, 0, 0), ZIndex = 64 })
+	local scroll = Instance.new("ScrollingFrame")
+	scroll.BackgroundTransparency = 1
+	scroll.BorderSizePixel = 0
+	scroll.Size = UDim2.new(1, 0, 1, -44)
+	scroll.Position = UDim2.fromOffset(0, 44)
+	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	scroll.CanvasSize = UDim2.new()
+	scroll.ScrollBarThickness = 6
+	scroll.ZIndex = 63
+	scroll.Parent = journalBox
+	Ui.list(scroll, 10)
+	local any = false
+	for i, id in JOURNAL do
+		if app.journal[id] then
+			any = true
+			Ui.label(scroll, T("j_" .. id), { Font = Ui.TITLE, TextSize = 24, TextColor3 = Ui.C.gold, Size = UDim2.new(1, -8, 0, 28), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 64, LayoutOrder = i * 2 })
+			Ui.label(scroll, T("j_" .. id .. "_t"), { TextSize = 16, Size = UDim2.new(1, -8, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 64, LayoutOrder = i * 2 + 1 })
+		end
+	end
+	if not any then
+		Ui.label(scroll, T("JournalEmpty"), { TextColor3 = Ui.C.dim, ZIndex = 64, Size = UDim2.new(1, 0, 0, 40) })
+	end
+	journalBox.Visible = true
+end
+local journalBtn = Ui.button(hud, "📖", function()
+	if journalBox.Visible then
+		journalBox.Visible = false
+	else
+		openJournal()
+	end
+end, { Size = UDim2.fromOffset(48, 44), Position = UDim2.new(0, 16, 0, 100), TextSize = 24, BackgroundTransparency = 0.5, ZIndex = 11 })
+local _ = journalBtn
+
+-- ---------------------------------------------------------------------------
+-- смерть и наблюдение
 
 local deathBox = Ui.frame(gui, { BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.4, Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 60 })
 local deathTitle = Ui.label(deathBox, "", { Font = Ui.TITLE, TextSize = 44, TextColor3 = Ui.C.red, Size = UDim2.new(1, 0, 0, 56), Position = UDim2.new(0, 0, 0.3, 0), ZIndex = 61 })
@@ -371,7 +582,7 @@ end, { Size = UDim2.new(0.5, -4, 0, 44), Position = UDim2.new(0.5, 4, 0, 30), ZI
 local function spectate(step: number)
 	local list = {}
 	for _, q in Players:GetPlayers() do
-		if q ~= player and q:GetAttribute("Alive") and not q:GetAttribute("Finished") and q.Character then
+		if q ~= player and q:GetAttribute("Alive") and q.Character then
 			table.insert(list, q)
 		end
 	end
@@ -397,13 +608,21 @@ nextBtn.Activated:Connect(function()
 	spectate(1)
 end)
 
+local function closePanels()
+	coinBox.Visible = false
+	keyBox.Visible = false
+	journalBox.Visible = false
+end
+
 local function onDead(msg)
 	app.dead = true
 	hiddenEye = nil
 	leaveBtn.Visible = false
 	hud.Visible = false
+	closePanels()
 	deathTitle.Text = T("Died")
-	deathCause.Text = T("cause_" .. (msg.cause or "unknown")) .. "\n" .. T("DiedAt", Rules.plate(msg.door or 0))
+	local id = msg.cause
+	deathCause.Text = (if id and Lang.en["j_" .. id] then T("j_" .. id) .. "\n" else "") .. T("DiedAt", Rules.plate(msg.door or 0))
 	deathBox.Visible = true
 	task.delay(4, function()
 		if app.dead then
@@ -415,124 +634,160 @@ local function onDead(msg)
 end
 
 -- ---------------------------------------------------------------------------
--- финал: край пустоты, Слепой за спиной, шаг в темноту, «Продолжение следует»
+-- сцены
 
-local endBox = Ui.frame(gui, { BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0, Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 70 })
-local endText = Ui.label(endBox, "", { Font = Ui.TITLE, TextSize = 40, TextColor3 = Ui.C.text, Size = UDim2.new(1, 0, 0, 60), Position = UDim2.new(0, 0, 0.4, 0), TextTransparency = 1, ZIndex = 71 })
-local endBtn = Ui.button(endBox, "", function()
-	task.spawn(request, "Lobby")
-end, { Size = UDim2.fromOffset(220, 48), Position = UDim2.new(0.5, -110, 0.4, 90), Visible = false, ZIndex = 71, BackgroundColor3 = Ui.C.line })
-
-local function playEnding(edge: CFrame?)
-	app.ending = true
+-- Колосс: камера уходит к статуе, та оживает, камера возвращается
+local function sceneBoss(focus: CFrame)
+	app.scene = true
 	hud.Visible = false
-	leaveBtn.Visible = false
-	if not edge then
-		edge = camera.CFrame
-	end
+	closePanels()
+	local from = camera.CFrame
+	local lookAt = (focus * CFrame.new(0, 12, 0)).Position
+	local to = CFrame.lookAt((focus * CFrame.new(10, 9, -34)).Position, lookAt)
 	camera.CameraType = Enum.CameraType.Scriptable
-	local base = edge * CFrame.new(0, 4.6, 2.4)
-	-- местная копия Слепого для сцены
-	local monster
-	local src = CollectionService:GetTagged("Blind")[1]
-	if src then
-		local ok, c = pcall(function()
-			return src:Clone()
-		end)
-		if ok and c then
-			for _, d in c:GetDescendants() do
-				if d:IsA("BasePart") then
-					d.Anchored = true
-					d.CanCollide = false
-				end
-			end
-			c.Parent = workspace
-			monster = c
-		end
-	end
 	local t0 = os.clock()
 	local conn
 	conn = RunService.RenderStepped:Connect(function()
 		local t = os.clock() - t0
-		local cf
-		if t < 2 then
-			-- смотрим в пустоту, медленно, с дрожью
-			cf = base * CFrame.Angles(math.sin(t * 7) * 0.004, 0, 0)
-		elseif t < 3.6 then
-			-- оборачиваемся: он бежит по тоннелю
-			local a = math.clamp((t - 2) / 0.7, 0, 1)
-			cf = base * CFrame.Angles(0, math.pi * a, 0)
-			if monster then
-				local k = math.clamp((t - 2) / 1.6, 0, 1)
-				local mp = edge * CFrame.new(0, 0, 24 - 14 * k) * CFrame.Angles(0, 0, 0)
-				monster:PivotTo(mp)
-			end
-		elseif t < 4.4 then
-			local a = math.clamp((t - 3.6) / 0.5, 0, 1)
-			cf = base * CFrame.Angles(0, math.pi * (1 - a), 0)
+		if t < 1.6 then
+			camera.CFrame = from:Lerp(to, TweenService:GetValue(t / 1.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut))
+		elseif t < 5 then
+			local push = (t - 1.6) / 3.4
+			camera.CFrame = to * CFrame.new(0, 0, -push * 8) * CFrame.Angles((math.random() - 0.5) * 0.01 * push * 4, (math.random() - 0.5) * 0.01 * push * 4, 0)
 		else
-			-- шаг вперёд и падение
-			local k = t - 4.4
-			cf = base * CFrame.new(0, -k * k * 9, -k * 6) * CFrame.Angles(-math.min(1.2, k * 0.8), 0, 0)
-			black.BackgroundTransparency = math.clamp(1 - k / 1.4, 0, 1)
-		end
-		camera.CFrame = cf
-		if t > 6 then
 			conn:Disconnect()
-			if monster then
-				monster:Destroy()
-			end
-			endBox.Visible = true
-			endText.Text = T("ToBeContinued")
-			TweenService:Create(endText, TweenInfo.new(2), { TextTransparency = 0 }):Play()
-			task.delay(2.5, function()
-				endBtn.Text = T("BackToLobby")
-				endBtn.Visible = true
-			end)
+			app.scene = false
+			hud.Visible = inRun() and not app.dead
+			setCamera()
 		end
 	end)
 end
 
--- ---------------------------------------------------------------------------
--- настройки: язык, тени; в забеге — вернуться в лобби
+-- дверь 100: открывается, вход, дверь захлопывается, взгляд назад и снова вперёд
+local function sceneFinal(door: CFrame)
+	app.scene = true
+	hud.Visible = false
+	closePanels()
+	camera.CameraType = Enum.CameraType.Scriptable
+	local eye = CFrame.new(0, 4.6, 0)
+	local a = door * CFrame.new(0, 0, 7) * eye
+	local b = door * CFrame.new(0, 0, -8) * eye
+	local t0 = os.clock()
+	local slammed = false
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		local t = os.clock() - t0
+		local cf
+		if t < 0.8 then
+			cf = a
+		elseif t < 2.6 then
+			cf = a:Lerp(b, TweenService:GetValue((t - 0.8) / 1.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut))
+		elseif t < 3.5 then
+			if not slammed then
+				slammed = true
+				app.shake = 0.8
+				task.delay(0.4, function()
+					app.shake = 0
+				end)
+			end
+			cf = b * CFrame.Angles(0, math.pi * math.clamp((t - 2.7) / 0.6, 0, 1), 0)
+		elseif t < 4.8 then
+			cf = b * CFrame.Angles(0, math.pi, 0)
+		elseif t < 5.8 then
+			cf = b * CFrame.Angles(0, math.pi * (1 - math.clamp((t - 4.8) / 0.9, 0, 1)), 0)
+		else
+			conn:Disconnect()
+			app.scene = false
+			hud.Visible = inRun() and not app.dead
+			setCamera()
+			return
+		end
+		if app.shake > 0 then
+			cf *= CFrame.Angles((math.random() - 0.5) * 0.03, (math.random() - 0.5) * 0.03, 0)
+		end
+		camera.CFrame = cf
+	end)
+end
 
-local panel = Ui.frame(gui, { BackgroundTransparency = 0.08, Size = UDim2.fromOffset(260, 220), Position = UDim2.new(1, -272, 0, 92), Visible = false, ZIndex = 80 })
-Ui.corner(panel, 10)
-Ui.pad(panel, 10)
-local function buildPanel()
-	panel:ClearAllChildren()
-	Ui.corner(panel, 10)
-	Ui.pad(panel, 10)
-	Ui.list(panel, 8)
-	Ui.label(panel, T("Settings"), { Font = Ui.BOLD, TextSize = 18, ZIndex = 81, LayoutOrder = 1 })
-	local row = Ui.frame(panel, { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 40), ZIndex = 81, LayoutOrder = 2 })
+-- «Продолжение следует»: экран можно закрыть и вернуть, камера кружит вокруг героя
+local tbcBox = Ui.frame(gui, { BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 70 })
+local tbcTitle = Ui.label(tbcBox, "", { Font = Ui.TITLE, TextSize = 46, TextColor3 = Ui.C.gold, Size = UDim2.new(1, 0, 0, 60), Position = UDim2.new(0, 0, 0.34, 0), ZIndex = 71 })
+tbcTitle.TextStrokeTransparency = 0.4
+local tbcLine = Ui.frame(tbcBox, { BackgroundColor3 = Ui.C.gold, Size = UDim2.new(0, 260, 0, 2), Position = UDim2.new(0.5, -130, 0.34, 66), ZIndex = 71 })
+local _ = tbcLine
+local tbcLobby = Ui.button(tbcBox, "", function()
+	task.spawn(request, "Lobby")
+end, { Size = UDim2.fromOffset(220, 48), Position = UDim2.new(0.5, -110, 0.34, 90), ZIndex = 71, BackgroundColor3 = Ui.C.line })
+local tbcOpen
+local function setTbc(on: boolean)
+	app.tbc = on
+	tbcBox.Visible = on
+	tbcOpen.Visible = not on
+	tbcTitle.Text = T("ToBeContinued")
+	tbcLobby.Text = T("BackToLobby")
+	hud.Visible = not on and inRun() and not app.dead
+	if on then
+		camera.CameraType = Enum.CameraType.Scriptable
+	else
+		setCamera()
+	end
+end
+Ui.button(tbcBox, "✕", function()
+	setTbc(false)
+end, { Size = UDim2.fromOffset(44, 40), Position = UDim2.new(1, -60, 0, 50), ZIndex = 71 })
+tbcOpen = Ui.button(gui, "…", function()
+	setTbc(true)
+end, { Size = UDim2.fromOffset(48, 40), Position = UDim2.new(0.5, -24, 0, 50), Visible = false, ZIndex = 69, BackgroundTransparency = 0.4 })
+
+-- ---------------------------------------------------------------------------
+-- настройки и админ-панель
+
+local setBox = Ui.frame(gui, { BackgroundTransparency = 0.08, Size = UDim2.fromOffset(260, 250), Position = UDim2.new(1, -272, 0, 92), Visible = false, ZIndex = 80 })
+local function buildSettings()
+	setBox:ClearAllChildren()
+	Ui.corner(setBox, 10)
+	Ui.pad(setBox, 10)
+	Ui.list(setBox, 8)
+	Ui.label(setBox, T("Settings"), { Font = Ui.BOLD, TextSize = 18, ZIndex = 81, LayoutOrder = 1 })
+	local row = Ui.frame(setBox, { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 40), ZIndex = 81, LayoutOrder = 2 })
 	for i, l in { "en", "ru" } do
 		Ui.button(row, string.upper(l), function()
 			app.lang = l
 			task.spawn(request, "Lang", l)
 			localizeAll()
 			refreshHud()
-			buildPanel()
+			buildSettings()
 		end, { Size = UDim2.new(0.5, -4, 1, 0), Position = UDim2.new((i - 1) * 0.5, (i - 1) * 4, 0, 0), ZIndex = 82, BackgroundColor3 = if app.lang == l then Ui.C.line else Ui.C.panel })
 	end
-	Ui.button(panel, T("Shadows") .. ": " .. (if Lighting.GlobalShadows then T("On") else T("Off")), function()
-		Lighting.GlobalShadows = not Lighting.GlobalShadows
-		buildPanel()
-	end, { ZIndex = 82, LayoutOrder = 3, Size = UDim2.new(1, 0, 0, 40) })
-	if inRun() then
-		Ui.button(panel, T("BackToLobby"), function()
-			task.spawn(request, "Lobby")
-		end, { ZIndex = 82, LayoutOrder = 4, Size = UDim2.new(1, 0, 0, 40) })
+	local function toggle(order: number, key: string, get: () -> boolean, set: (boolean) -> ())
+		Ui.button(setBox, T(key) .. ": " .. (if get() then T("On") else T("Off")), function()
+			set(not get())
+			buildSettings()
+		end, { ZIndex = 82, LayoutOrder = order, Size = UDim2.new(1, 0, 0, 40) })
 	end
+	toggle(3, "Steps", function()
+		return app.steps
+	end, function(v)
+		app.steps = v
+	end)
+	toggle(4, "Ambience", function()
+		return app.ambience
+	end, function(v)
+		app.ambience = v
+	end)
+	toggle(5, "Shadows", function()
+		return Lighting.GlobalShadows
+	end, function(v)
+		Lighting.GlobalShadows = v
+	end)
 end
 Ui.button(gui, "⚙", function()
-	panel.Visible = not panel.Visible
-	if panel.Visible then
-		buildPanel()
+	setBox.Visible = not setBox.Visible
+	if setBox.Visible then
+		buildSettings()
 	end
 end, { Size = UDim2.fromOffset(40, 36), Position = UDim2.new(1, -52, 0, 50), TextSize = 20, BackgroundTransparency = 0.5, ZIndex = 79 })
 
--- админ-панель (только создателям)
 task.spawn(function()
 	local ok, res = pcall(function()
 		return Remotes.fn("AdminRequest"):InvokeServer("Status")
@@ -568,7 +823,7 @@ task.spawn(function()
 	end
 	Ui.button(gui, T("Admin"), function()
 		ap.Visible = not ap.Visible
-		panel.Visible = false
+		setBox.Visible = false
 		if ap.Visible then
 			fill()
 		end
@@ -581,13 +836,9 @@ end)
 Remotes.event("Game").OnClientEvent:Connect(function(msg)
 	if msg.type == "toast" then
 		toast(T(msg.key, table.unpack(msg.args or {})))
-	elseif msg.type == "announce" then
-		showBanner(T(msg.key, table.unpack(msg.args or {})), 3.5)
-	elseif msg.type == "hum" then
+	elseif msg.type == "dark" then
 		if msg.phase == "warn" then
-			showBanner(T("HumWarn"), 2.5)
-			app.shake = math.max(app.shake, 0.25)
-			flashRed(0.15)
+			app.shake = math.max(app.shake, 0.2)
 		elseif msg.phase == "rush" then
 			app.shake = 1.3
 		else
@@ -602,36 +853,58 @@ Remotes.event("Game").OnClientEvent:Connect(function(msg)
 			end)
 		elseif msg.kind == "blood" then
 			flashRed(0.75)
+		elseif msg.kind == "melt" then
+			app.shake = 0.5
+			task.delay(4, function()
+				app.shake = 0
+			end)
 		end
 	elseif msg.type == "glitch" then
 		task.spawn(playGlitch)
-	elseif msg.type == "chase" then
-		app.shake = 0.15
-		flashRed(0.3)
-	elseif msg.type == "lift" then
-		showBanner(T("Going"), 4)
-		TweenService:Create(black, TweenInfo.new(2), { BackgroundTransparency = 0 }):Play()
-		task.delay(8, function()
-			TweenService:Create(black, TweenInfo.new(1), { BackgroundTransparency = 1 }):Play()
-		end)
+	elseif msg.type == "journal" then
+		app.journal[msg.id] = true
+		if msg.new then
+			toast(T("JournalNew"), Ui.C.gold, 3)
+		end
+	elseif msg.type == "coin" then
+		openCoin(msg.price or 0)
+	elseif msg.type == "keypad" then
+		openKeypad(msg.order or { 1, 2, 3, 4 })
+	elseif msg.type == "voice" then
+		say(T(msg.key), true)
+	elseif msg.type == "cutscene" then
+		if msg.kind == "boss" and typeof(msg.focus) == "CFrame" then
+			sceneBoss(msg.focus)
+		elseif msg.kind == "final" and typeof(msg.door) == "CFrame" and not app.dead then
+			sceneFinal(msg.door)
+		end
+	elseif msg.type == "tbc" then
+		setTbc(true)
+	elseif msg.type == "enter" then
+		TweenService:Create(black, TweenInfo.new(2.5), { BackgroundTransparency = 0 }):Play()
+	elseif msg.type == "enterFailed" then
+		black.BackgroundTransparency = 1
 	elseif msg.type == "dead" then
 		onDead(msg)
-	elseif msg.type == "ending" then
-		playEnding(msg.edge)
 	elseif msg.type == "results" then
-		if not app.ending then
-			showBanner(T("Results", Rules.plate(msg.door or 0)), 6)
+		if not app.tbc then
+			toast(T("Results", Rules.plate(msg.door or 0)), Ui.C.text, 8)
 		end
 	end
 end)
 
--- клавиатура: C или Ctrl — тихо, E или пробел — выйти из укрытия
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed or app.dead or not inRun() then
 		return
 	end
 	if input.KeyCode == Enum.KeyCode.C or input.KeyCode == Enum.KeyCode.LeftControl then
 		setSneak(not app.sneaking)
+	elseif input.KeyCode == Enum.KeyCode.J then
+		if journalBox.Visible then
+			journalBox.Visible = false
+		else
+			openJournal()
+		end
 	elseif hiddenEye and (input.KeyCode == Enum.KeyCode.Space or input.KeyCode == Enum.KeyCode.Q) then
 		task.spawn(request, "Unhide")
 	end
@@ -640,17 +913,27 @@ end)
 -- ---------------------------------------------------------------------------
 -- новый персонаж
 
+local function onMode()
+	applyLighting()
+	hud.Visible = inRun() and not app.dead and not app.scene and not app.tbc
+	setCamera()
+	if inRun() and not app.arrived and player.Character then
+		app.arrived = true
+		black.BackgroundTransparency = 0
+		TweenService:Create(black, TweenInfo.new(2), { BackgroundTransparency = 1 }):Play()
+		task.delay(1.5, function()
+			say(T("DoorShut"))
+		end)
+	end
+end
+
 local function onCharacter(char: Model)
 	app.dead = false
 	app.spectating = nil
-	app.ending = false
 	hiddenEye = nil
 	deathBox.Visible = false
 	spectBox.Visible = false
-	endBox.Visible = false
-	endBtn.Visible = false
 	leaveBtn.Visible = false
-	black.BackgroundTransparency = 1
 	if app.sneaking then
 		setSneak(false)
 	end
@@ -668,23 +951,32 @@ local function onCharacter(char: Model)
 	end
 	char.ChildAdded:Connect(refreshHud)
 	char.ChildRemoved:Connect(refreshHud)
-	hud.Visible = inRun()
-	setCamera()
+	onMode()
 	refreshHud()
 end
 player.CharacterAdded:Connect(onCharacter)
 if player.Character then
 	task.spawn(onCharacter, player.Character)
 end
-workspace:GetAttributeChangedSignal("Mode"):Connect(function()
-	hud.Visible = inRun() and not app.dead
-end)
+workspace:GetAttributeChangedSignal("Mode"):Connect(onMode)
 
--- кадр: шкафчик, тряска, фонарик, Смотритель, пустота
 local watchT = 0
 RunService.RenderStepped:Connect(function(dt)
 	local t = os.clock()
-	if app.ending then
+	darkStep(t)
+	voidStep(t, dt)
+	stepSound()
+	if app.scene then
+		return
+	end
+	if app.tbc then
+		-- камера медленно кружит вокруг героя
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		if root then
+			local a = t * 0.25
+			local pos = root.Position + Vector3.new(math.cos(a) * 13, 5, math.sin(a) * 13)
+			camera.CFrame = CFrame.lookAt(pos, root.Position + Vector3.new(0, 1.5, 0))
+		end
 		return
 	end
 	if hiddenEye then
@@ -697,7 +989,6 @@ RunService.RenderStepped:Connect(function(dt)
 		local a = app.shake * 0.04
 		camera.CFrame *= CFrame.Angles((math.random() - 0.5) * a, (math.random() - 0.5) * a, 0)
 	end
-	-- свой фонарик светит из камеры, свет из руки у себя выключен
 	local on = player:GetAttribute("FlashOn") == true and not app.dead
 	beam.Enabled = on
 	if on then
@@ -710,16 +1001,14 @@ RunService.RenderStepped:Connect(function(dt)
 		end
 	end
 	watchT += dt
-	if watchT > 0.1 then
+	if app.dead and app.spectating and watchT > 0.5 then
 		watchT = 0
-		checkWatchers()
-	end
-	voidStep(t)
-	if app.dead and app.spectating and not app.spectating:GetAttribute("Alive") then
-		spectate(1)
+		if not app.spectating:GetAttribute("Alive") then
+			spectate(1)
+		end
 	end
 end)
 
 localizeAll()
-updateFog()
+applyLighting()
 refreshHud()

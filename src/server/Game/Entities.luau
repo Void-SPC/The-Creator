@@ -1,14 +1,15 @@
 --!nonstrict
--- Существа лабиринта:
---   Гул — мигает свет, нарастает гул, вихрь с пастью проносится по комнатам; спасает
---   шкафчик или ниша
---   Смотритель — пока на него никто не смотрит, быстро идёт к ближайшему игроку
---   Слепой — в зале генераторов слышит шаги; после ворот гонится по техническому сектору
+-- Существа музея:
+--   Тьма — плоская тень; летит через открытые залы до последней двери, открывает её,
+--          гасит свет и возвращается обратно быстрее. Спасает шкафчик
+--   тебЯ — мраморная копия игрока; повторяет его путь по залу, пока фигурки не на местах
+--   Колосс — огромная слепая статуя в зале зеркал; слышит шаги, принюхивается, идёт на мясо
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local PathfindingService = game:GetService("PathfindingService")
 local CollectionService = game:GetService("CollectionService")
+local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
 local Shared = game:GetService("ReplicatedStorage").Workshop.Shared
@@ -23,8 +24,12 @@ local SOUND = {
 	scream = "rbxasset://sounds/uuhhh.mp3",
 	hit = "rbxasset://sounds/swordslash.wav",
 	ping = "rbxasset://sounds/electronicpingshort.wav",
+	stone = "rbxasset://sounds/collide.wav",
+	glass = "rbxasset://sounds/flashbulb.wav",
 }
 E.SOUND = SOUND
+local WALK_ANIM = "rbxassetid://507777826"
+local IDLE_ANIM = "rbxassetid://507766388"
 
 local function rgb(r, g, b)
 	return Color3.fromRGB(r, g, b)
@@ -36,7 +41,7 @@ local function sound(parent: Instance, id: string, vol: number, speed: number?, 
 	s.Volume = vol
 	s.PlaybackSpeed = speed or 1
 	s.Looped = looped == true
-	s.RollOffMaxDistance = 160
+	s.RollOffMaxDistance = 180
 	s.Parent = parent
 	s:Play()
 	if not looped then
@@ -50,347 +55,457 @@ local function flat(v: Vector3): Vector3
 	return Vector3.new(v.X, 0, v.Z)
 end
 
-local function part(m, name, size, cf, color, mat, extra)
-	local p = Instance.new("Part")
-	p.Name = name
-	p.Size = size
-	p.CFrame = cf
-	p.Color = color
-	p.Material = mat or M.SmoothPlastic
-	p.Anchored = true
-	p.CanCollide = false
-	p.CanQuery = false
-	p.CastShadow = false
-	p.TopSurface = Enum.SurfaceType.Smooth
-	p.BottomSurface = Enum.SurfaceType.Smooth
-	for k, v in extra or {} do
-		(p :: any)[k] = v
+-- лампа лопается: свет гаснет насовсем
+local function burst(bulb: Instance)
+	if bulb:GetAttribute("Broken") then
+		return
 	end
-	p.Parent = m
-	return p
+	bulb:SetAttribute("Broken", true)
+	local l = bulb:FindFirstChildOfClass("PointLight")
+	if l then
+		l.Enabled = false
+	end
+	if bulb:IsA("BasePart") then
+		bulb.Material = M.Glass
+		bulb.Color = rgb(40, 38, 36)
+		local e = Instance.new("ParticleEmitter")
+		e.Rate = 0
+		e.Speed = NumberRange.new(6, 14)
+		e.Lifetime = NumberRange.new(0.3, 0.7)
+		e.Size = NumberSequence.new(0.15, 0)
+		e.Color = ColorSequence.new(rgb(255, 230, 180))
+		e.SpreadAngle = Vector2.new(180, 180)
+		e.Acceleration = Vector3.new(0, -40, 0)
+		e.Parent = bulb
+		e:Emit(14)
+		Debris:AddItem(e, 2)
+	end
 end
 
-local function ball(m, name, d, cf, color, mat, extra)
-	local p = part(m, name, Vector3.new(d, d, d), cf, color, mat, extra)
-	p.Shape = Enum.PartType.Ball
-	return p
-end
-
--- сустав-стержень между точками
-local function limb(m, name, a: Vector3, b: Vector3, thick: number, color, mat)
-	local len = (b - a).Magnitude
-	return part(m, name, Vector3.new(thick, thick, len), CFrame.lookAt((a + b) / 2, b), color, mat)
+local function darkenRoom(info)
+	for _, b in info.lights do
+		if b.Parent then
+			burst(b)
+		end
+	end
+	for _, d in info.model:GetDescendants() do
+		if d:IsA("PointLight") and d.Parent and CollectionService:HasTag(d.Parent, "LabLight") then
+			burst(d.Parent)
+		end
+	end
+	sound(info.model, SOUND.glass, 0.9, 1.6)
 end
 
 -- ---------------------------------------------------------------------------
--- Гул
+-- Тьма
 
-E.humActive = false
+E.darkActive = false
 
-local function flicker(lights, seconds: number)
-	local t0 = os.clock()
-	task.spawn(function()
-		while os.clock() - t0 < seconds do
-			for _, bulb in lights do
-				local l = bulb.Parent and bulb:FindFirstChildOfClass("PointLight")
-				if l and not bulb:GetAttribute("Broken") and l:GetAttribute("Base") and l.Brightness > 0 then
-					l.Enabled = math.random() < 0.45
-				end
-			end
-			task.wait(0.08 + math.random() * 0.12)
+-- плоское лицо: чёрный круг с пустыми глазами; клиент заставляет его дрожать
+local function darkModel(at: Vector3)
+	local p = Instance.new("Part")
+	p.Name = "Darkness"
+	p.Size = Vector3.new(2, 2, 2)
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.Transparency = 1
+	p.CFrame = CFrame.new(at)
+	local bb = Instance.new("BillboardGui")
+	bb.Name = "Face"
+	bb.Size = UDim2.new(17, 0, 17, 0)
+	bb.LightInfluence = 0
+	bb.MaxDistance = 400
+	bb.Parent = p
+	local function frame(name, size, pos, color, round)
+		local f = Instance.new("Frame")
+		f.Name = name
+		f.AnchorPoint = Vector2.new(0.5, 0.5)
+		f.Size = UDim2.fromScale(size.X, size.Y)
+		f.Position = UDim2.fromScale(pos.X, pos.Y)
+		f.BackgroundColor3 = color
+		f.BorderSizePixel = 0
+		if round then
+			local c = Instance.new("UICorner")
+			c.CornerRadius = UDim.new(0.5, 0)
+			c.Parent = f
 		end
-		for _, bulb in lights do
-			local l = bulb.Parent and bulb:FindFirstChildOfClass("PointLight")
-			if l and not bulb:GetAttribute("Broken") and l.Brightness > 0 then
-				l.Enabled = true
-			end
-		end
-	end)
+		f.Parent = bb
+		return f
+	end
+	for k = 0, 7 do
+		local a = k / 8 * math.pi * 2
+		local t = frame("Tendril", Vector2.new(0.16, 0.5), Vector2.new(0.5 + math.cos(a) * 0.3, 0.5 + math.sin(a) * 0.3), Color3.new(0, 0, 0), true)
+		t.Rotation = math.deg(a) + 90
+	end
+	frame("Body", Vector2.new(0.66, 0.66), Vector2.new(0.5, 0.5), Color3.new(0, 0, 0), true)
+	frame("EyeL", Vector2.new(0.13, 0.17), Vector2.new(0.38, 0.42), Color3.new(1, 1, 1), true)
+	frame("EyeR", Vector2.new(0.13, 0.17), Vector2.new(0.62, 0.42), Color3.new(1, 1, 1), true)
+	frame("Mouth", Vector2.new(0.3, 0.1), Vector2.new(0.5, 0.66), Color3.new(1, 1, 1), true)
+	local smoke = Instance.new("ParticleEmitter")
+	smoke.Color = ColorSequence.new(Color3.new(0, 0, 0))
+	smoke.Size = NumberSequence.new(7, 2)
+	smoke.Transparency = NumberSequence.new(0.2, 1)
+	smoke.Lifetime = NumberRange.new(0.8, 1.4)
+	smoke.Rate = 60
+	smoke.Speed = NumberRange.new(1, 4)
+	smoke.LightEmission = 0
+	smoke.Parent = p
+	CollectionService:AddTag(p, "Darkness")
+	return p
 end
 
--- вихрь: тёмное ядро, рваная оболочка, кольцо зубов вокруг пасти, осколки по орбите
-local function humModel(at: Vector3)
-	local m = Instance.new("Model")
-	m.Name = "Hum"
-	local core = ball(m, "Core", 5, CFrame.new(at), rgb(14, 8, 16), M.SmoothPlastic)
-	ball(m, "Shell", 7.5, CFrame.new(at), rgb(40, 10, 30), M.Glass, { Transparency = 0.55 })
-	ball(m, "Maw", 2.6, CFrame.new(at) * CFrame.new(0, 0, -2.2), rgb(150, 10, 20), M.Neon)
-	for k = 0, 11 do
-		local a = k / 12 * math.pi * 2
-		part(m, "Tooth", Vector3.new(0.35, 0.9, 0.35), CFrame.new(at) * CFrame.new(math.cos(a) * 1.6, math.sin(a) * 1.6, -2.6) * CFrame.Angles(0, 0, a + math.pi / 2), rgb(220, 210, 190), M.SmoothPlastic)
-	end
-	for k = 0, 9 do
-		part(m, "Shard", Vector3.new(0.6, 1.6, 0.3), CFrame.new(at) * CFrame.Angles(k, k * 2, 0) * CFrame.new(0, 0, 5), rgb(30, 18, 26), M.Slate)
-	end
-	local aura = Instance.new("ParticleEmitter")
-	aura.Color = ColorSequence.new(rgb(40, 8, 24))
-	aura.Size = NumberSequence.new(4, 0)
-	aura.Lifetime = NumberRange.new(0.5, 1)
-	aura.Rate = 90
-	aura.Speed = NumberRange.new(3, 8)
-	aura.Parent = core
-	local glow = Instance.new("PointLight")
-	glow.Color = rgb(255, 40, 60)
-	glow.Range = 32
-	glow.Brightness = 2.2
-	glow.Parent = core
-	m.PrimaryPart = core
-	return m, core
-end
-
-function E.hum()
-	if E.humActive then
+function E.darkness()
+	if E.darkActive then
 		return
 	end
 	local rooms = G.loadedRooms()
 	if #rooms == 0 then
 		return
 	end
-	E.humActive = true
+	E.darkActive = true
 	local lights = {}
 	for _, info in rooms do
 		for _, b in info.lights do
 			table.insert(lights, b)
 		end
 	end
-	G.sendAll({ type = "hum", phase = "warn" })
-	flicker(lights, 3.8)
-	local pts = {}
+	G.sendAll({ type = "dark", phase = "warn" })
+	for _, p in G.alivePlayers() do
+		G.discover(p, "darkness")
+	end
+	G.fleeKeepers()
+	-- свет мигает, пока она приближается
+	local warnTime = 5
+	local t0 = os.clock()
+	task.spawn(function()
+		while os.clock() - t0 < warnTime do
+			for _, bulb in lights do
+				local l = bulb.Parent and bulb:FindFirstChildOfClass("PointLight")
+				if l and not bulb:GetAttribute("Broken") and l.Brightness > 0 then
+					l.Enabled = math.random() < 0.5
+				end
+			end
+			task.wait(0.07 + math.random() * 0.12)
+		end
+		for _, bulb in lights do
+			local l = bulb.Parent and bulb:FindFirstChildOfClass("PointLight")
+			if l and not bulb:GetAttribute("Broken") then
+				l.Enabled = true
+			end
+		end
+	end)
+	-- путь: издалека сзади (как будто за десять дверей), через все залы до последней двери
+	local legs = {}
 	for _, info in rooms do
-		for _, p in info.path do
-			table.insert(pts, p)
+		for _, pt in info.path do
+			table.insert(legs, { pos = pt, info = info })
 		end
 	end
-	local startPos = pts[1] - (pts[2] - pts[1]).Unit * 40
-	local m, core = humModel(startPos)
-	m.Parent = workspace
-	local rumble = sound(core, SOUND.rumble, 3, 0.22, true)
-	task.wait(3.8)
-	G.sendAll({ type = "hum", phase = "rush" })
-	local speed = 85
+	local first = legs[1].pos
+	local back = (first - legs[2].pos)
+	local startPos = first + (if back.Magnitude > 0.1 then back.Unit else Vector3.zAxis) * 260
+	local body = darkModel(startPos)
+	body.Parent = workspace
+	local rumble = sound(body, SOUND.rumble, 3, 0.2, true)
+	task.wait(warnTime)
+	G.sendAll({ type = "dark", phase = "rush" })
 	local pos = startPos
-	local spin = 0
-	for i = 1, #pts do
-		local target = pts[i]
+	local function fly(target: Vector3, speed: number, info)
 		while (target - pos).Magnitude > 1 do
 			local dt = RunService.Heartbeat:Wait()
-			local step = math.min(speed * dt, (target - pos).Magnitude)
-			local dir = (target - pos).Unit
-			pos += dir * step
-			spin += dt * 9
-			m:PivotTo(CFrame.lookAt(pos, pos + dir) * CFrame.Angles(0, 0, spin))
+			pos += (target - pos).Unit * math.min(speed * dt, (target - pos).Magnitude)
+			body.CFrame = CFrame.new(pos)
 			for _, p in G.alivePlayers() do
 				local r = G.rootOf(p)
 				if r and not G.isHidden(p) then
 					local off = r.Position - pos
-					if flat(off).Magnitude < 9 and math.abs(off.Y) < 10 then
-						G.kill(p, "hum")
+					local near = flat(off).Magnitude < 14 and math.abs(off.Y) < 14
+					local same = info and G.inRoom(info, r.Position) and flat(off).Magnitude < 60
+					if near or same then
+						G.kill(p, "darkness")
 					end
 				end
 			end
 		end
 	end
-	-- часть ламп после него перегорает
-	for _, b in lights do
-		if b.Parent and math.random() < 0.3 then
-			b:SetAttribute("Broken", true)
-			local l = b:FindFirstChildOfClass("PointLight")
-			if l then
-				l.Enabled = false
-			end
-			b.Material = M.Glass
+	local done = {}
+	for _, leg in legs do
+		fly(leg.pos, 78, leg.info)
+		if not done[leg.info] then
+			done[leg.info] = true
+			darkenRoom(leg.info)
 		end
 	end
+	-- открывает следующую дверь и делает зал за ней тёмным
+	local opened = G.darkOpen()
+	if opened then
+		darkenRoom(opened)
+		for _, pt in opened.path do
+			fly(pt, 78, opened)
+		end
+		for i = #opened.path, 1, -1 do
+			fly(opened.path[i], 100, opened)
+		end
+	end
+	-- возвращается обратно чуть быстрее
+	for i = #legs, 1, -1 do
+		fly(legs[i].pos, 100, legs[i].info)
+	end
+	fly(startPos, 130, nil)
 	rumble:Stop()
-	m:Destroy()
-	G.sendAll({ type = "hum", phase = "gone" })
-	E.humActive = false
+	body:Destroy()
+	G.sendAll({ type = "dark", phase = "gone" })
+	E.darkActive = false
 end
 
 -- ---------------------------------------------------------------------------
--- Смотритель: высокая тощая фигура, длинные руки с суставами и пальцами, маска
+-- общее для ходячих статуй
 
-local watchers = {}
-local nextId = 0
-
-local function watcherModel(base: CFrame)
-	local m = Instance.new("Model")
-	m.Name = "Watcher"
-	local skin = rgb(16, 14, 18)
-	local pale = rgb(214, 208, 196)
-	local function pt(x, y, z)
-		return (base * CFrame.new(x, y, z)).Position
-	end
-	-- ноги
-	for _, s in { -1, 1 } do
-		local hip, knee, foot = pt(s * 0.5, 5.2, 0), pt(s * 0.6, 2.7, -0.3), pt(s * 0.65, 0.2, 0)
-		limb(m, "Thigh", hip, knee, 0.42, skin)
-		limb(m, "Shin", knee, foot, 0.34, skin)
-		ball(m, "Knee", 0.5, CFrame.new(knee), skin)
-		part(m, "Foot", Vector3.new(0.5, 0.25, 1.3), CFrame.new(foot) * base.Rotation * CFrame.new(0, 0, -0.35), skin)
-	end
-	-- туловище сужается кверху, рёбра проступают
-	local body = part(m, "Body", Vector3.new(1.4, 2.2, 0.8), base * CFrame.new(0, 6.3, 0), skin, M.SmoothPlastic, { CanQuery = true })
-	part(m, "Chest", Vector3.new(1.8, 2, 0.9), base * CFrame.new(0, 8.3, 0), skin, M.SmoothPlastic, { CanQuery = true })
-	for k = 0, 2 do
-		part(m, "Rib", Vector3.new(1.6, 0.12, 0.1), base * CFrame.new(0, 7.8 + k * 0.45, -0.47), rgb(40, 36, 42))
-	end
-	limb(m, "Neck", pt(0, 9.3, 0), pt(0, 10.6, -0.2), 0.35, skin)
-	-- голова с маской: прорези глаз и рта, трещина
-	local head = ball(m, "Head", 1.9, base * CFrame.new(0, 11.3, -0.2), skin, M.SmoothPlastic, { CanQuery = true })
-	local mask = base * CFrame.new(0, 11.3, -1.05)
-	part(m, "Mask", Vector3.new(1.5, 1.9, 0.18), mask, pale)
-	for _, x in { -0.35, 0.35 } do
-		part(m, "EyeHole", Vector3.new(0.32, 0.5, 0.06), mask * CFrame.new(x, 0.3, -0.1), rgb(0, 0, 0))
-	end
-	part(m, "Mouth", Vector3.new(0.8, 0.14, 0.06), mask * CFrame.new(0, -0.5, -0.1), rgb(0, 0, 0))
-	part(m, "Crack", Vector3.new(0.06, 0.9, 0.04), mask * CFrame.new(0.15, 0.4, -0.1) * CFrame.Angles(0, 0, 0.3), rgb(60, 54, 50))
-	-- руки ниже колен с суставами и пальцами
-	for _, s in { -1, 1 } do
-		local sh, el, wr = pt(s * 1.1, 9, 0), pt(s * 1.5, 6, -0.2), pt(s * 1.45, 2.6, -0.5)
-		limb(m, "UpperArm", sh, el, 0.32, skin)
-		limb(m, "Forearm", el, wr, 0.28, skin)
-		ball(m, "Elbow", 0.4, CFrame.new(el), skin)
-		ball(m, "Shoulder", 0.55, CFrame.new(sh), skin)
-		for f = -1, 1 do
-			limb(m, "Finger", wr, wr + (base.Rotation * Vector3.new(f * 0.25, -1.4, -0.2)), 0.1, skin)
-		end
-	end
-	-- точка опоры — на полу между ступнями
-	m.WorldPivot = base
-	local _ = body
-	return m, head
-end
-
-function E.spawnWatcher(info)
-	nextId += 1
-	local id = nextId
-	local cf = info.watcherSpawn
-	local look = info.center.Position
-	local base = CFrame.lookAt(cf.Position, Vector3.new(look.X, cf.Y, look.Z))
-	local m = watcherModel(base)
-	m:SetAttribute("WatcherId", id)
-	m.Parent = info.model
-	CollectionService:AddTag(m, "Watcher")
-	watchers[id] = { model = m, info = info, spawn = base, lastSeen = nil, frozenUntil = nil, pos = base.Position, cooldown = 0 }
-	return id
-end
-
-function E.seen(p: Player, id: number)
-	local w = watchers[id]
-	if not w or not G.isAlive(p) then
-		return
-	end
-	local r = G.rootOf(p)
-	if r and (r.Position - w.pos).Magnitude < 90 then
-		w.lastSeen = os.clock()
-	end
-end
-
-function E.removeRoom(info)
-	for id, w in watchers do
-		if w.info == info then
-			w.model:Destroy()
-			watchers[id] = nil
-		end
-	end
-end
-
-local function stepWatchers(dt: number)
-	local now = os.clock()
-	for id, w in watchers do
-		if not w.model.Parent then
-			watchers[id] = nil
-			continue
-		end
-		local best, bestD = nil, math.huge
-		for _, p in G.alivePlayers() do
-			local r = G.rootOf(p)
-			if r and not G.isHidden(p) and G.inRoom(w.info, r.Position) then
-				local dd = flat(r.Position - w.pos).Magnitude
-				if dd < bestD then
-					best, bestD = p, dd
-				end
+local function marble(model: Model, color: Color3)
+	for _, d in model:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Color = color
+			d.Material = M.Marble
+			if d:IsA("MeshPart") then
+				pcall(function()
+					d.TextureID = ""
+				end)
 			end
-		end
-		if best and now > w.cooldown and Rules.watcherMoves(w.lastSeen, now, w.frozenUntil) then
-			local r = G.rootOf(best) :: BasePart
-			local to = flat(r.Position - w.pos)
-			if to.Magnitude > 0.1 then
-				w.pos += to.Unit * math.min(Rules.WATCHER_SPEED * dt, to.Magnitude)
-			end
-			if bestD < 3.6 then
-				G.damage(best, Rules.WATCHER_DAMAGE, "watcher")
-				sound(w.model:FindFirstChild("Head") or w.model, SOUND.scream, 1.2, 1.3)
-				G.send(best, { type = "fx", kind = "scare" })
-				w.pos = w.spawn.Position
-				w.cooldown = now + 3
-			end
-			local face = Vector3.new(r.Position.X, w.pos.Y, r.Position.Z)
-			local cf = if (face - w.pos).Magnitude > 0.1 then CFrame.lookAt(w.pos, face) else CFrame.new(w.pos)
-			w.model:PivotTo(cf)
+		elseif d:IsA("SpecialMesh") then
+			d.TextureId = ""
+		elseif d:IsA("Decal") or d:IsA("Shirt") or d:IsA("Pants") or d:IsA("ShirtGraphic") or d:IsA("Script") or d:IsA("LocalScript") then
+			d:Destroy()
 		end
 	end
 end
 
-local function freezeWatchers(pos: Vector3)
-	for _, w in watchers do
-		if (w.pos - pos).Magnitude < 70 then
-			w.frozenUntil = os.clock() + Rules.WHISTLE_FREEZE
-		end
-	end
-end
-
--- ---------------------------------------------------------------------------
--- Слепой
-
-local blind = nil
-
-local function blindModel(cf: CFrame)
-	local desc = Instance.new("HumanoidDescription")
-	local skin = rgb(196, 188, 176)
-	local cloth = rgb(40, 38, 42)
-	desc.HeadColor = skin
-	desc.LeftArmColor, desc.RightArmColor = skin, skin
-	desc.TorsoColor = cloth
-	desc.LeftLegColor, desc.RightLegColor = cloth, cloth
+local function rig(desc: HumanoidDescription?, name: string, scale: number): (Model?, Humanoid?)
 	local ok, model = pcall(function()
-		return Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R15)
+		return Players:CreateHumanoidModelFromDescription(desc or Instance.new("HumanoidDescription"), Enum.HumanoidRigType.R15)
 	end)
 	if not ok or not model then
-		return nil
+		return nil, nil
 	end
-	model.Name = "Blind"
-	for _, d in model:GetDescendants() do
-		if d:IsA("Script") or d:IsA("LocalScript") then
-			d:Destroy()
-		elseif d:IsA("Decal") and d.Name == "face" then
-			d:Destroy()
-		end
-	end
+	model.Name = name
 	local hum = model:FindFirstChildOfClass("Humanoid") :: Humanoid
 	hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
 	hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
 	hum.MaxHealth = math.huge
 	hum.Health = math.huge
-	pcall(function()
-		model:ScaleTo(1.55)
-	end)
-	local function weldTo(to: BasePart?, name, size, offset: CFrame, color, mat, shape)
-		if not to then
-			return
+	hum.BreakJointsOnDeath = false
+	if scale ~= 1 then
+		pcall(function()
+			model:ScaleTo(scale)
+		end)
+	end
+	return model, hum
+end
+
+local function animate(hum: Humanoid, walkSpeed: number)
+	local animator = hum:FindFirstChildOfClass("Animator") or Instance.new("Animator", hum)
+	local function load(id)
+		local a = Instance.new("Animation")
+		a.AnimationId = id
+		local ok, track = pcall(function()
+			return animator:LoadAnimation(a)
+		end)
+		return if ok then track else nil
+	end
+	local walk, idle = load(WALK_ANIM), load(IDLE_ANIM)
+	if idle then
+		idle.Looped = true
+		idle:Play()
+	end
+	if walk then
+		walk.Looped = true
+		hum.Running:Connect(function(speed)
+			if speed > 0.5 then
+				if not walk.IsPlaying then
+					walk:Play(0.15)
+				end
+				walk:AdjustSpeed(speed / walkSpeed)
+			elseif walk.IsPlaying then
+				walk:Stop(0.2)
+			end
+		end)
+	end
+end
+
+-- ---------------------------------------------------------------------------
+-- тебЯ: статуя игрока в зале с фигурками
+
+local mimics = {} -- info -> состояние
+
+function E.spawnMimic(info)
+	local puzzle = info.puzzle
+	-- статуя того, кто сейчас в забеге (случайного живого игрока)
+	local alive = G.alivePlayers()
+	local who = alive[math.random(1, math.max(1, #alive))]
+	local desc = nil
+	if who then
+		pcall(function()
+			desc = Players:GetHumanoidDescriptionFromUserId(who.UserId)
+		end)
+	end
+	local model, hum = rig(desc, "Mimic", 1)
+	if not model then
+		return
+	end
+	marble(model, rgb(206, 202, 192))
+	model:PivotTo(puzzle.mimicCF * CFrame.new(0, 3, 0))
+	local root = model:FindFirstChild("HumanoidRootPart") :: BasePart
+	root.Anchored = true
+	model.Parent = info.model
+	hum.WalkSpeed = Rules.MIMIC.speed
+	CollectionService:AddTag(model, "Mimic")
+	mimics[info] = { model = model, hum = hum, root = root, info = info, awake = false, samples = {}, idx = 1, waitUntil = 0, hitAt = 0, caught = false }
+end
+
+function E.removeMimic(info)
+	local mm = mimics[info]
+	if mm then
+		if mm.model.Parent then
+			mm.model:Destroy()
 		end
+		mimics[info] = nil
+	end
+end
+
+-- статуя рассыпается
+function E.crumbleMimic(info)
+	local mm = mimics[info]
+	if not mm then
+		return
+	end
+	mimics[info] = nil
+	sound(mm.root, SOUND.stone, 1.6, 0.5)
+	for _, d in mm.model:GetDescendants() do
+		if d:IsA("Motor6D") or d:IsA("Weld") or d:IsA("WeldConstraint") then
+			d:Destroy()
+		end
+	end
+	for _, d in mm.model:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Anchored = false
+			d.CanCollide = true
+			d.AssemblyLinearVelocity = Vector3.new(math.random(-6, 6), 8, math.random(-6, 6))
+		end
+	end
+	Debris:AddItem(mm.model, 6)
+end
+
+function E.mimicNear(info, pos: Vector3): boolean
+	local mm = mimics[info]
+	return mm ~= nil and mm.root.Parent ~= nil and (mm.root.Position - pos).Magnitude < 9
+end
+
+local function stepMimics()
+	local now = os.clock()
+	for info, mm in mimics do
+		if not mm.model.Parent then
+			mimics[info] = nil
+			continue
+		end
+		-- за кем повторяет: первый вошедший, потом любой живой в зале
+		local track = mm.track
+		if track and (not G.isAlive(track) or not G.rootOf(track) or not G.inRoom(info, (G.rootOf(track) :: BasePart).Position)) then
+			track = nil
+		end
+		if not track then
+			for _, p in G.alivePlayers() do
+				local r = G.rootOf(p)
+				if r and G.inRoom(info, r.Position) then
+					local lp = info.origin:PointToObjectSpace(r.Position)
+					if mm.awake or lp.Z < -5 then
+						track = p
+						break
+					end
+				end
+			end
+			mm.track = track
+		end
+		if not track then
+			continue
+		end
+		local r = G.rootOf(track) :: BasePart
+		if not mm.awake then
+			mm.awake = true
+			mm.root.Anchored = false
+			pcall(function()
+				mm.root:SetNetworkOwner(nil)
+			end)
+			animate(mm.hum, Rules.MIMIC.speed)
+			mm.waitUntil = now + 2
+			sound(mm.root, SOUND.stone, 1.2, 0.7)
+			for _, p in G.alivePlayers() do
+				G.discover(p, "mimic")
+			end
+		end
+		-- запись пути игрока
+		local last = mm.samples[#mm.samples]
+		if not last or (last - r.Position).Magnitude > 1.5 then
+			table.insert(mm.samples, r.Position)
+			if mm.caught then
+				-- догнала и стояла рядом: секунду ждёт, потом снова идёт следом
+				mm.caught = false
+				mm.waitUntil = now + Rules.MIMIC.wait
+			end
+		end
+		if now >= mm.waitUntil then
+			local target = mm.samples[mm.idx]
+			if target then
+				if flat(target - mm.root.Position).Magnitude < 2.2 then
+					mm.idx += 1
+					target = mm.samples[mm.idx]
+				end
+				if target then
+					mm.hum:MoveTo(target)
+				else
+					mm.caught = true
+				end
+			else
+				mm.caught = true
+			end
+		end
+		-- касание
+		if now - mm.hitAt > 1.5 then
+			for _, p in G.alivePlayers() do
+				local pr = G.rootOf(p)
+				if pr and not G.isHidden(p) and (pr.Position - mm.root.Position).Magnitude < 3.8 then
+					mm.hitAt = now
+					G.damage(p, Rules.MIMIC.damage, "mimic")
+					G.send(p, { type = "fx", kind = "scare" })
+					sound(mm.root, SOUND.hit, 1, 0.7)
+					break
+				end
+			end
+		end
+	end
+end
+
+-- ---------------------------------------------------------------------------
+-- Колосс
+
+local boss = nil
+
+function E.spawnColossus(info)
+	E.removeColossus()
+	local model, hum = rig(nil, "Colossus", 3.1)
+	if not model then
+		return nil
+	end
+	marble(model, rgb(196, 192, 184))
+	local head = model:FindFirstChild("Head") :: BasePart?
+	local function weldTo(to: BasePart, name, size, offset: CFrame, color, mat)
 		local p = Instance.new("Part")
 		p.Name = name
 		p.Size = size
 		p.Color = color
-		p.Material = mat or M.SmoothPlastic
+		p.Material = mat or M.Marble
 		p.CanCollide = false
 		p.CanQuery = false
 		p.Massless = true
-		if shape then
-			p.Shape = shape
-		end
 		p.CFrame = to.CFrame * offset
 		local w = Instance.new("WeldConstraint")
 		w.Part0 = to
@@ -398,101 +513,85 @@ local function blindModel(cf: CFrame)
 		w.Parent = p
 		p.Parent = model
 	end
-	local head = model:FindFirstChild("Head") :: BasePart?
 	if head then
 		local s = head.Size
-		-- повязка на глазах, зашитый рот, впалые щёки
-		weldTo(head, "Blindfold", Vector3.new(s.X * 1.06, s.Y * 0.3, s.Z * 1.06), CFrame.new(0, s.Y * 0.12, 0), rgb(120, 104, 84), M.Fabric)
-		weldTo(head, "Knot", Vector3.new(s.X * 0.3, s.Y * 0.25, s.Z * 0.2), CFrame.new(0, s.Y * 0.12, s.Z * 0.6), rgb(110, 94, 76), M.Fabric)
-		weldTo(head, "Mouth", Vector3.new(s.X * 0.55, s.Y * 0.06, 0.05), CFrame.new(0, -s.Y * 0.24, -s.Z / 2 - 0.02), rgb(60, 10, 10))
-		for k = -2, 2 do
-			weldTo(head, "Stitch", Vector3.new(0.05, s.Y * 0.16, 0.05), CFrame.new(k * s.X * 0.1, -s.Y * 0.24, -s.Z / 2 - 0.04), rgb(30, 20, 18))
-		end
-		-- большие уши: он слушает
+		-- гладкое лицо без глаз, трещины, широкие ноздри, каменные уши
+		weldTo(head, "Brow", Vector3.new(s.X * 1.02, s.Y * 0.22, s.Z * 1.02), CFrame.new(0, s.Y * 0.16, 0), rgb(170, 166, 158))
 		for _, x in { -1, 1 } do
-			weldTo(head, "Ear", Vector3.new(0.15, s.Y * 0.55, s.Z * 0.4), CFrame.new(x * s.X * 0.55, 0, 0) * CFrame.Angles(0, x * 0.4, 0), skin)
+			weldTo(head, "Nostril", Vector3.new(s.X * 0.12, s.Y * 0.1, 0.2), CFrame.new(x * s.X * 0.1, -s.Y * 0.08, -s.Z / 2 - 0.05), rgb(40, 38, 36))
+			weldTo(head, "Ear", Vector3.new(0.4, s.Y * 0.6, s.Z * 0.45), CFrame.new(x * s.X * 0.56, 0, 0) * CFrame.Angles(0, x * 0.4, 0), rgb(196, 192, 184))
 		end
+		weldTo(head, "Crack", Vector3.new(0.15, s.Y * 0.7, 0.1), CFrame.new(s.X * 0.2, 0.1, -s.Z / 2 - 0.03) * CFrame.Angles(0, 0, 0.35), rgb(60, 58, 56))
+		weldTo(head, "Mouth", Vector3.new(s.X * 0.5, s.Y * 0.07, 0.1), CFrame.new(0, -s.Y * 0.28, -s.Z / 2 - 0.03), rgb(50, 46, 44))
 	end
-	for _, hn in { "LeftHand", "RightHand" } do
-		local hand = model:FindFirstChild(hn) :: BasePart?
-		if hand then
-			for f = -1, 1 do
-				weldTo(hand, "Finger", Vector3.new(0.1, hand.Size.Y * 2.2, 0.1), CFrame.new(f * hand.Size.X * 0.3, -hand.Size.Y * 1.3, -0.1), skin)
-			end
-		end
+	local torso = model:FindFirstChild("UpperTorso") :: BasePart?
+	if torso then
+		weldTo(torso, "Crack", Vector3.new(0.2, torso.Size.Y * 0.9, 0.1), CFrame.new(-torso.Size.X * 0.15, 0, -torso.Size.Z / 2 - 0.03) * CFrame.Angles(0, 0, -0.3), rgb(60, 58, 56))
 	end
-	model:PivotTo(cf)
-	return model, hum
-end
-
-function E.startBlind(info)
-	E.stopBlind()
-	local model, hum = blindModel(info.blindSpawn)
-	if not model then
-		return
-	end
-	model.Parent = info.model
+	model:PivotTo(info.arena.spawn * CFrame.new(0, 3 * 3.1, 0))
 	local root = model:FindFirstChild("HumanoidRootPart") :: BasePart
-	pcall(function()
-		root:SetNetworkOwner(nil)
-	end)
-	hum.WalkSpeed = Rules.BLIND_SPEED.wander
-	CollectionService:AddTag(model, "Blind")
-	blind = { model = model, hum = hum, root = root, info = info, state = "wander", target = nil, confusedUntil = 0, wanderAt = 0, path = nil, pathAt = 0, wp = 1, growlAt = 0 }
+	root.Anchored = true
+	model.Parent = info.model
+	CollectionService:AddTag(model, "Colossus")
+	boss = { model = model, hum = hum, root = root, info = info, state = "statue", target = nil, sniffAt = 0, until_ = 0, wanderAt = 0, path = nil, pathAt = 0, wp = 1 }
+	return model
 end
 
-function E.stopBlind()
-	if blind then
-		if blind.model then
-			blind.model:Destroy()
+function E.removeColossus()
+	if boss then
+		if boss.model.Parent then
+			boss.model:Destroy()
 		end
-		blind = nil
+		boss = nil
 	end
 end
 
--- погоня: Слепой больше не прислушивается, бежит по тоннелю за ближайшим игроком
-function E.chase(info)
-	if not blind then
-		E.startBlind(info)
-	end
-	if not blind then
+function E.wakeColossus()
+	local b = boss
+	if not b or b.state ~= "statue" then
 		return
 	end
-	blind.state = "chase"
-	blind.path = nil
-	blind.chasePath = info.chase.path
-	blind.chaseIdx = 1
-	blind.hum.WalkSpeed = Rules.BLIND_SPEED.chase
-	sound(blind.root, SOUND.scream, 2, 0.5)
+	b.root.Anchored = false
+	pcall(function()
+		b.root:SetNetworkOwner(nil)
+	end)
+	animate(b.hum, 16)
+	b.hum.WalkSpeed = Rules.COLOSSUS.wander
+	b.state = "wander"
+	b.sniffAt = os.clock() + Rules.COLOSSUS.sniffEvery
+	sound(b.root, SOUND.stone, 2, 0.4)
 end
 
-function E.noise(pos: Vector3, radius: number, kind: string?)
-	if not blind or not blind.root.Parent or blind.state == "chase" then
+-- шум в точке
+function E.noise(pos: Vector3, radius: number)
+	local b = boss
+	if not b or b.state == "statue" or b.state == "melt" or b.state == "bait" or b.state == "eat" then
 		return
 	end
-	if (blind.root.Position - pos).Magnitude > radius then
+	if (b.root.Position - pos).Magnitude > radius then
 		return
 	end
-	if kind == "whistle" then
-		blind.state = "lure"
-		blind.target = pos
-		blind.confusedUntil = 0
-		return
-	end
-	if blind.state == "confused" and os.clock() < blind.confusedUntil then
-		return
-	end
-	blind.state = "hunt"
-	blind.target = pos
+	b.state = "hunt"
+	b.target = pos
 end
 
-local function blindGo(goal: Vector3)
-	local b = blind
+-- на плите лежит мясо: идёт к нему
+function E.bait(pos: Vector3)
+	local b = boss
+	if b and b.state ~= "statue" and b.state ~= "melt" then
+		b.state = "bait"
+		b.target = pos
+		b.path = nil
+	end
+end
+
+local function bossGo(goal: Vector3)
+	local b = boss
 	local now = os.clock()
-	if not b.path or now - b.pathAt > 1.2 or (b.goal and (b.goal - goal).Magnitude > 6) then
+	if not b.path or now - b.pathAt > 1.5 or (b.goal and (b.goal - goal).Magnitude > 8) then
 		b.pathAt = now
 		b.goal = goal
-		local path = PathfindingService:CreatePath({ AgentRadius = 2.5, AgentHeight = 8, AgentCanJump = false })
+		local path = PathfindingService:CreatePath({ AgentRadius = 5, AgentHeight = 16, AgentCanJump = false })
 		local ok = pcall(function()
 			path:ComputeAsync(b.root.Position, goal)
 		end)
@@ -507,7 +606,7 @@ local function blindGo(goal: Vector3)
 	end
 	local w = b.path and b.path[b.wp]
 	if w then
-		if flat(w.Position - b.root.Position).Magnitude < 3 then
+		if flat(w.Position - b.root.Position).Magnitude < 5 then
 			b.wp += 1
 			w = b.path[b.wp] or w
 		end
@@ -515,140 +614,177 @@ local function blindGo(goal: Vector3)
 	end
 end
 
-local function catch(b)
-	for _, p in G.alivePlayers() do
-		local r = G.rootOf(p)
-		if r and not G.isHidden(p) and flat(r.Position - b.root.Position).Magnitude < 5 and math.abs(r.Position.Y - b.root.Position.Y) < 8 then
-			G.kill(p, "blind")
-			sound(b.root, SOUND.scream, 1.5, 0.6)
-			return true
-		end
+-- принюхивается: голова поворачивается из стороны в сторону
+local function sniffAnim(b)
+	local head = b.model:FindFirstChild("Head")
+	local neck = head and head:FindFirstChild("Neck")
+	if neck and neck:IsA("Motor6D") then
+		local base = neck.C0
+		task.spawn(function()
+			for _, a in { 0.5, -0.5, 0.35, 0 } do
+				TweenService:Create(neck, TweenInfo.new(Rules.COLOSSUS.sniffTime / 4, Enum.EasingStyle.Sine), { C0 = base * CFrame.Angles(-0.25, a, 0) }):Play()
+				task.wait(Rules.COLOSSUS.sniffTime / 4)
+			end
+			if neck.Parent then
+				neck.C0 = base
+			end
+		end)
 	end
-	return false
+	sound(b.root, SOUND.rumble, 1.4, 0.5)
 end
 
-local function stepBlind()
-	local b = blind
-	if not b or not b.root.Parent then
+local function melt(b)
+	b.state = "melt"
+	b.hum:MoveTo(b.root.Position)
+	b.hum.WalkSpeed = 0
+	G.sendAll({ type = "fx", kind = "melt" })
+	sound(b.root, SOUND.scream, 2, 0.3)
+	local fire = Instance.new("ParticleEmitter")
+	fire.Color = ColorSequence.new(rgb(255, 200, 110), rgb(120, 110, 100))
+	fire.Size = NumberSequence.new(3, 0)
+	fire.Lifetime = NumberRange.new(0.6, 1.2)
+	fire.Rate = 80
+	fire.Speed = NumberRange.new(4, 9)
+	fire.LightEmission = 0.8
+	fire.Parent = b.root
+	for _, d in b.model:GetDescendants() do
+		if d:IsA("BasePart") then
+			TweenService:Create(d, TweenInfo.new(4), { Color = rgb(60, 40, 30), Transparency = if d.Name == "HumanoidRootPart" then 1 else 0.9 }):Play()
+		end
+	end
+	task.delay(4.2, function()
+		local info = b.info
+		E.removeColossus()
+		G.bossDead(info)
+	end)
+end
+
+local function stepColossus()
+	local b = boss
+	if not b or not b.root.Parent or b.state == "statue" or b.state == "melt" then
 		return
 	end
 	local now = os.clock()
-	if b.state == "chase" then
-		catch(b)
-		-- ближайший живой игрок; бежит по точкам тоннеля к нему
-		local best, bestD = nil, math.huge
-		for _, p in G.alivePlayers() do
-			local r = G.rootOf(p)
-			if r then
-				local dd = (r.Position - b.root.Position).Magnitude
-				if dd < bestD then
-					best, bestD = r, dd
+	local C = Rules.COLOSSUS
+	local arena = b.info.arena
+	-- слышит шаги и ловит тех, кто рядом
+	for _, p in G.alivePlayers() do
+		local r = G.rootOf(p)
+		if r and G.inRoom(b.info, r.Position) then
+			local v = r.AssemblyLinearVelocity
+			local radius = Rules.noise(Vector3.new(v.X, 0, v.Z).Magnitude, G.isSneaking(p))
+			if radius > 0 then
+				E.noise(r.Position, radius)
+			end
+			if flat(r.Position - b.root.Position).Magnitude < 7 and b.state ~= "eat" then
+				G.kill(p, "colossus")
+				sound(b.root, SOUND.stone, 1.6, 0.5)
+				if b.state == "hunt" then
+					b.state = "wander"
+					b.target = nil
 				end
 			end
 		end
-		if best then
-			local path = b.chasePath
-			local i = b.chaseIdx
-			if path[i] and flat(path[i] - b.root.Position).Magnitude < 4 then
-				b.chaseIdx = math.min(#path, i + 1)
-			end
-			-- если игрок рядом и в прямой видимости — прямо к нему
-			if bestD < 14 then
-				b.hum:MoveTo(best.Position)
+	end
+	if b.state == "bait" then
+		b.hum.WalkSpeed = C.hunt
+		bossGo(b.target)
+		if flat(b.target - b.root.Position).Magnitude < 7 then
+			if arena.solved then
+				melt(b)
 			else
-				b.hum:MoveTo(path[b.chaseIdx] or best.Position)
+				b.state = "eat"
+				b.until_ = now + 2.5
+				b.hum:MoveTo(b.root.Position)
+				G.eatBait(b.info)
+				sound(b.root, SOUND.hit, 1.4, 0.4)
 			end
 		end
-		return
-	end
-	for _, p in G.alivePlayers() do
-		local r = G.rootOf(p)
-		if r and not G.isHidden(p) and G.inRoom(b.info, r.Position) then
-			local v = r.AssemblyLinearVelocity
-			local radius = Rules.noise(Vector3.new(v.X, 0, v.Z).Magnitude, G.isSneaking(p))
-			if radius > 0 and (r.Position - b.root.Position).Magnitude < radius then
-				E.noise(r.Position, radius, "step")
-			end
-		end
-	end
-	if catch(b) then
-		b.state = "wander"
-		b.target = nil
-	end
-	if b.state == "hunt" and b.target then
-		b.hum.WalkSpeed = Rules.BLIND_SPEED.hunt
-		blindGo(b.target)
-		if flat(b.target - b.root.Position).Magnitude < 4 then
-			b.state = "confused"
-			b.confusedUntil = now + 2.5
-		end
-		if now > b.growlAt then
-			b.growlAt = now + 3
-			sound(b.root, SOUND.scream, 0.7, 0.35)
-		end
-	elseif b.state == "lure" and b.target then
-		b.hum.WalkSpeed = Rules.BLIND_SPEED.hunt
-		blindGo(b.target)
-		if flat(b.target - b.root.Position).Magnitude < 4 then
-			b.state = "confused"
-			b.confusedUntil = now + Rules.BLIND_CONFUSED
-		end
-	elseif b.state == "confused" then
-		b.hum:MoveTo(b.root.Position)
-		if now > b.confusedUntil then
+	elseif b.state == "eat" then
+		if now > b.until_ then
 			b.state = "wander"
+			b.target = nil
+		end
+	elseif b.state == "sniff" then
+		b.hum:MoveTo(b.root.Position)
+		if now > b.until_ then
+			-- учуял того, кто рядом
+			local best, bestD = nil, C.sniffRange
+			for _, p in G.alivePlayers() do
+				local r = G.rootOf(p)
+				if r then
+					local dd = (r.Position - b.root.Position).Magnitude
+					if dd < bestD then
+						best, bestD = r, dd
+					end
+				end
+			end
+			if best then
+				b.state = "hunt"
+				b.target = best.Position
+			else
+				b.state = "wander"
+			end
+			b.sniffAt = now + C.sniffEvery
+		end
+	elseif b.state == "hunt" and b.target then
+		b.hum.WalkSpeed = C.hunt
+		bossGo(b.target)
+		if flat(b.target - b.root.Position).Magnitude < 6 then
+			b.state = "sniff"
+			b.until_ = now + C.sniffTime
+			sniffAnim(b)
 		end
 	else
-		b.hum.WalkSpeed = Rules.BLIND_SPEED.wander
-		if not b.target or now > b.wanderAt or flat(b.target - b.root.Position).Magnitude < 4 then
-			b.wanderAt = now + 8
-			local list = b.info.wander
-			b.target = list[math.random(1, #list)]
+		b.hum.WalkSpeed = C.wander
+		if now > b.sniffAt then
+			b.state = "sniff"
+			b.until_ = now + C.sniffTime
+			sniffAnim(b)
+			return
 		end
-		blindGo(b.target)
+		if not b.target or now > b.wanderAt or flat(b.target - b.root.Position).Magnitude < 6 then
+			b.wanderAt = now + 9
+			b.target = arena.wander[math.random(1, #arena.wander)]
+		end
+		bossGo(b.target)
 	end
 end
 
 -- ---------------------------------------------------------------------------
 
-function E.whistle(p: Player)
-	local r = G.rootOf(p)
-	if not r then
-		return
+function E.removeRoom(info)
+	E.removeMimic(info)
+	if boss and boss.info == info then
+		E.removeColossus()
 	end
-	sound(r, SOUND.ping, 2, 2.2)
-	freezeWatchers(r.Position)
-	E.noise(r.Position, Rules.NOISE.whistle, "whistle")
 end
 
 function E.clear()
-	for id, w in watchers do
-		w.model:Destroy()
-		watchers[id] = nil
+	for info in mimics do
+		E.removeMimic(info)
 	end
-	E.stopBlind()
+	E.removeColossus()
 	for _, h in workspace:GetChildren() do
-		if h.Name == "Hum" then
+		if h.Name == "Darkness" then
 			h:Destroy()
 		end
 	end
-	E.humActive = false
+	E.darkActive = false
 end
 
 function E.init(game_)
 	G = game_
-	RunService.Heartbeat:Connect(function(dt)
-		local ok, err = pcall(stepWatchers, dt)
-		if not ok then
-			warn("[Labyrinth] watcher: " .. tostring(err))
-		end
-	end)
 	task.spawn(function()
 		while true do
 			task.wait(0.15)
-			local ok, err = pcall(stepBlind)
+			local ok, err = pcall(stepMimics)
 			if not ok then
-				warn("[Labyrinth] blind: " .. tostring(err))
+				warn("[Museum] mimic: " .. tostring(err))
+			end
+			ok, err = pcall(stepColossus)
+			if not ok then
+				warn("[Museum] colossus: " .. tostring(err))
 			end
 		end
 	end)
