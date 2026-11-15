@@ -18,7 +18,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "4.0.0"
+VERSION = "5.0.0"
 
 
 class Builder:
@@ -115,7 +115,11 @@ def build(dest: Path):
     b.tree(server, ROOT / "src/server")
 
     starter, stp = b.item(b.root, "StarterPlayer", "StarterPlayer")
-    b.prop(stp, "float", "CharacterWalkSpeed", 16)
+    b.prop(stp, "float", "CharacterWalkSpeed", 15)
+    # прыжков нет: в лабиринте всё проходится пешком
+    b.prop(stp, "bool", "CharacterUseJumpPower", True)
+    b.prop(stp, "float", "CharacterJumpPower", 0)
+    b.prop(stp, "float", "CharacterJumpHeight", 0)
     b.prop(stp, "float", "CameraMaxZoomDistance", 40)
     sps, _ = b.item(starter, "StarterPlayerScripts", "StarterPlayerScripts")
     client, _ = b.item(sps, "Folder", "Workshop")

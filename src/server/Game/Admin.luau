@@ -17,10 +17,13 @@ local Admin = {}
 -- открыть несколько дверей подряд и перенести живых игроков к последней
 local function skip(count: number)
 	local run = G.run
+	if G.mode ~= "run" then
+		return
+	end
 	for _ = 1, count do
 		local n = run.front + 1
 		local info = run.rooms[n - 1]
-		if not info or (info.elevatorInfo and not info.elevatorInfo.rideDone) then
+		if not info or not info.door or n > Rules.CHAPTER then
 			break
 		end
 		if info.toll then
@@ -39,11 +42,14 @@ local function skip(count: number)
 end
 
 local RUN = {
+	start_here = function()
+		G.startHere()
+	end,
 	coins = function(p)
-		G.give(p, "coins", 50)
+		G.give(p, "coins", 100)
 	end,
 	items = function(p)
-		for _, it in { "battery", "plant", "lockpick", "whistle" } do
+		for _, it in { "battery", "plant", "lockpick" } do
 			G.give(p, it)
 		end
 	end,
@@ -67,10 +73,11 @@ local RUN = {
 	skip = function()
 		skip(5)
 	end,
-	sector_end = function()
-		local run = G.run
-		local target = math.ceil((run.front + 1) / Rules.SECTOR_LEN) * Rules.SECTOR_LEN
-		skip(math.max(0, target - run.front))
+	skip20 = function()
+		skip(20)
+	end,
+	to_boss = function()
+		skip(math.max(0, Rules.BOSS_DOOR - 1 - G.run.front))
 	end,
 	hum = function()
 		task.spawn(Entities.hum)
@@ -78,7 +85,7 @@ local RUN = {
 	watcher = function(p)
 		local r = G.rootOf(p)
 		for _, info in G.run.rooms do
-			if r and Builder.contains(info, r.Position) then
+			if r and not info.boss and Builder.contains(info, r.Position) then
 				Entities.spawnWatcher(info)
 				return
 			end

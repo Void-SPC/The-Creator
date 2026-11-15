@@ -1,5 +1,5 @@
 --!nonstrict
--- Рекорды: лучший номер двери каждого игрока (больше ничего не сохраняется)
+-- Рекорды: лучший номер двери и сколько раз глава пройдена (больше ничего не сохраняется)
 
 local Config = require(script.Parent.Parent.Config)
 local Adapter = require(script.Parent.Parent.DataStoreAdapter)
@@ -47,6 +47,22 @@ function Records.offer(p: Player, door: number): boolean
 		end)
 	end)
 	return true
+end
+
+-- глава пройдена до конца (добежал до пустоты)
+function Records.complete(p: Player)
+	if p.UserId <= 0 then
+		return
+	end
+	task.spawn(function()
+		pcall(function()
+			store.update(key(p.UserId), function(old)
+				local o = if type(old) == "table" then old else {}
+				o.done = (tonumber(o.done) or 0) + 1
+				return o
+			end)
+		end)
+	end)
 end
 
 function Records.forget(p: Player)

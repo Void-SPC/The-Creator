@@ -1,14 +1,14 @@
 --!nonstrict
 -- Существа лабиринта:
---   Гул — мигает свет, нарастает гул, потом он проносится по всем комнатам; спасает шкаф
+--   Гул — мигает свет, нарастает гул, вихрь с пастью проносится по комнатам; спасает
+--   шкафчик или ниша
 --   Смотритель — пока на него никто не смотрит, быстро идёт к ближайшему игроку
---   Слепой — в зале генераторов; не видит, но слышит шаги, ремонт, ворота и свисток
+--   Слепой — в зале генераторов слышит шаги; после ворот гонится по техническому сектору
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local PathfindingService = game:GetService("PathfindingService")
 local CollectionService = game:GetService("CollectionService")
-local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
 local Shared = game:GetService("ReplicatedStorage").Workshop.Shared
@@ -16,7 +16,7 @@ local M = require(Shared.Materials)
 local Rules = require(Shared.Rules)
 
 local E = {}
-local G -- игра (задаётся в init)
+local G
 
 local SOUND = {
 	rumble = "rbxasset://sounds/swoosh.wav",
@@ -50,6 +50,38 @@ local function flat(v: Vector3): Vector3
 	return Vector3.new(v.X, 0, v.Z)
 end
 
+local function part(m, name, size, cf, color, mat, extra)
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Size = size
+	p.CFrame = cf
+	p.Color = color
+	p.Material = mat or M.SmoothPlastic
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CastShadow = false
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	for k, v in extra or {} do
+		(p :: any)[k] = v
+	end
+	p.Parent = m
+	return p
+end
+
+local function ball(m, name, d, cf, color, mat, extra)
+	local p = part(m, name, Vector3.new(d, d, d), cf, color, mat, extra)
+	p.Shape = Enum.PartType.Ball
+	return p
+end
+
+-- сустав-стержень между точками
+local function limb(m, name, a: Vector3, b: Vector3, thick: number, color, mat)
+	local len = (b - a).Magnitude
+	return part(m, name, Vector3.new(thick, thick, len), CFrame.lookAt((a + b) / 2, b), color, mat)
+end
+
 -- ---------------------------------------------------------------------------
 -- Гул
 
@@ -61,7 +93,7 @@ local function flicker(lights, seconds: number)
 		while os.clock() - t0 < seconds do
 			for _, bulb in lights do
 				local l = bulb.Parent and bulb:FindFirstChildOfClass("PointLight")
-				if l and not bulb:GetAttribute("Broken") and not bulb:GetAttribute("Dark") then
+				if l and not bulb:GetAttribute("Broken") and l:GetAttribute("Base") and l.Brightness > 0 then
 					l.Enabled = math.random() < 0.45
 				end
 			end
@@ -69,11 +101,41 @@ local function flicker(lights, seconds: number)
 		end
 		for _, bulb in lights do
 			local l = bulb.Parent and bulb:FindFirstChildOfClass("PointLight")
-			if l and not bulb:GetAttribute("Broken") and not bulb:GetAttribute("Dark") then
+			if l and not bulb:GetAttribute("Broken") and l.Brightness > 0 then
 				l.Enabled = true
 			end
 		end
 	end)
+end
+
+-- вихрь: тёмное ядро, рваная оболочка, кольцо зубов вокруг пасти, осколки по орбите
+local function humModel(at: Vector3)
+	local m = Instance.new("Model")
+	m.Name = "Hum"
+	local core = ball(m, "Core", 5, CFrame.new(at), rgb(14, 8, 16), M.SmoothPlastic)
+	ball(m, "Shell", 7.5, CFrame.new(at), rgb(40, 10, 30), M.Glass, { Transparency = 0.55 })
+	ball(m, "Maw", 2.6, CFrame.new(at) * CFrame.new(0, 0, -2.2), rgb(150, 10, 20), M.Neon)
+	for k = 0, 11 do
+		local a = k / 12 * math.pi * 2
+		part(m, "Tooth", Vector3.new(0.35, 0.9, 0.35), CFrame.new(at) * CFrame.new(math.cos(a) * 1.6, math.sin(a) * 1.6, -2.6) * CFrame.Angles(0, 0, a + math.pi / 2), rgb(220, 210, 190), M.SmoothPlastic)
+	end
+	for k = 0, 9 do
+		part(m, "Shard", Vector3.new(0.6, 1.6, 0.3), CFrame.new(at) * CFrame.Angles(k, k * 2, 0) * CFrame.new(0, 0, 5), rgb(30, 18, 26), M.Slate)
+	end
+	local aura = Instance.new("ParticleEmitter")
+	aura.Color = ColorSequence.new(rgb(40, 8, 24))
+	aura.Size = NumberSequence.new(4, 0)
+	aura.Lifetime = NumberRange.new(0.5, 1)
+	aura.Rate = 90
+	aura.Speed = NumberRange.new(3, 8)
+	aura.Parent = core
+	local glow = Instance.new("PointLight")
+	glow.Color = rgb(255, 40, 60)
+	glow.Range = 32
+	glow.Brightness = 2.2
+	glow.Parent = core
+	m.PrimaryPart = core
+	return m, core
 end
 
 function E.hum()
@@ -92,55 +154,36 @@ function E.hum()
 		end
 	end
 	G.sendAll({ type = "hum", phase = "warn" })
-	flicker(lights, 3.6)
-	-- путь: от самой старой загруженной комнаты до последней открытой
+	flicker(lights, 3.8)
 	local pts = {}
 	for _, info in rooms do
 		for _, p in info.path do
 			table.insert(pts, p)
 		end
 	end
-	local body = Instance.new("Part")
-	body.Name = "Hum"
-	body.Shape = Enum.PartType.Ball
-	body.Size = Vector3.new(7, 7, 7)
-	body.Anchored = true
-	body.CanCollide = false
-	body.CanQuery = false
-	body.Material = M.Neon
-	body.Color = rgb(20, 16, 24)
-	body.Transparency = 0.15
-	body.CFrame = CFrame.new(pts[1] - (pts[2] - pts[1]).Unit * 40)
-	local aura = Instance.new("ParticleEmitter")
-	aura.Color = ColorSequence.new(rgb(40, 10, 30))
-	aura.Size = NumberSequence.new(5, 0)
-	aura.Lifetime = NumberRange.new(0.6, 1)
-	aura.Rate = 80
-	aura.Speed = NumberRange.new(2, 6)
-	aura.Parent = body
-	local glow = Instance.new("PointLight")
-	glow.Color = rgb(255, 40, 60)
-	glow.Range = 30
-	glow.Brightness = 2
-	glow.Parent = body
-	body.Parent = workspace
-	local rumble = sound(body, SOUND.rumble, 3, 0.25, true)
-	task.wait(3.6)
+	local startPos = pts[1] - (pts[2] - pts[1]).Unit * 40
+	local m, core = humModel(startPos)
+	m.Parent = workspace
+	local rumble = sound(core, SOUND.rumble, 3, 0.22, true)
+	task.wait(3.8)
 	G.sendAll({ type = "hum", phase = "rush" })
-	local speed = 80
-	local pos = body.Position
+	local speed = 85
+	local pos = startPos
+	local spin = 0
 	for i = 1, #pts do
 		local target = pts[i]
 		while (target - pos).Magnitude > 1 do
 			local dt = RunService.Heartbeat:Wait()
 			local step = math.min(speed * dt, (target - pos).Magnitude)
-			pos += (target - pos).Unit * step
-			body.CFrame = CFrame.new(pos)
+			local dir = (target - pos).Unit
+			pos += dir * step
+			spin += dt * 9
+			m:PivotTo(CFrame.lookAt(pos, pos + dir) * CFrame.Angles(0, 0, spin))
 			for _, p in G.alivePlayers() do
 				local r = G.rootOf(p)
 				if r and not G.isHidden(p) then
 					local off = r.Position - pos
-					if flat(off).Magnitude < 9 and math.abs(off.Y) < 9 then
+					if flat(off).Magnitude < 9 and math.abs(off.Y) < 10 then
 						G.kill(p, "hum")
 					end
 				end
@@ -159,46 +202,64 @@ function E.hum()
 		end
 	end
 	rumble:Stop()
-	body:Destroy()
+	m:Destroy()
 	G.sendAll({ type = "hum", phase = "gone" })
 	E.humActive = false
 end
 
 -- ---------------------------------------------------------------------------
--- Смотритель
+-- Смотритель: высокая тощая фигура, длинные руки с суставами и пальцами, маска
 
-local watchers = {} -- id -> { model, root, info, spawn, lastSeen, frozenUntil }
+local watchers = {}
 local nextId = 0
 
-local function watcherModel(cf: CFrame)
+local function watcherModel(base: CFrame)
 	local m = Instance.new("Model")
 	m.Name = "Watcher"
-	local skin = rgb(14, 12, 16)
-	local function part(name, size, ocf, color, mat)
-		local p = Instance.new("Part")
-		p.Name = name
-		p.Size = size
-		p.CFrame = cf * ocf
-		p.Color = color
-		p.Material = mat or M.SmoothPlastic
-		p.Anchored = true
-		p.CanCollide = false
-		p.CanQuery = true
-		p.Parent = m
-		return p
+	local skin = rgb(16, 14, 18)
+	local pale = rgb(214, 208, 196)
+	local function pt(x, y, z)
+		return (base * CFrame.new(x, y, z)).Position
 	end
-	local root = part("Body", Vector3.new(2, 9, 1.4), CFrame.new(0, 4.5, 0), skin)
-	part("Head", Vector3.new(1.8, 2.2, 1.8), CFrame.new(0, 10.1, 0), skin)
-	part("Mask", Vector3.new(1.4, 1.7, 0.1), CFrame.new(0, 10.1, -0.92), rgb(222, 216, 204))
+	-- ноги
+	for _, s in { -1, 1 } do
+		local hip, knee, foot = pt(s * 0.5, 5.2, 0), pt(s * 0.6, 2.7, -0.3), pt(s * 0.65, 0.2, 0)
+		limb(m, "Thigh", hip, knee, 0.42, skin)
+		limb(m, "Shin", knee, foot, 0.34, skin)
+		ball(m, "Knee", 0.5, CFrame.new(knee), skin)
+		part(m, "Foot", Vector3.new(0.5, 0.25, 1.3), CFrame.new(foot) * base.Rotation * CFrame.new(0, 0, -0.35), skin)
+	end
+	-- туловище сужается кверху, рёбра проступают
+	local body = part(m, "Body", Vector3.new(1.4, 2.2, 0.8), base * CFrame.new(0, 6.3, 0), skin, M.SmoothPlastic, { CanQuery = true })
+	part(m, "Chest", Vector3.new(1.8, 2, 0.9), base * CFrame.new(0, 8.3, 0), skin, M.SmoothPlastic, { CanQuery = true })
+	for k = 0, 2 do
+		part(m, "Rib", Vector3.new(1.6, 0.12, 0.1), base * CFrame.new(0, 7.8 + k * 0.45, -0.47), rgb(40, 36, 42))
+	end
+	limb(m, "Neck", pt(0, 9.3, 0), pt(0, 10.6, -0.2), 0.35, skin)
+	-- голова с маской: прорези глаз и рта, трещина
+	local head = ball(m, "Head", 1.9, base * CFrame.new(0, 11.3, -0.2), skin, M.SmoothPlastic, { CanQuery = true })
+	local mask = base * CFrame.new(0, 11.3, -1.05)
+	part(m, "Mask", Vector3.new(1.5, 1.9, 0.18), mask, pale)
 	for _, x in { -0.35, 0.35 } do
-		part("EyeHole", Vector3.new(0.3, 0.45, 0.05), CFrame.new(x, 10.4, -0.98), rgb(0, 0, 0))
+		part(m, "EyeHole", Vector3.new(0.32, 0.5, 0.06), mask * CFrame.new(x, 0.3, -0.1), rgb(0, 0, 0))
 	end
-	part("Mouth", Vector3.new(0.7, 0.12, 0.05), CFrame.new(0, 9.6, -0.98), rgb(0, 0, 0))
-	for _, x in { -1.4, 1.4 } do
-		part("Arm", Vector3.new(0.5, 8, 0.5), CFrame.new(x, 4.6, 0) * CFrame.Angles(0, 0, x * 0.03), skin)
+	part(m, "Mouth", Vector3.new(0.8, 0.14, 0.06), mask * CFrame.new(0, -0.5, -0.1), rgb(0, 0, 0))
+	part(m, "Crack", Vector3.new(0.06, 0.9, 0.04), mask * CFrame.new(0.15, 0.4, -0.1) * CFrame.Angles(0, 0, 0.3), rgb(60, 54, 50))
+	-- руки ниже колен с суставами и пальцами
+	for _, s in { -1, 1 } do
+		local sh, el, wr = pt(s * 1.1, 9, 0), pt(s * 1.5, 6, -0.2), pt(s * 1.45, 2.6, -0.5)
+		limb(m, "UpperArm", sh, el, 0.32, skin)
+		limb(m, "Forearm", el, wr, 0.28, skin)
+		ball(m, "Elbow", 0.4, CFrame.new(el), skin)
+		ball(m, "Shoulder", 0.55, CFrame.new(sh), skin)
+		for f = -1, 1 do
+			limb(m, "Finger", wr, wr + (base.Rotation * Vector3.new(f * 0.25, -1.4, -0.2)), 0.1, skin)
+		end
 	end
-	m.PrimaryPart = root
-	return m, root
+	-- точка опоры — на полу между ступнями
+	m.WorldPivot = base
+	local _ = body
+	return m, head
 end
 
 function E.spawnWatcher(info)
@@ -207,15 +268,14 @@ function E.spawnWatcher(info)
 	local cf = info.watcherSpawn
 	local look = info.center.Position
 	local base = CFrame.lookAt(cf.Position, Vector3.new(look.X, cf.Y, look.Z))
-	local m, root = watcherModel(base)
+	local m = watcherModel(base)
 	m:SetAttribute("WatcherId", id)
 	m.Parent = info.model
 	CollectionService:AddTag(m, "Watcher")
-	watchers[id] = { model = m, root = root, info = info, spawn = base, lastSeen = nil, frozenUntil = nil, pos = base.Position, cooldown = 0 }
+	watchers[id] = { model = m, info = info, spawn = base, lastSeen = nil, frozenUntil = nil, pos = base.Position, cooldown = 0 }
 	return id
 end
 
--- клиент сообщает, что видит Смотрителя
 function E.seen(p: Player, id: number)
 	local w = watchers[id]
 	if not w or not G.isAlive(p) then
@@ -243,12 +303,11 @@ local function stepWatchers(dt: number)
 			watchers[id] = nil
 			continue
 		end
-		-- цель: ближайший видимый (не спрятанный) игрок в этой комнате
 		local best, bestD = nil, math.huge
 		for _, p in G.alivePlayers() do
 			local r = G.rootOf(p)
 			if r and not G.isHidden(p) and G.inRoom(w.info, r.Position) then
-				local dd = (flat(r.Position - w.pos)).Magnitude
+				local dd = flat(r.Position - w.pos).Magnitude
 				if dd < bestD then
 					best, bestD = p, dd
 				end
@@ -258,14 +317,12 @@ local function stepWatchers(dt: number)
 			local r = G.rootOf(best) :: BasePart
 			local to = flat(r.Position - w.pos)
 			if to.Magnitude > 0.1 then
-				local step = math.min(Rules.WATCHER_SPEED * dt, to.Magnitude)
-				w.pos += to.Unit * step
+				w.pos += to.Unit * math.min(Rules.WATCHER_SPEED * dt, to.Magnitude)
 			end
 			if bestD < 3.6 then
 				G.damage(best, Rules.WATCHER_DAMAGE, "watcher")
-				sound(w.root, SOUND.scream, 1.2, 1.3)
+				sound(w.model:FindFirstChild("Head") or w.model, SOUND.scream, 1.2, 1.3)
 				G.send(best, { type = "fx", kind = "scare" })
-				-- возвращается в свой угол и ждёт
 				w.pos = w.spawn.Position
 				w.cooldown = now + 3
 			end
@@ -276,7 +333,6 @@ local function stepWatchers(dt: number)
 	end
 end
 
--- свисток: все Смотрители рядом замирают
 local function freezeWatchers(pos: Vector3)
 	for _, w in watchers do
 		if (w.pos - pos).Magnitude < 70 then
@@ -288,13 +344,16 @@ end
 -- ---------------------------------------------------------------------------
 -- Слепой
 
-local blind = nil -- { model, hum, root, info, state, target, confusedUntil, path, wp, pathAt }
+local blind = nil
 
 local function blindModel(cf: CFrame)
 	local desc = Instance.new("HumanoidDescription")
-	local c = rgb(46, 44, 50)
-	desc.HeadColor, desc.TorsoColor = c, c
-	desc.LeftArmColor, desc.RightArmColor, desc.LeftLegColor, desc.RightLegColor = c, c, c, c
+	local skin = rgb(196, 188, 176)
+	local cloth = rgb(40, 38, 42)
+	desc.HeadColor = skin
+	desc.LeftArmColor, desc.RightArmColor = skin, skin
+	desc.TorsoColor = cloth
+	desc.LeftLegColor, desc.RightLegColor = cloth, cloth
 	local ok, model = pcall(function()
 		return Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R15)
 	end)
@@ -315,36 +374,52 @@ local function blindModel(cf: CFrame)
 	hum.MaxHealth = math.huge
 	hum.Health = math.huge
 	pcall(function()
-		model:ScaleTo(1.5)
+		model:ScaleTo(1.55)
 	end)
-	-- повязка на глазах и длинные пальцы
-	local head = model:FindFirstChild("Head")
+	local function weldTo(to: BasePart?, name, size, offset: CFrame, color, mat, shape)
+		if not to then
+			return
+		end
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Size = size
+		p.Color = color
+		p.Material = mat or M.SmoothPlastic
+		p.CanCollide = false
+		p.CanQuery = false
+		p.Massless = true
+		if shape then
+			p.Shape = shape
+		end
+		p.CFrame = to.CFrame * offset
+		local w = Instance.new("WeldConstraint")
+		w.Part0 = to
+		w.Part1 = p
+		w.Parent = p
+		p.Parent = model
+	end
+	local head = model:FindFirstChild("Head") :: BasePart?
 	if head then
-		local band = Instance.new("Part")
-		band.Name = "Blindfold"
-		band.Size = Vector3.new(head.Size.X * 1.05, head.Size.Y * 0.28, head.Size.Z * 1.05)
-		band.Color = rgb(150, 140, 120)
-		band.Material = M.Fabric
-		band.CanCollide = false
-		band.Massless = true
-		band.CFrame = head.CFrame * CFrame.new(0, head.Size.Y * 0.1, 0)
-		local wd = Instance.new("WeldConstraint")
-		wd.Part0 = head
-		wd.Part1 = band
-		wd.Parent = band
-		band.Parent = model
-		local mouth = Instance.new("Part")
-		mouth.Name = "Mouth"
-		mouth.Size = Vector3.new(head.Size.X * 0.6, head.Size.Y * 0.18, 0.1)
-		mouth.Color = rgb(80, 10, 10)
-		mouth.CanCollide = false
-		mouth.Massless = true
-		mouth.CFrame = head.CFrame * CFrame.new(0, -head.Size.Y * 0.25, -head.Size.Z / 2 - 0.02)
-		local w2 = Instance.new("WeldConstraint")
-		w2.Part0 = head
-		w2.Part1 = mouth
-		w2.Parent = mouth
-		mouth.Parent = model
+		local s = head.Size
+		-- повязка на глазах, зашитый рот, впалые щёки
+		weldTo(head, "Blindfold", Vector3.new(s.X * 1.06, s.Y * 0.3, s.Z * 1.06), CFrame.new(0, s.Y * 0.12, 0), rgb(120, 104, 84), M.Fabric)
+		weldTo(head, "Knot", Vector3.new(s.X * 0.3, s.Y * 0.25, s.Z * 0.2), CFrame.new(0, s.Y * 0.12, s.Z * 0.6), rgb(110, 94, 76), M.Fabric)
+		weldTo(head, "Mouth", Vector3.new(s.X * 0.55, s.Y * 0.06, 0.05), CFrame.new(0, -s.Y * 0.24, -s.Z / 2 - 0.02), rgb(60, 10, 10))
+		for k = -2, 2 do
+			weldTo(head, "Stitch", Vector3.new(0.05, s.Y * 0.16, 0.05), CFrame.new(k * s.X * 0.1, -s.Y * 0.24, -s.Z / 2 - 0.04), rgb(30, 20, 18))
+		end
+		-- большие уши: он слушает
+		for _, x in { -1, 1 } do
+			weldTo(head, "Ear", Vector3.new(0.15, s.Y * 0.55, s.Z * 0.4), CFrame.new(x * s.X * 0.55, 0, 0) * CFrame.Angles(0, x * 0.4, 0), skin)
+		end
+	end
+	for _, hn in { "LeftHand", "RightHand" } do
+		local hand = model:FindFirstChild(hn) :: BasePart?
+		if hand then
+			for f = -1, 1 do
+				weldTo(hand, "Finger", Vector3.new(0.1, hand.Size.Y * 2.2, 0.1), CFrame.new(f * hand.Size.X * 0.3, -hand.Size.Y * 1.3, -0.1), skin)
+			end
+		end
 	end
 	model:PivotTo(cf)
 	return model, hum
@@ -375,9 +450,24 @@ function E.stopBlind()
 	end
 end
 
--- шум в точке: Слепой идёт туда, если услышал
+-- погоня: Слепой больше не прислушивается, бежит по тоннелю за ближайшим игроком
+function E.chase(info)
+	if not blind then
+		E.startBlind(info)
+	end
+	if not blind then
+		return
+	end
+	blind.state = "chase"
+	blind.path = nil
+	blind.chasePath = info.chase.path
+	blind.chaseIdx = 1
+	blind.hum.WalkSpeed = Rules.BLIND_SPEED.chase
+	sound(blind.root, SOUND.scream, 2, 0.5)
+end
+
 function E.noise(pos: Vector3, radius: number, kind: string?)
-	if not blind or not blind.root.Parent then
+	if not blind or not blind.root.Parent or blind.state == "chase" then
 		return
 	end
 	if (blind.root.Position - pos).Magnitude > radius then
@@ -417,12 +507,24 @@ local function blindGo(goal: Vector3)
 	end
 	local w = b.path and b.path[b.wp]
 	if w then
-		if (flat(w.Position - b.root.Position)).Magnitude < 3 then
+		if flat(w.Position - b.root.Position).Magnitude < 3 then
 			b.wp += 1
 			w = b.path[b.wp] or w
 		end
 		b.hum:MoveTo(w.Position)
 	end
+end
+
+local function catch(b)
+	for _, p in G.alivePlayers() do
+		local r = G.rootOf(p)
+		if r and not G.isHidden(p) and flat(r.Position - b.root.Position).Magnitude < 5 and math.abs(r.Position.Y - b.root.Position.Y) < 8 then
+			G.kill(p, "blind")
+			sound(b.root, SOUND.scream, 1.5, 0.6)
+			return true
+		end
+	end
+	return false
 end
 
 local function stepBlind()
@@ -431,7 +533,34 @@ local function stepBlind()
 		return
 	end
 	local now = os.clock()
-	-- слушает шаги игроков в зале
+	if b.state == "chase" then
+		catch(b)
+		-- ближайший живой игрок; бежит по точкам тоннеля к нему
+		local best, bestD = nil, math.huge
+		for _, p in G.alivePlayers() do
+			local r = G.rootOf(p)
+			if r then
+				local dd = (r.Position - b.root.Position).Magnitude
+				if dd < bestD then
+					best, bestD = r, dd
+				end
+			end
+		end
+		if best then
+			local path = b.chasePath
+			local i = b.chaseIdx
+			if path[i] and flat(path[i] - b.root.Position).Magnitude < 4 then
+				b.chaseIdx = math.min(#path, i + 1)
+			end
+			-- если игрок рядом и в прямой видимости — прямо к нему
+			if bestD < 14 then
+				b.hum:MoveTo(best.Position)
+			else
+				b.hum:MoveTo(path[b.chaseIdx] or best.Position)
+			end
+		end
+		return
+	end
 	for _, p in G.alivePlayers() do
 		local r = G.rootOf(p)
 		if r and not G.isHidden(p) and G.inRoom(b.info, r.Position) then
@@ -440,20 +569,16 @@ local function stepBlind()
 			if radius > 0 and (r.Position - b.root.Position).Magnitude < radius then
 				E.noise(r.Position, radius, "step")
 			end
-			-- поймал
-			if (flat(r.Position - b.root.Position)).Magnitude < 5 and math.abs(r.Position.Y - b.root.Position.Y) < 8 then
-				G.kill(p, "blind")
-				sound(b.root, SOUND.scream, 1.5, 0.6)
-				b.state = "wander"
-				b.target = nil
-			end
 		end
+	end
+	if catch(b) then
+		b.state = "wander"
+		b.target = nil
 	end
 	if b.state == "hunt" and b.target then
 		b.hum.WalkSpeed = Rules.BLIND_SPEED.hunt
 		blindGo(b.target)
-		if (flat(b.target - b.root.Position)).Magnitude < 4 then
-			-- пришёл на звук и никого: прислушивается
+		if flat(b.target - b.root.Position).Magnitude < 4 then
 			b.state = "confused"
 			b.confusedUntil = now + 2.5
 		end
@@ -464,7 +589,7 @@ local function stepBlind()
 	elseif b.state == "lure" and b.target then
 		b.hum.WalkSpeed = Rules.BLIND_SPEED.hunt
 		blindGo(b.target)
-		if (flat(b.target - b.root.Position)).Magnitude < 4 then
+		if flat(b.target - b.root.Position).Magnitude < 4 then
 			b.state = "confused"
 			b.confusedUntil = now + Rules.BLIND_CONFUSED
 		end
@@ -475,7 +600,7 @@ local function stepBlind()
 		end
 	else
 		b.hum.WalkSpeed = Rules.BLIND_SPEED.wander
-		if not b.target or now > b.wanderAt or (flat(b.target - b.root.Position)).Magnitude < 4 then
+		if not b.target or now > b.wanderAt or flat(b.target - b.root.Position).Magnitude < 4 then
 			b.wanderAt = now + 8
 			local list = b.info.wander
 			b.target = list[math.random(1, #list)]
@@ -485,7 +610,6 @@ local function stepBlind()
 end
 
 -- ---------------------------------------------------------------------------
--- свисток
 
 function E.whistle(p: Player)
 	local r = G.rootOf(p)
@@ -494,7 +618,6 @@ function E.whistle(p: Player)
 	end
 	sound(r, SOUND.ping, 2, 2.2)
 	freezeWatchers(r.Position)
-	-- Слепой бежит на свисток и стоит там, прислушиваясь: самому надо отойти тихо
 	E.noise(r.Position, Rules.NOISE.whistle, "whistle")
 end
 
@@ -509,6 +632,7 @@ function E.clear()
 			h:Destroy()
 		end
 	end
+	E.humActive = false
 end
 
 function E.init(game_)
@@ -521,14 +645,13 @@ function E.init(game_)
 	end)
 	task.spawn(function()
 		while true do
-			task.wait(0.2)
+			task.wait(0.15)
 			local ok, err = pcall(stepBlind)
 			if not ok then
 				warn("[Labyrinth] blind: " .. tostring(err))
 			end
 		end
 	end)
-	local _ = TweenService
 end
 
 return E
