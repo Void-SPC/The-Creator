@@ -563,13 +563,24 @@ function Special.arena(parent, d, origin: CFrame, rand, prev)
 			P(m, "Step", Vector3.new(6.1, hgt, len / n), L(cx, fy + hgt / 2, zTop - len / n / 2), stoneDark, M.Marble, nc())
 		end
 		local slope = math.sqrt(len * len + fy * fy)
-		P(m, "Ramp", Vector3.new(6, 0.6, slope), L(cx, fy / 2 - 0.3, (SZ0 + SZ1) / 2) * CFrame.Angles(math.atan2(-fy, len), 0, 0), rgb(0, 0, 0), M.SmoothPlastic, { Transparency = 1, CastShadow = false })
+		P(m, "Ramp", Vector3.new(6, 0.6, slope), L(cx, fy / 2 - 0.3, (SZ0 + SZ1) / 2) * CFrame.Angles(math.atan2(fy, len), 0, 0), rgb(0, 0, 0), M.SmoothPlastic, { Transparency = 1, CastShadow = false })
 		Props.rod(m, "Handrail", L(sx * (G0 - 6.3), 3.2, SZ0).Position, L(sx * (G0 - 6.3), fy + 3.2, SZ1).Position, 0.25, Props.WOOD_DARK, M.Wood, nc())
+		-- верхняя площадка: с галереи шагаешь на неё, дальше вниз по ступеням
+		P(m, "StairLanding", Vector3.new(6.1, 1, 4), L(cx, -0.5, SZ0 + 2), stone, M.Marble)
+		P(m, "StairBase", Vector3.new(6.1, -fy - 1, 4), L(cx, (fy - 1) / 2, SZ0 + 2), stoneDark, M.Slate)
+		P(m, "LandingRail", Vector3.new(6.1, 0.3, 0.3), L(cx, 3.4, SZ0 + 3.85), Props.WOOD_DARK, M.Wood, nc())
+		for _, dx in { -2.9, 0, 2.9 } do
+			P(m, "Baluster", Vector3.new(0.3, 3.2, 0.3), L(cx + dx, 1.6, SZ0 + 3.85), stone, M.Marble, nc())
+		end
+		P(m, "LandingRail", Vector3.new(0.34, 0.36, 4), L(sx * (G0 - 6.0), 3.41, SZ0 + 2), Props.WOOD_DARK, M.Wood, nc())
+		for _, dz in { 0.6, 2, 3.4 } do
+			P(m, "Baluster", Vector3.new(0.3, 3.2, 0.3), L(sx * (G0 - 6.0), 1.6, SZ0 + dz), stone, M.Marble, nc())
+		end
 	end
 	-- перила галерей с проходом к лестнице
 	for _, sx in { -1, 1 } do
 		local x = sx * (G0 + 0.25)
-		local runs = { { -12.5, SZ0 + 0.4 }, { SZ1 - 0.4, -103 } }
+		local runs = { { -12.5, SZ0 + 4.2 }, { SZ0 - 0.2, -103 } }
 		for _, r in runs do
 			local a, b = r[1], r[2]
 			Props.rod(m, "Rail", L(x, 3.4, a).Position, L(x, 3.4, b).Position, 0.3, Props.WOOD_DARK, M.Wood, nc())

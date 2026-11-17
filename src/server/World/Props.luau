@@ -692,21 +692,176 @@ function Props.rug(parent, cf: CFrame, w: number, d: number, color: Color3)
 end
 
 -- картина на стене: cf на стене, LookVector в комнату. Сюжет — простые пятна
+-- рисунок на плоской поверхности: SurfaceGui на грани детали
+local function surface(part: BasePart, face: Enum.NormalId, pps: number): SurfaceGui
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = face
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = pps
+	gui.LightInfluence = 1
+	gui.ClipsDescendants = true
+	gui.Parent = part
+	return gui
+end
+Props.surface = surface
+
+local function shape(parent, color: Color3, x, y, w, h, round: number?, rot: number?, transp: number?)
+	local f = Instance.new("Frame")
+	f.BorderSizePixel = 0
+	f.BackgroundColor3 = color
+	f.BackgroundTransparency = transp or 0
+	f.AnchorPoint = Vector2.new(0.5, 0.5)
+	f.Position = UDim2.fromScale(x, y)
+	f.Size = UDim2.fromScale(w, h)
+	f.Rotation = rot or 0
+	if round then
+		local c = Instance.new("UICorner")
+		c.CornerRadius = UDim.new(round, 0)
+		c.Parent = f
+	end
+	f.Parent = parent
+	return f
+end
+
+-- Картина: рама из четырёх планок и плоский холст; изображение нарисовано прямо на
+-- холсте (пейзаж с луной, портрет, море с парусом, натюрморт, полосы), ничего не выпирает
 function Props.painting(parent, cf: CFrame, w: number, h: number, seed: number)
 	local m = model(parent, "Painting")
-	local base = cf * CFrame.new(0, 0, -0.12)
-	P(m, "Frame", Vector3.new(w + 0.5, h + 0.5, 0.15), base, Props.BRASS:Lerp(rgb(0, 0, 0), 0.35), M.Wood, nc())
+	local base = cf * CFrame.new(0, 0, -0.1)
+	local frameC = Props.BRASS:Lerp(rgb(0, 0, 0), 0.35 + (seed % 3) * 0.1)
+	local b = 0.28
+	P(m, "Frame", Vector3.new(w + 2 * b, b, 0.16), base * CFrame.new(0, h / 2 + b / 2, 0), frameC, M.Wood, nc())
+	P(m, "Frame", Vector3.new(w + 2 * b, b, 0.16), base * CFrame.new(0, -h / 2 - b / 2, 0), frameC, M.Wood, nc())
+	P(m, "Frame", Vector3.new(b, h, 0.16), base * CFrame.new(-w / 2 - b / 2, 0, 0), frameC, M.Wood, nc())
+	P(m, "Frame", Vector3.new(b, h, 0.16), base * CFrame.new(w / 2 + b / 2, 0, 0), frameC, M.Wood, nc())
+	local canvas = P(m, "Canvas", Vector3.new(w, h, 0.06), base * CFrame.new(0, 0, 0.02), rgb(30, 28, 26), M.SmoothPlastic, nc())
+	local gui = surface(canvas, Enum.NormalId.Front, 50)
 	local hue = (seed * 0.137) % 1
-	P(m, "Canvas", Vector3.new(w, h, 0.04), base * CFrame.new(0, 0, -0.09), Color3.fromHSV(hue, 0.3, 0.28), M.SmoothPlastic, nc())
-	if seed % 3 == 0 then
-		-- портрет: тёмный силуэт с бледным лицом
-		P(m, "Figure", Vector3.new(w * 0.4, h * 0.5, 0.03), base * CFrame.new(0, -h * 0.2, -0.12), rgb(20, 18, 20), M.SmoothPlastic, nc())
-		S(m, "Face", math.min(w, h) * 0.22, base * CFrame.new(0, h * 0.15, -0.13), rgb(200, 190, 170), M.SmoothPlastic, nc())
+	local bg = Instance.new("Frame")
+	bg.BorderSizePixel = 0
+	bg.Size = UDim2.fromScale(1, 1)
+	bg.BackgroundColor3 = Color3.new(1, 1, 1)
+	local grad = Instance.new("UIGradient")
+	grad.Rotation = 90
+	grad.Parent = bg
+	bg.Parent = gui
+	local kind = seed % 5
+	if kind == 0 then
+		-- портрет
+		grad.Color = ColorSequence.new(Color3.fromHSV(hue, 0.35, 0.32), Color3.fromHSV(hue, 0.4, 0.14))
+		shape(bg, rgb(24, 20, 22), 0.5, 0.86, 0.7, 0.5, 0.45)
+		shape(bg, rgb(40, 30, 28), 0.5, 0.42, 0.34, 0.4, 0.5)
+		shape(bg, rgb(206, 180, 150), 0.5, 0.45, 0.26, 0.3, 0.5)
+		shape(bg, rgb(230, 226, 216), 0.5, 0.66, 0.16, 0.06, 0.5)
+	elseif kind == 1 then
+		-- пейзаж с луной
+		grad.Color = ColorSequence.new(Color3.fromHSV(hue, 0.45, 0.4), Color3.fromHSV((hue + 0.1) % 1, 0.3, 0.2))
+		shape(bg, rgb(222, 214, 180), 0.72, 0.26, 0.16 * h / w * 1.4, 0.22, 1)
+		shape(bg, Color3.fromHSV((hue + 0.3) % 1, 0.4, 0.22), 0.3, 0.95, 1.1, 0.6, 1)
+		shape(bg, Color3.fromHSV((hue + 0.32) % 1, 0.45, 0.15), 0.85, 1.0, 0.9, 0.5, 1)
+	elseif kind == 2 then
+		-- море и парус
+		grad.Color = ColorSequence.new(rgb(200, 170, 120), rgb(150, 120, 90))
+		shape(bg, rgb(40, 70, 100), 0.5, 0.8, 1, 0.4)
+		shape(bg, rgb(70, 100, 130), 0.5, 0.62, 1, 0.04)
+		shape(bg, rgb(80, 50, 30), 0.45, 0.6, 0.3, 0.05, 0.3)
+		shape(bg, rgb(236, 226, 200), 0.47, 0.42, 0.14, 0.3, nil, 8)
+		shape(bg, rgb(250, 230, 160), 0.2, 0.25, 0.1 * h / w * 1.4, 0.12, 1)
+	elseif kind == 3 then
+		-- натюрморт: ваза и фрукты на столе
+		grad.Color = ColorSequence.new(rgb(60, 46, 36), rgb(30, 22, 18))
+		shape(bg, rgb(90, 60, 40), 0.5, 0.88, 1, 0.24)
+		shape(bg, Color3.fromHSV(hue, 0.5, 0.55), 0.42, 0.62, 0.22, 0.36, 0.5)
+		shape(bg, Color3.fromHSV(hue, 0.5, 0.45), 0.42, 0.42, 0.1, 0.12, 0.3)
+		shape(bg, rgb(190, 50, 40), 0.66, 0.72, 0.12 * h / w * 1.4, 0.12, 1)
+		shape(bg, rgb(210, 180, 60), 0.76, 0.74, 0.1 * h / w * 1.4, 0.1, 1)
 	else
-		P(m, "Hill", Vector3.new(w, h * 0.35, 0.03), base * CFrame.new(0, -h * 0.32, -0.12), Color3.fromHSV((hue + 0.3) % 1, 0.35, 0.22), M.SmoothPlastic, nc())
-		S(m, "Moon", math.min(w, h) * 0.18, base * CFrame.new(w * 0.25, h * 0.25, -0.13), rgb(210, 200, 170), M.SmoothPlastic, nc({ Shape = BALL }))
+		-- полосы и круг, как в новом искусстве
+		grad.Color = ColorSequence.new(rgb(230, 222, 200), rgb(210, 200, 178))
+		shape(bg, Color3.fromHSV(hue, 0.7, 0.6), 0.3, 0.5, 0.16, 1)
+		shape(bg, Color3.fromHSV((hue + 0.5) % 1, 0.7, 0.5), 0.62, 0.35, 0.36 * h / w, 0.36, 1)
+		shape(bg, rgb(30, 30, 30), 0.5, 0.78, 1, 0.05)
 	end
 	return m
+end
+
+-- Трещины на стекле: тонкие светлые линии от точки удара, нарисованные прямо на
+-- поверхности (паутина лучей с изломами и кольцевые трещины между ними)
+function Props.cracks(part: BasePart, face: Enum.NormalId, seed: number, cx: number?, cy: number?)
+	local gui = surface(part, face, 80)
+	gui.LightInfluence = 0.6
+	local holder = Instance.new("Frame")
+	holder.BackgroundTransparency = 1
+	holder.Size = UDim2.fromScale(1, 1)
+	holder.Parent = gui
+	local sz = part.Size
+	local W, H = sz.X, sz.Y
+	if face == Enum.NormalId.Left or face == Enum.NormalId.Right then
+		W = sz.Z
+	end
+	local r = Random.new(seed)
+	local ox, oy = (cx or r:NextNumber(0.25, 0.75)) * W, (cy or r:NextNumber(0.3, 0.7)) * H
+	local function line(x0, y0, x1, y1, thick, alpha)
+		local dx, dy = x1 - x0, y1 - y0
+		local len = math.sqrt(dx * dx + dy * dy)
+		if len < 0.01 then
+			return
+		end
+		local f = Instance.new("Frame")
+		f.BorderSizePixel = 0
+		f.BackgroundColor3 = Color3.fromRGB(235, 242, 245)
+		f.BackgroundTransparency = alpha
+		f.AnchorPoint = Vector2.new(0.5, 0.5)
+		f.Position = UDim2.fromScale(((x0 + x1) / 2) / W, ((y0 + y1) / 2) / H)
+		f.Size = UDim2.new(len / W, 0, 0, thick)
+		f.Rotation = math.deg(math.atan2(dy, dx))
+		f.Parent = holder
+	end
+	local rays = r:NextInteger(8, 12)
+	local ends = {}
+	for i = 1, rays do
+		local a = (i / rays) * math.pi * 2 + r:NextNumber(-0.25, 0.25)
+		local x, y = ox, oy
+		local len = r:NextNumber(0.5, 1.3) * math.min(W, H) * 0.9
+		local pts = {}
+		local steps = 4
+		for s = 1, steps do
+			a += r:NextNumber(-0.3, 0.3)
+			local nx, ny = x + math.cos(a) * len / steps, y + math.sin(a) * len / steps
+			line(x, y, nx, ny, if s == 1 then 3 else 2, 0.15 + s * 0.1)
+			table.insert(pts, { x = nx, y = ny })
+			-- мелкая ветка
+			if r:NextNumber() < 0.45 then
+				local ba = a + r:NextNumber(-1, 1)
+				local bl = len / steps * r:NextNumber(0.4, 0.9)
+				line(nx, ny, nx + math.cos(ba) * bl, ny + math.sin(ba) * bl, 1, 0.45)
+			end
+			x, y = nx, ny
+		end
+		ends[i] = pts
+	end
+	-- кольца: соединяют соседние лучи на одном расстоянии от удара
+	for ring = 1, 2 do
+		for i = 1, rays do
+			local a, b = ends[i][ring], ends[i % rays + 1][ring]
+			if a and b and r:NextNumber() < 0.8 then
+				line(a.x, a.y, b.x, b.y, 2, 0.3 + ring * 0.1)
+			end
+		end
+	end
+	-- белая звёздочка в точке удара
+	local star = Instance.new("Frame")
+	star.BorderSizePixel = 0
+	star.BackgroundColor3 = Color3.fromRGB(245, 248, 250)
+	star.BackgroundTransparency = 0.2
+	star.AnchorPoint = Vector2.new(0.5, 0.5)
+	star.Position = UDim2.fromScale(ox / W, oy / H)
+	star.Size = UDim2.fromOffset(10, 10)
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(1, 0)
+	c.Parent = star
+	star.Parent = holder
+	return gui
 end
 
 -- окно в пустоту: рама с переплётом и тёмное стекло ровно в проёме стены.
@@ -1150,34 +1305,109 @@ end
 function Props.fossil(parent, cf: CFrame, len: number)
 	local m = model(parent, "Fossil")
 	local bone = rgb(206, 196, 170)
+	local boneD = rgb(176, 164, 138)
+	local k = len / 24
 	P(m, "Podium", Vector3.new(8, 0.8, len + 2), cf * CFrame.new(0, 0.4, 0), Props.WOOD_DARK, M.Wood)
+	P(m, "PodiumTrim", Vector3.new(8.3, 0.2, len + 2.3), cf * CFrame.new(0, 0.1, 0), Props.BRASS:Lerp(rgb(0, 0, 0), 0.4), M.Metal, nc())
 	local function pt(x, y, z)
-		return (cf * CFrame.new(x, y, z)).Position
+		return (cf * CFrame.new(x * k, y * k, z * k)).Position
 	end
-	local function bn(a, b, t)
-		Props.rod(m, "Bone", a, b, t, bone, M.SmoothPlastic, nc())
+	local function bn(a, b, t, col)
+		return Props.rod(m, "Bone", a, b, t * k, col or bone, M.SmoothPlastic, nc())
 	end
-	local h = 6.5
-	bn(pt(0, h, -len * 0.3), pt(0, h + 0.4, len * 0.15), 0.5)
-	bn(pt(0, h + 0.4, len * 0.15), pt(0, h - 2.5, len * 0.5), 0.35)
-	bn(pt(0, h, -len * 0.3), pt(0, h + 2.2, -len * 0.42), 0.45)
-	P(m, "Skull", Vector3.new(1.4, 1.5, 2.6), cf * CFrame.new(0, h + 2.4, -len * 0.42 - 1.2), bone, M.SmoothPlastic, nc())
-	P(m, "Jaw", Vector3.new(1.1, 0.4, 2.2), cf * CFrame.new(0, h + 1.5, -len * 0.42 - 1.3) * CFrame.Angles(0.2, 0, 0), bone, M.SmoothPlastic, nc())
-	for k = 0, 6 do
-		local z = -len * 0.25 + k * len * 0.055
-		for _, s in { -1, 1 } do
-			bn(pt(0, h + 0.2, z), pt(s * 1.5, h - 1.2, z), 0.18)
-			bn(pt(s * 1.5, h - 1.2, z), pt(s * 0.9, h - 2.8, z), 0.16)
+	local function blk(name, size: Vector3, x, y, z, rx, ry, rz, col)
+		return P(m, name, size * k, cf * CFrame.new(x * k, y * k, z * k) * CFrame.Angles(rx or 0, ry or 0, rz or 0), col or bone, M.SmoothPlastic, nc())
+	end
+	-- позвоночник: кривая от черепа до кончика хвоста (z вдоль тела, голова к -z)
+	local function spineY(z: number): number
+		if z < -6 then
+			return 9.2 + (-6 - z) * 0.45 -- шея поднимается
+		elseif z < 4 then
+			return 9.2 + math.sin((z + 6) / 10 * math.pi) * 0.4
+		end
+		return 9.2 - (z - 4) * 0.42 -- хвост опускается
+	end
+	local prev = nil
+	for i = 0, 30 do
+		local z = -10 + i * 0.75
+		local y = spineY(z)
+		local sz = if z > 4 then math.max(0.35, 1 - (z - 4) / 12) else 1
+		blk("Vertebra", Vector3.new(0.7 * sz, 0.6 * sz, 0.6), 0, y, z, 0, 0, 0, if i % 2 == 0 then bone else boneD)
+		if z > -6 and z < 8 then
+			blk("Spine", Vector3.new(0.18, 1.1 * sz, 0.3), 0, y + 0.8 * sz, z, -0.2, 0, 0, boneD)
+		end
+		if z > 6 and i % 2 == 0 then
+			blk("Chevron", Vector3.new(0.14, 0.7 * sz, 0.2), 0, y - 0.6 * sz, z, 0.3, 0, 0, boneD)
+		end
+		local p = pt(0, y, z)
+		if prev then
+			bn(prev, p, 0.28 * sz)
+		end
+		prev = p
+	end
+	-- череп
+	local sy, sz0 = spineY(-10) + 0.6, -12.2
+	blk("Cranium", Vector3.new(1.4, 1.5, 2.2), 0, sy, sz0, 0.1)
+	blk("Snout", Vector3.new(1.1, 1, 2.4), 0, sy - 0.2, sz0 - 2.1, 0.1)
+	blk("Window", Vector3.new(1.42, 0.6, 0.9), 0, sy + 0.1, sz0 - 0.9, 0.1, 0, 0, rgb(60, 54, 46))
+	blk("EyeRing", Vector3.new(1.44, 0.5, 0.5), 0, sy + 0.35, sz0 + 0.3, 0, 0, 0, rgb(50, 44, 38))
+	blk("Jaw", Vector3.new(1, 0.4, 4), 0, sy - 1.4, sz0 - 1.3, -0.25)
+	for t = 0, 6 do
+		for _, sx in { -0.4, 0.4 } do
+			blk("Tooth", Vector3.new(0.14, 0.4, 0.14), sx, sy - 0.85, sz0 - 0.6 - t * 0.48, 0, 0, 0, rgb(236, 230, 214))
+			blk("Tooth", Vector3.new(0.12, 0.32, 0.12), sx * 0.9, sy - 1.1 - t * 0.12 + 0.02, sz0 - 0.1 - t * 0.48, 0, 0, 0, rgb(236, 230, 214))
 		end
 	end
-	for _, z in { -len * 0.24, len * 0.1 } do
+	-- рёбра: каждое из трёх отрезков, изгибается наружу и вниз
+	for i = 0, 8 do
+		local z = -5 + i * 1.1
+		local y = spineY(z)
+		local depth = 3.2 - math.abs(i - 3.5) * 0.25
 		for _, s in { -1, 1 } do
-			bn(pt(s * 0.9, h - 0.2, z), pt(s * 1.6, h - 3.4, z - 0.6), 0.4)
-			bn(pt(s * 1.6, h - 3.4, z - 0.6), pt(s * 1.5, 0.9, z + 0.3), 0.34)
+			local a = pt(s * 0.3, y - 0.1, z)
+			local b = pt(s * 1.5, y - depth * 0.35, z + 0.1)
+			local c = pt(s * 1.6, y - depth * 0.75, z + 0.2)
+			local e = pt(s * 0.7, y - depth, z + 0.3)
+			bn(a, b, 0.16)
+			bn(b, c, 0.15)
+			bn(c, e, 0.13)
+		end
+		bn(pt(-0.7, spineY(z) - depth, z + 0.3), pt(0.7, spineY(z) - depth, z + 0.3), 0.08, boneD)
+	end
+	-- таз и лопатки
+	blk("Ilium", Vector3.new(1.8, 1.5, 3), 0, spineY(5) - 0.5, 5, 0, 0, 0, boneD)
+	blk("Pubis", Vector3.new(0.5, 2.4, 0.6), 0, spineY(5) - 2, 4.4, 0.4)
+	for _, s in { -1, 1 } do
+		blk("Scapula", Vector3.new(0.2, 2, 0.8), s * 1.1, spineY(-4.5) - 0.9, -4.5, 0.3, 0, s * 0.25, boneD)
+		-- маленькие передние лапы
+		local sh = pt(s * 1.2, spineY(-4.5) - 1.8, -4.8)
+		local el = pt(s * 1.3, spineY(-4.5) - 2.8, -5.4)
+		local wr = pt(s * 1.2, spineY(-4.5) - 3.0, -6.2)
+		bn(sh, el, 0.18)
+		bn(el, wr, 0.15)
+		for f = -1, 1, 2 do
+			bn(wr, wr + (cf.Rotation * Vector3.new(f * 0.15, -0.35, -0.45)) * k, 0.08, rgb(236, 230, 214))
+		end
+		-- задние ноги: бедро, голень, плюсна, три пальца с когтями
+		local hip = pt(s * 1.1, spineY(5) - 1, 5)
+		local knee = pt(s * 1.5, 4.8, 3.8)
+		local ankle = pt(s * 1.4, 1.9, 5.6)
+		local ball = pt(s * 1.4, 0.95, 4.6)
+		bn(hip, knee, 0.55)
+		bn(knee, ankle, 0.42)
+		bn(ankle, ball, 0.3)
+		Props.S(m, "Knee", 0.7 * k, CFrame.new(knee), boneD, M.SmoothPlastic, nc())
+		Props.S(m, "Ankle", 0.5 * k, CFrame.new(ankle), boneD, M.SmoothPlastic, nc())
+		for f = -1, 1 do
+			local toe = ball + (cf.Rotation * Vector3.new(f * 0.45, -0.05, -1.3)) * k
+			bn(ball, toe, 0.2)
+			bn(toe, toe + (cf.Rotation * Vector3.new(0, -0.1, -0.4)) * k, 0.12, rgb(236, 230, 214))
 		end
 	end
-	for _, z in { -len * 0.2, len * 0.1 } do
-		C(m, "Support", h - 1, 0.18, cf * CFrame.new(0, 0.8 + (h - 1) / 2, z), Props.BRASS, M.Metal, nc())
+	-- латунные опоры
+	for _, z in { -8, -1, 10 } do
+		local y = spineY(z)
+		C(m, "Support", y * k - 0.9, 0.16, cf * CFrame.new(0, 0.8 + (y * k - 0.9) / 2, z * k), Props.BRASS, M.Metal, nc())
 	end
 	return m
 end
@@ -1247,16 +1477,9 @@ function Props.sinkRow(parent, cf: CFrame, n: number)
 	end
 	P(m, "Mirror", Vector3.new(w - 0.4, 3, 0.1), cf * CFrame.new(0, 6, 0.2), rgb(170, 186, 196), M.Glass, { Reflectance = 0.3 })
 	P(m, "MirrorFrame", Vector3.new(w, 3.4, 0.06), cf * CFrame.new(0, 6, 0.27), Props.STEEL, M.Metal, nc())
-	-- зеркало разбито: трещины расходятся от места удара, одного осколка нет
-	local hitX = w * 0.18
-	for k = 0, 6 do
-		local a = k * 0.9 + 0.3
-		local len = 0.9 + (k % 3) * 0.5
-		local from = (cf * CFrame.new(hitX, 6.2, 0.14)).Position
-		local to = (cf * CFrame.new(math.clamp(hitX + math.cos(a) * len, -w / 2 + 0.3, w / 2 - 0.3), math.clamp(6.2 + math.sin(a) * len, 4.6, 7.4), 0.14)).Position
-		Props.rod(m, "Crack", from, to, 0.04, rgb(30, 34, 38), M.SmoothPlastic, nc())
-	end
-	P(m, "MissingShard", Vector3.new(0.7, 0.6, 0.03), cf * CFrame.new(hitX - 0.2, 6.1, 0.135) * CFrame.Angles(0, 0, 0.5), rgb(40, 40, 44), M.SmoothPlastic, nc())
+	-- зеркало разбито: настоящие трещины на стекле, от точки удара
+	local mirror = m:FindFirstChild("Mirror") :: BasePart
+	Props.cracks(mirror, Enum.NormalId.Front, math.floor(cf.Position.X * 7 + cf.Position.Z * 13), 0.3, 0.45)
 	return m
 end
 

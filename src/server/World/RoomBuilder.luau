@@ -8,6 +8,7 @@ local Shared = game:GetService("ReplicatedStorage").Workshop.Shared
 local M = require(Shared.Materials)
 local Plan = require(Shared.RoomPlan)
 local Props = require(script.Parent.Props)
+local X = require(script.Parent.Exhibits)
 
 local P, C, nc, rgb = Props.P, Props.C, Props.nc, Props.rgb
 
@@ -84,6 +85,58 @@ function Builder.style(d, rand)
 	elseif k == "fossil" then
 		st.floor = rgb(176, 160, 130)
 		st.floorMat = M.Sand
+	elseif k == "egypt" then
+		st.paper = rgb(200, 172, 120)
+		st.paperMat = M.Sandstone
+		st.floor = rgb(196, 170, 120)
+		st.floorMat = M.Sandstone
+		st.panel = rgb(150, 110, 60)
+		st.panelMat = M.Sandstone
+		st.ceil = rgb(40, 50, 90)
+	elseif k == "rome" then
+		st.paper = rgb(176, 70, 52)
+		st.floor = rgb(214, 206, 190)
+		st.floorMat = M.Marble
+		st.panel = rgb(220, 214, 200)
+		st.panelMat = M.Marble
+	elseif k == "knights" then
+		st.paper = rgb(120, 112, 100)
+		st.paperMat = M.Cobblestone
+		st.floor = rgb(110, 100, 90)
+		st.floorMat = M.Slate
+		st.panel = rgb(70, 46, 30)
+		st.panelMat = M.WoodPlanks
+		st.ceil = rgb(90, 70, 50)
+		st.ceilMat = M.WoodPlanks
+	elseif k == "estonia" then
+		st.paper = rgb(214, 222, 228)
+		st.floor = rgb(150, 116, 80)
+		st.floorMat = M.WoodPlanks
+		st.panel = rgb(40, 80, 140)
+	elseif k == "russia" then
+		st.paper = rgb(120, 34, 36)
+		st.floor = rgb(110, 76, 50)
+		st.floorMat = M.WoodPlanks
+		st.panel = rgb(190, 150, 70)
+		st.panelMat = M.Wood
+	elseif k == "england" then
+		st.paper = rgb(40, 70, 56)
+		st.floor = rgb(120, 40, 44)
+		st.floorMat = M.Carpet
+		st.panel = Props.WOOD_DARK
+		st.panelMat = M.Wood
+	elseif k == "france" then
+		st.paper = rgb(220, 210, 190)
+		st.floor = rgb(150, 110, 70)
+		st.floorMat = M.WoodPlanks
+		st.panel = rgb(214, 180, 90)
+		st.panelMat = M.Wood
+	elseif k == "japan" then
+		st.paper = rgb(232, 224, 200)
+		st.floor = rgb(196, 180, 120)
+		st.floorMat = M.Fabric
+		st.panel = rgb(70, 50, 36)
+		st.panelMat = M.Wood
 	elseif k == "final" then
 		st.paperMat = M.Slate
 		st.wainscot = false
@@ -791,6 +844,174 @@ L.mechanisms = function(c)
 	hide(c, slotBack(d, o, 12))
 	ceil(c, -5, -12)
 	ceil(c, 5, -28)
+end
+
+-- ---------------------------------------------------------------------------
+-- большие залы стран и эпох
+
+local function onWall(slot, d, o, z, y)
+	return slot(d, o, z) * CFrame.new(0, y or 0, F - 0.6)
+end
+
+L.egypt = function(c)
+	local d, o = c.d, c.origin
+	for _, x in { -14, 14 } do
+		for _, z in { -12, -26, -40 } do
+			X.egyptColumn(c.m, spot(d, o, x, z), d.h - 0.05)
+		end
+	end
+	X.sphinx(c.m, spot(d, o, -5, -30, math.pi))
+	X.pyramid(c.m, spot(d, o, 6, -19), 7)
+	X.sarcophagus(c.m, spot(d, o, 6, -40), d.door)
+	X.glyphWall(c.m, onWall(slotL, d, o, -16, 3.8), 12, 9, d.door)
+	X.glyphWall(c.m, onWall(slotR, d, o, -30, 3.8), 14, 9, d.door + 7)
+	X.canopic(c.m, spot(d, o, -19, -44), d.door)
+	Props.statue(c.m, spot(d, o, -19, -7), "obelisk", d.door)
+	Props.statue(c.m, spot(d, o, 19, -7), "obelisk", d.door + 1)
+	X.flag(c.m, spot(d, o, 20, -42), "egypt")
+	hide(c, slotBack(d, o, -14))
+	hide(c, slotBack(d, o, 14))
+	hide(c, slotL(d, o, -34))
+	chandelier(c, 0, -14, 5)
+	chandelier(c, 0, -34, 5)
+	ceil(c, -14, -48)
+	ceil(c, 14, -48)
+end
+
+L.rome = function(c)
+	local d, o = c.d, c.origin
+	for _, x in { -16, 16 } do
+		for _, z in { -10, -22, -34, -46 } do
+			X.romanColumn(c.m, spot(d, o, x, z), d.h - 0.05)
+		end
+	end
+	X.colosseum(c.m, spot(d, o, -3, -26), 4.6)
+	X.mosaic(c.m, spot(d, o, 5, -43), 12, 7, d.door)
+	for k, z in { -14, -20, -26 } do
+		X.legionary(c.m, spot(d, o, -21, z, -math.pi / 2))
+		local _ = k
+	end
+	statue(c, 9, -12, 1, -0.4)
+	X.aqueduct(c.m, spot(d, o, 21, -34), 12)
+	Props.vase(c.m, spot(d, o, 21, -9), d.door)
+	Props.vase(c.m, spot(d, o, 21, -15), d.door + 1)
+	X.flag(c.m, spot(d, o, -21, -6), "rome")
+	hide(c, slotBack(d, o, -18))
+	hide(c, slotBack(d, o, 18))
+	chandelier(c, 0, -12, 5)
+	chandelier(c, 0, -40, 5)
+end
+
+L.knights = function(c)
+	local d, o = c.d, c.origin
+	for _, z in { -8, -14, -20 } do
+		Props.armor(c.m, slotL(d, o, z))
+		Props.armor(c.m, slotR(d, o, z))
+	end
+	for k, z in { -28, -38 } do
+		X.banner(c.m, onWall(slotL, d, o, z, d.h - 3), 3.4, 7, rgb(30, 50, 120), rgb(214, 170, 70), d.door + k)
+		X.banner(c.m, onWall(slotR, d, o, z, d.h - 3), 3.4, 7, rgb(130, 20, 30), rgb(214, 170, 70), d.door + k + 1)
+	end
+	X.shield(c.m, onWall(slotL, d, o, -33, 9), d.door)
+	X.shield(c.m, onWall(slotR, d, o, -33, 9), d.door + 1)
+	X.roundTable(c.m, spot(d, o, -7, -28), 3.4, 8)
+	X.throne(c.m, spot(d, o, 14, -36, math.pi / 2))
+	X.knightHorse(c.m, spot(d, o, 9, -14, 0.3), d.door)
+	wallCase(c, -1, -37, 6)
+	hide(c, slotBack(d, o, -14))
+	hide(c, slotBack(d, o, 14))
+	chandelier(c, 0, -14, 4)
+	chandelier(c, -7, -28, 4)
+	chandelier(c, 8, -40, 4)
+end
+
+L.estonia = function(c)
+	local d, o = c.d, c.origin
+	X.flag(c.m, spot(d, o, -16, -6), "estonia")
+	X.flag(c.m, spot(d, o, 15, -6), "estonia")
+	X.oldTown(c.m, spot(d, o, -6, -24), d.door)
+	X.windmill(c.m, spot(d, o, 12, -15, -0.4))
+	X.folkCostume(c.m, spot(d, o, 14, -29, -math.pi / 2), d.door)
+	X.folkCostume(c.m, spot(d, o, 14, -33, -math.pi / 2), d.door + 2)
+	X.boat(c.m, spot(d, o, -13, -37))
+	painting(c, -1, -14, 8, 6, 4)
+	wallCase(c, 1, -22)
+	hide(c, slotBack(d, o, -12))
+	hide(c, slotBack(d, o, 12))
+	chandelier(c, 0, -14, 4)
+	ceil(c, -8, -36)
+	ceil(c, 8, -36)
+end
+
+L.russia = function(c)
+	local d, o = c.d, c.origin
+	X.flag(c.m, spot(d, o, -17, -6), "russia")
+	X.onionChurch(c.m, spot(d, o, -5, -26))
+	X.matryoshka(c.m, spot(d, o, 12, -12), d.door)
+	X.samovar(c.m, spot(d, o, 12, -20))
+	X.balalaika(c.m, spot(d, o, 15, -29, -0.4))
+	X.balalaika(c.m, spot(d, o, 12, -31, 0.3))
+	case(c, -15, -13, 1, "gem")
+	case(c, -15, -38, 2, "crown")
+	painting(c, -1, -24, 8, 6, 4)
+	painting(c, 1, -40, 8, 4, 3)
+	wallCase(c, 1, -34)
+	hide(c, slotBack(d, o, -14))
+	hide(c, slotBack(d, o, 14))
+	chandelier(c, 0, -14, 4)
+	chandelier(c, -5, -36, 4)
+end
+
+L.england = function(c)
+	local d, o = c.d, c.origin
+	X.flag(c.m, spot(d, o, -16, -6), "england")
+	X.phoneBox(c.m, spot(d, o, 15, -10))
+	X.clockTower(c.m, spot(d, o, -8, -26), 12)
+	X.bus(c.m, spot(d, o, 10, -28))
+	X.guard(c.m, spot(d, o, -16, -14, -math.pi / 2))
+	X.guard(c.m, spot(d, o, -16, -19, -math.pi / 2))
+	case(c, -2, -38, 1, "crown")
+	case(c, 6, -40, 2, "teapot")
+	painting(c, -1, -34, 7, 5, 3.6)
+	hide(c, slotBack(d, o, -12))
+	hide(c, slotBack(d, o, 12))
+	chandelier(c, 0, -14, 4)
+	ceil(c, -8, -38)
+	ceil(c, 10, -40)
+end
+
+L.france = function(c)
+	local d, o = c.d, c.origin
+	X.flag(c.m, spot(d, o, -17, -6), "france")
+	X.eiffel(c.m, spot(d, o, -6, -27), 16)
+	X.triumphArch(c.m, spot(d, o, 10, -13))
+	X.easel(c.m, spot(d, o, 15, -28, -math.pi / 2), d.door)
+	X.easel(c.m, spot(d, o, 15, -34, -math.pi / 2), d.door + 1)
+	X.easel(c.m, spot(d, o, -16, -38, math.pi / 2), d.door + 2)
+	painting(c, -1, -18, 9, 6, 4.4)
+	painting(c, 1, -20, 8, 5, 3.6)
+	statue(c, 6, -40, 2)
+	hide(c, slotBack(d, o, -14))
+	hide(c, slotBack(d, o, 14))
+	chandelier(c, 0, -14, 4)
+	chandelier(c, 0, -36, 4)
+end
+
+L.japan = function(c)
+	local d, o = c.d, c.origin
+	X.flag(c.m, spot(d, o, -15, -6), "japan")
+	X.torii(c.m, spot(d, o, 0, -14), 6)
+	X.stoneLantern(c.m, spot(d, o, -7, -12))
+	X.stoneLantern(c.m, spot(d, o, 7, -12))
+	X.pagoda(c.m, spot(d, o, -9, -28))
+	X.samurai(c.m, spot(d, o, 12, -24, -math.pi / 2))
+	Props.rug(c.m, spot(d, o, 8, -34), 8, 6, rgb(190, 176, 120))
+	painting(c, -1, -36, 6, 4, 6)
+	hide(c, slotBack(d, o, -12))
+	hide(c, slotBack(d, o, 12))
+	ceil(c, 0, -22)
+	ceil(c, -8, -38)
+	ceil(c, 8, -38)
 end
 
 -- переход к залу Колосса: парадный коридор со статуями

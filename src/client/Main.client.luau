@@ -125,6 +125,17 @@ gui.IgnoreGuiInset = true
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = playerGui
 
+-- слой на весь экран, включая вырез камеры и закруглённые края телефона
+local fullGui = Instance.new("ScreenGui")
+fullGui.Name = "MuseumFull"
+fullGui.ResetOnSpawn = false
+fullGui.IgnoreGuiInset = true
+fullGui.DisplayOrder = -1
+pcall(function()
+	fullGui.ScreenInsets = Enum.ScreenInsets.None
+end)
+fullGui.Parent = playerGui
+
 local black = Ui.frame(gui, { BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 40 })
 local red = Ui.frame(gui, { BackgroundColor3 = Color3.fromRGB(140, 0, 0), BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 41 })
 
@@ -215,7 +226,7 @@ local leaveBtn = Ui.button(gui, "", function()
 end, { Size = UDim2.fromOffset(160, 48), Position = UDim2.new(0.5, -80, 1, -150), Visible = false, ZIndex = 30 })
 
 -- вид из шкафчика: тёмная дверца с узкими прорезями, сквозь которые видно зал
-local slits = Ui.frame(gui, { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 28 })
+local slits = Ui.frame(fullGui, { BackgroundTransparency = 1, Size = UDim2.new(1, 40, 1, 40), Position = UDim2.fromOffset(-20, -20), Visible = false, ZIndex = 28 })
 do
 	local gap, bar = 0.035, 0.085
 	local y = 0.2

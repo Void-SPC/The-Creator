@@ -1,8 +1,8 @@
 {
   "file": "Workshop.rbxlx",
-  "version": "6.2.1",
-  "sha256": "6068a7aa2c4d3e2ac3a6d3e740013b683539caa1e00ec85d997f1c7f0aca939d",
-  "bytes": 382889,
+  "version": "6.3.0",
+  "sha256": "e283d46e79fd84ab4714e48ef77d430d53d56479c9c9e260772366caa44c0b3f",
+  "bytes": 444835,
   "scripts": [
     {
       "path": "src/shared/AdminCommands.luau",
@@ -73,6 +73,11 @@
       "path": "src/server/Main.server.luau",
       "class": "Script",
       "name": "Main"
+    },
+    {
+      "path": "src/server/World/Exhibits.luau",
+      "class": "ModuleScript",
+      "name": "Exhibits"
     },
     {
       "path": "src/server/World/Props.luau",

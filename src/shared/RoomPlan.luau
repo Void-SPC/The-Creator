@@ -11,9 +11,9 @@ local Plan = {}
 -- выходы, branch — сколько дверей (лишние ложные), min — с какой двери встречается,
 -- door — какие двери любит зал, hides — сколько шкафчиков самое большее
 Plan.TEMPLATES = {
-	corridor = { w = 12, l = 40, h = 13, weight = 6, exits = { "front", "side" }, door = "normal", hides = 1 },
-	longhall = { w = 12, l = 70, h = 13, weight = 3, min = 5, exits = { "front", "side" }, door = "normal", hides = 2 },
-	shorthall = { w = 12, l = 22, h = 13, weight = 3, exits = { "front" }, door = "normal", hides = 1 },
+	corridor = { w = 12, l = 40, h = 13, weight = 4, exits = { "front", "side" }, door = "normal", hides = 1 },
+	longhall = { w = 12, l = 70, h = 13, weight = 2, min = 5, exits = { "front", "side" }, door = "normal", hides = 2 },
+	shorthall = { w = 12, l = 22, h = 13, weight = 2, exits = { "front" }, door = "normal", hides = 1 },
 	gallery = { w = 30, l = 44, h = 16, weight = 10, exits = { "front", "side" }, branch = 2, door = "grand", hides = 2 },
 	sculpture = { w = 36, l = 40, h = 18, weight = 10, exits = { "front", "frontL", "frontR", "side" }, door = "grand", hides = 2 },
 	cases = { w = 30, l = 34, h = 14, weight = 9, exits = { "front", "frontL", "frontR", "side" }, door = "normal", hides = 2 },
@@ -33,6 +33,15 @@ Plan.TEMPLATES = {
 	clocks = { w = 30, l = 36, h = 16, weight = 6, min = 3, exits = { "front", "frontL", "frontR", "side" }, door = "normal", hides = 2 },
 	music = { w = 32, l = 34, h = 16, weight = 6, min = 3, exits = { "front", "frontL", "frontR", "side" }, door = "normal", hides = 2 },
 	archaeology = { w = 40, l = 44, h = 18, weight = 5, min = 8, exits = { "front", "frontL", "frontR", "side" }, branch = 2, door = "grand", hides = 2 },
+	-- большие залы стран и эпох
+	egypt = { w = 48, l = 56, h = 24, weight = 5, min = 4, exits = { "front", "frontL", "frontR", "side" }, branch = 2, door = "grand", hides = 3 },
+	rome = { w = 50, l = 56, h = 24, weight = 5, min = 4, exits = { "front", "frontL", "frontR", "side" }, branch = 2, door = "grand", hides = 2 },
+	knights = { w = 44, l = 52, h = 22, weight = 6, min = 2, exits = { "front", "frontL", "frontR", "side" }, branch = 2, door = "grand", hides = 3 },
+	estonia = { w = 40, l = 48, h = 20, weight = 5, min = 6, exits = { "front", "frontL", "frontR", "side" }, door = "grand", hides = 2 },
+	russia = { w = 44, l = 50, h = 22, weight = 5, min = 6, exits = { "front", "frontL", "frontR", "side" }, door = "grand", hides = 2 },
+	england = { w = 42, l = 48, h = 20, weight = 5, min = 6, exits = { "front", "frontL", "frontR", "side" }, door = "grand", hides = 2 },
+	france = { w = 44, l = 50, h = 22, weight = 5, min = 6, exits = { "front", "frontL", "frontR", "side" }, door = "grand", hides = 2 },
+	japan = { w = 40, l = 46, h = 20, weight = 4, min = 8, exits = { "front", "frontL", "frontR", "side" }, door = "normal", hides = 2 },
 	mechanisms = { w = 34, l = 38, h = 18, weight = 5, min = 12, exits = { "front", "frontL", "frontR", "side" }, door = "small", hides = 2 },
 	-- особые: выбираются отдельно
 	figures = { w = 40, l = 40, h = 16, exits = { "front" }, door = "normal", hides = 0 },
@@ -45,7 +54,7 @@ Plan.TEMPLATES = {
 	final = { w = 50, l = 60, h = 20, exits = { "front" }, door = "normal", hides = 0 },
 }
 
-Plan.ORDER = { "corridor", "longhall", "shorthall", "gallery", "sculpture", "cases", "fossil", "armory", "ceramics", "archive", "storage", "tech", "stairsup", "stairsdown", "restroom", "cafe", "rotunda", "oddities", "blank", "clocks", "music", "archaeology", "mechanisms" }
+Plan.ORDER = { "corridor", "longhall", "shorthall", "gallery", "sculpture", "cases", "fossil", "armory", "ceramics", "archive", "storage", "tech", "stairsup", "stairsdown", "restroom", "cafe", "rotunda", "oddities", "blank", "clocks", "music", "archaeology", "mechanisms", "egypt", "rome", "knights", "estonia", "russia", "england", "france", "japan" }
 
 Plan.DOORS = { small = { w = 4, h = 7.5 }, normal = { w = 5, h = 8 }, grand = { w = 8, h = 11 } }
 local RANK = { small = 1, normal = 2, grand = 3 }
