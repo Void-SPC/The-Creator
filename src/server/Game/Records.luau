@@ -9,6 +9,7 @@ local Records = {}
 local store = nil
 local best: { [number]: number } = {}
 local journal: { [number]: { [string]: boolean } } = {}
+local ach: { [number]: { [string]: boolean } } = {}
 
 local function key(userId: number): string
 	return "u_" .. userId
@@ -40,6 +41,7 @@ function Records.load(p: Player): number
 	local d = if ok and type(data) == "table" then data else {}
 	best[p.UserId] = if type(d.best) == "number" then d.best else 0
 	journal[p.UserId] = if type(d.journal) == "table" then d.journal else {}
+	ach[p.UserId] = if type(d.ach) == "table" then d.ach else {}
 	return best[p.UserId]
 end
 
@@ -80,6 +82,28 @@ function Records.discover(p: Player, id: string): boolean
 	return true
 end
 
+function Records.achievements(p: Player): { [string]: boolean }
+	return ach[p.UserId] or {}
+end
+
+-- новое достижение; true, если раньше его не было
+function Records.achieve(p: Player, id: string): boolean
+	local a = ach[p.UserId]
+	if not a then
+		a = {}
+		ach[p.UserId] = a
+	end
+	if a[id] then
+		return false
+	end
+	a[id] = true
+	update(p, function(o)
+		o.ach = if type(o.ach) == "table" then o.ach else {}
+		o.ach[id] = true
+	end)
+	return true
+end
+
 function Records.complete(p: Player)
 	update(p, function(o)
 		o.done = (tonumber(o.done) or 0) + 1
@@ -89,6 +113,7 @@ end
 function Records.forget(p: Player)
 	best[p.UserId] = nil
 	journal[p.UserId] = nil
+	ach[p.UserId] = nil
 end
 
 return Records

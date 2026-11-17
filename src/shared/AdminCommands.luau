@@ -12,6 +12,8 @@ C.LIST = {
 	{ id = "skip", en = "Open 5 doors ahead", ru = "Открыть 5 дверей вперёд" },
 	{ id = "skip20", en = "Open 20 doors ahead", ru = "Открыть 20 дверей вперёд" },
 	{ id = "to_code", en = "To door 048 (hall of three locks)", ru = "К двери 048 (зал трёх замков)" },
+	{ id = "to_boss", en = "To door 050 (the Colossus)", ru = "К двери 050 (Колосс)" },
+	{ id = "arena_kit", en = "Pole, small mirror, cold room key, meat, clock key", ru = "Шест, зеркальце, ключ от камеры, мясо, ключ-часы" },
 	{ id = "to_lift", en = "To door 099 (elevator and stairs)", ru = "К двери 099 (лифт и лестница)" },
 	{ id = "darkness", en = "Summon the Darkness", ru = "Вызвать Тьму" },
 	{ id = "unseal", en = "Solve the puzzle of this room", ru = "Решить загадку этого зала" },

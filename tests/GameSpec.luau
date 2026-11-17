@@ -75,28 +75,75 @@ return function(T)
 			T.eq(string.sub(c.text, i, i), tostring(c.digits[c.order[i]]))
 		end
 	end)
-	T.test("mirrors: only the right angles bring the beam to the target", function()
-		local need = {}
-		for k, c in Rules.MIRRORS.cells do
-			need[k] = c.need
-		end
-		local path, hit = Rules.trace(need)
+	T.test("mirrors: the beam reaches the chandelier only through all four mirrors", function()
+		local sol = Rules.beamSolution()
+		local path, chain, hit = Rules.beam(sol)
 		T.ok(hit, "solution works")
-		T.ok(#path >= 6)
+		T.eq(#chain, 4)
+		T.eq(#path, 6)
+		-- немного мимо — всё равно цепляется (допуск)
+		local near = table.clone(sol)
+		near[2] += math.rad(2)
+		local _, _, hit2 = Rules.beam(near)
+		T.ok(hit2, "tolerance")
+		-- сильно мимо — нет
+		local far = table.clone(sol)
+		far[3] += math.rad(12)
+		local _, c3, hit3 = Rules.beam(far)
+		T.ok(not hit3)
+		T.ok(#c3 < 4)
+		-- случайные углы почти никогда не решают
+		local rand = Plan.rng(3)
 		local solved = 0
-		for a = 0, 3 do
-			for b = 0, 3 do
-				for c = 0, 3 do
-					for e = 0, 3 do
-						local _, ok = Rules.trace({ a, b, c, e })
-						if ok then
-							solved += 1
-						end
-					end
-				end
+		for _ = 1, 400 do
+			local a = {}
+			for k = 1, 4 do
+				a[k] = rand() * math.pi * 2
+			end
+			local _, _, h = Rules.beam(a)
+			if h then
+				solved += 1
 			end
 		end
-		T.eq(solved, 1, "single solution")
+		T.ok(solved < 3)
+	end)
+	T.test("every achievement has a name and a description in both languages", function()
+		for _, id in Rules.ACHIEVEMENTS do
+			for _, lang in { "en", "ru" } do
+				T.ok(Lang[lang]["a_" .. id] ~= nil, lang .. " a_" .. id)
+				T.ok(Lang[lang]["a_" .. id .. "_t"] ~= nil, lang .. " a_" .. id .. "_t")
+			end
+		end
+	end)
+	T.test("YOUrself replays the path with a delay and waits where the player waited", function()
+		local log = {}
+		-- игрок идёт 2 секунды, стоит 5 секунд, идёт дальше
+		for k = 0, 90 do
+			local t = k * 0.1
+			local x = if t < 2 then t * 10 elseif t < 7 then 20 else 20 + (t - 7) * 10
+			table.insert(log, { t = t, x = x, z = 0 })
+		end
+		T.eq(Rules.replayAt(log, 1), nil, "nothing yet")
+		local function xAt(now)
+			return log[Rules.replayAt(log, now)].x
+		end
+		T.ok(math.abs(xAt(3.5) - 10) < 1.1)
+		-- игрок стоял с 2 до 7 секунды — статуя стоит с 4.5 до 9.5
+		T.ok(math.abs(xAt(6) - 20) < 0.01)
+		T.ok(math.abs(xAt(9.4) - 20) < 0.01)
+		T.ok(xAt(10.5) > 20)
+	end)
+	T.test("clock hands come around", function()
+		local h, m = 12, 45
+		h, m = Rules.clockStep(h, m, "hour")
+		T.eq(h, 1)
+		h, m = Rules.clockStep(h, m, "minute")
+		T.eq(m, 0)
+		local rand = Plan.rng(4)
+		for _ = 1, 50 do
+			local a, b = Rules.clockTime(rand)
+			T.ok(a >= 1 and a <= 12 and b % 15 == 0 and b < 60)
+		end
 	end)
 
 	T.suite("room plan")

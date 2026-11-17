@@ -257,6 +257,10 @@ function E.darkness()
 	body:Destroy()
 	G.sendAll({ type = "dark", phase = "gone" })
 	E.darkActive = false
+	-- кто пережил пролёт, тот спрятался
+	for _, p in G.alivePlayers() do
+		G.achieve(p, "darkness_hid")
+	end
 end
 
 -- ---------------------------------------------------------------------------
@@ -359,7 +363,7 @@ function E.spawnMimic(info)
 	model.Parent = info.model
 	hum.WalkSpeed = Rules.MIMIC.speed
 	CollectionService:AddTag(model, "Mimic")
-	mimics[info] = { model = model, hum = hum, root = root, info = info, awake = false, samples = {}, idx = 1, waitUntil = 0, hitAt = 0, caught = false }
+	mimics[info] = { model = model, hum = hum, root = root, info = info, awake = false, log = {}, waitUntil = 0, hitAt = 0, caught = false }
 end
 
 function E.removeMimic(info)
@@ -442,30 +446,33 @@ local function stepMimics()
 				G.discover(p, "mimic")
 			end
 		end
-		-- запись пути игрока
-		local last = mm.samples[#mm.samples]
-		if not last or (last - r.Position).Magnitude > 1.5 then
-			table.insert(mm.samples, r.Position)
-			if mm.caught then
-				-- догнала и стояла рядом: секунду ждёт, потом снова идёт следом
-				mm.caught = false
-				mm.waitUntil = now + Rules.MIMIC.wait
-			end
+		-- запись пути игрока со временем; статуя идёт туда, где игрок был delay секунд назад
+		local last = mm.log[#mm.log]
+		if not last or now - last.t > 0.12 then
+			table.insert(mm.log, { t = now, x = r.Position.X, z = r.Position.Z, y = r.Position.Y })
 		end
-		if now >= mm.waitUntil then
-			local target = mm.samples[mm.idx]
-			if target then
-				if flat(target - mm.root.Position).Magnitude < 2.2 then
-					mm.idx += 1
-					target = mm.samples[mm.idx]
-				end
-				if target then
-					mm.hum:MoveTo(target)
-				else
+		while #mm.log > 2 and mm.log[2].t < now - Rules.MIMIC.delay - 1 do
+			table.remove(mm.log, 1)
+		end
+		local idx = Rules.replayAt(mm.log, now)
+		local e = idx and mm.log[idx]
+		if e and now >= mm.waitUntil then
+			local goal = Vector3.new(e.x, e.y, e.z)
+			if (r.Position - mm.root.Position).Magnitude < 4.2 then
+				-- догнала: секунду ждёт
+				if not mm.caught then
 					mm.caught = true
+					mm.waitUntil = now + Rules.MIMIC.wait
+					mm.hum:MoveTo(mm.root.Position)
 				end
 			else
-				mm.caught = true
+				mm.caught = false
+				if flat(goal - mm.root.Position).Magnitude > 0.8 then
+					mm.hum:MoveTo(goal)
+				else
+					-- игрок тогда стоял: стоит и она
+					mm.hum:MoveTo(mm.root.Position)
+				end
 			end
 		end
 		-- касание
@@ -597,23 +604,37 @@ function E.wakeColossus()
 	sound(b.root, SOUND.stone, 2, 0.4)
 end
 
+-- поза головы на время: listen — прислушивается, roar — учуял и рычит, lost — потерял
+-- след и мотает головой, eat — ест, stun — ослеплён светом
+local function pose(b, kind: string, dur: number)
+	b.pose = { kind = kind, t0 = os.clock(), dur = dur }
+end
+
 -- шум в точке
 function E.noise(pos: Vector3, radius: number)
 	local b = boss
-	if not b or b.state == "statue" or b.state == "melt" or b.state == "bait" or b.state == "eat" then
+	if not b or b.state == "statue" or b.state == "defeat" or b.state == "bait" or b.state == "eat" or b.state == "stun" then
 		return
 	end
 	if (b.root.Position - pos).Magnitude > radius then
 		return
 	end
-	b.state = "hunt"
+	if b.state == "hunt" or b.state == "listen" then
+		b.target = pos
+		return
+	end
+	-- сначала замирает и прислушивается, потом идёт на звук
+	b.state = "listen"
 	b.target = pos
+	b.until_ = os.clock() + 1.1
+	b.hum:MoveTo(b.root.Position)
+	pose(b, "listen", 1.1)
 end
 
--- на плите лежит мясо: идёт к нему
+-- на полу лежит мясо: идёт к нему
 function E.bait(pos: Vector3)
 	local b = boss
-	if b and b.state ~= "statue" and b.state ~= "melt" then
+	if b and b.state ~= "statue" and b.state ~= "defeat" and b.state ~= "stun" then
 		b.state = "bait"
 		b.target = pos
 		b.path = nil
@@ -655,24 +676,44 @@ local function sniffAnim(b)
 	sound(b.root, SOUND.rumble, 1.4, 0.5)
 end
 
--- ноги шагают, пока он идёт; голова качается, когда принюхивается
+-- ноги шагают, пока он идёт; голова живёт своей позой
 local function animateBeast()
 	local b = boss
-	if not b or not b.motors or not b.root.Parent then
+	if not b or not b.motors or not b.root.Parent or b.state == "defeat" then
 		return
 	end
 	local t = os.clock()
 	local v = b.root.AssemblyLinearVelocity
 	local speed = Vector3.new(v.X, 0, v.Z).Magnitude
 	local amp = math.clamp(speed / 12, 0, 1) * 0.45
+	local tremble = if b.state == "stun" then math.sin(t * 23) * 0.05 else 0
 	for _, leg in b.motors.legs do
-		local a = math.sin(t * (3 + speed * 0.25) + leg.phase) * amp
+		local a = math.sin(t * (3 + speed * 0.25) + leg.phase) * amp + tremble
 		local c0 = leg.rest * CFrame.Angles(a, 0, 0)
 		leg[1].C0 = c0
 		leg[2].C0 = c0
 	end
-	local yaw, pitch = 0, 0
-	if b.sniffFrom and t - b.sniffFrom < Rules.COLOSSUS.sniffTime then
+	local yaw, pitch, roll = 0, 0, 0
+	local ps = b.pose
+	if ps and t - ps.t0 < ps.dur then
+		local k = (t - ps.t0) / ps.dur
+		if ps.kind == "listen" then
+			-- замер, голова чуть набок и вверх
+			roll = math.sin(math.min(1, k * 3) * math.pi / 2) * 0.35
+			pitch = -0.12
+		elseif ps.kind == "roar" then
+			pitch = -0.5 * math.sin(k * math.pi)
+			yaw = math.sin(t * 30) * 0.04
+		elseif ps.kind == "lost" then
+			yaw = math.sin(k * math.pi * 4) * 0.55
+			pitch = 0.1
+		elseif ps.kind == "eat" then
+			pitch = 0.5 + math.sin(t * 7) * 0.08
+		elseif ps.kind == "stun" then
+			pitch = -0.55 + math.sin(t * 17) * 0.1
+			yaw = math.sin(t * 5) * 0.3
+		end
+	elseif b.sniffFrom and t - b.sniffFrom < Rules.COLOSSUS.sniffTime then
 		local k = (t - b.sniffFrom) / Rules.COLOSSUS.sniffTime
 		yaw = math.sin(k * math.pi * 3) * 0.6
 		pitch = -0.25 * math.sin(k * math.pi)
@@ -682,46 +723,131 @@ local function animateBeast()
 	for _, mt in b.motors.head do
 		local rest = mt:GetAttribute("Rest")
 		if typeof(rest) == "CFrame" then
-			mt.C0 = rest * CFrame.Angles(pitch, yaw, 0)
+			mt.C0 = rest * CFrame.Angles(pitch, yaw, roll)
 		end
 	end
 end
 
-local function melt(b)
-	b.state = "melt"
-	b.hum:MoveTo(b.root.Position)
+-- поражение: люстра падает на ослеплённого зверя. Ноги подгибаются, голова
+-- падает, по камню бегут светящиеся трещины, и он разваливается на куски
+local function defeat(b)
+	b.state = "defeat"
 	b.hum.WalkSpeed = 0
+	b.hum:MoveTo(b.root.Position)
+	b.root.Anchored = true
 	G.sendAll({ type = "fx", kind = "melt" })
 	sound(b.root, SOUND.scream, 2, 0.3)
-	local fire = Instance.new("ParticleEmitter")
-	fire.Color = ColorSequence.new(rgb(255, 200, 110), rgb(120, 110, 100))
-	fire.Size = NumberSequence.new(3, 0)
-	fire.Lifetime = NumberRange.new(0.6, 1.2)
-	fire.Rate = 80
-	fire.Speed = NumberRange.new(4, 9)
-	fire.LightEmission = 0.8
-	fire.Parent = b.root
-	for _, d in b.model:GetDescendants() do
-		if d:IsA("BasePart") and d.Transparency < 1 then
-			TweenService:Create(d, TweenInfo.new(4), { Color = rgb(60, 40, 30), Transparency = 0.9 }):Play()
+	local info = b.info
+	local model = b.model
+	local base = b.root.CFrame
+	task.spawn(function()
+		local t0 = os.clock()
+		while os.clock() - t0 < 1.8 and model.Parent do
+			local k = math.min(1, (os.clock() - t0) / 1.8)
+			for _, leg in b.motors.legs do
+				local side = if leg.rest.Position.X < 0 then -1 else 1
+				local c0 = leg.rest * CFrame.Angles(0.2 * k, 0, side * 0.9 * k)
+				leg[1].C0 = c0
+				leg[2].C0 = c0
+			end
+			for _, mt in b.motors.head do
+				local rest = mt:GetAttribute("Rest")
+				if typeof(rest) == "CFrame" then
+					mt.C0 = rest * CFrame.Angles(0.75 * k, math.sin(k * 9) * 0.1 * (1 - k), 0)
+				end
+			end
+			b.root.CFrame = base * CFrame.new(0, -3.4 * k, 0) * CFrame.Angles(0, 0, 0.12 * k)
+			task.wait()
 		end
-	end
-	task.delay(4.2, function()
-		local info = b.info
-		E.removeColossus()
-		G.bossDead(info)
+		if not model.Parent then
+			return
+		end
+		-- трещины светятся изнутри
+		local body = model:FindFirstChild("Body") :: BasePart
+		for i = 1, 12 do
+			local host = if i % 2 == 0 then body else (model:FindFirstChild("Chest") or body)
+			if host then
+				local c = Instance.new("Part")
+				c.Name = "GlowCrack"
+				c.Size = Vector3.new(0.3, 1.5 + math.random() * 3, 0.3)
+				c.Material = Enum.Material.Neon
+				c.Color = rgb(255, 214, 140)
+				c.CanCollide = false
+				c.Massless = true
+				local hs = host.Size
+				c.CFrame = host.CFrame * CFrame.new((math.random() - 0.5) * hs.X, (math.random() - 0.5) * hs.Y, (math.random() - 0.5) * hs.Z) * CFrame.Angles(math.random() * 3, math.random() * 3, math.random() * 3)
+				local w = Instance.new("WeldConstraint")
+				w.Part0 = host
+				w.Part1 = c
+				w.Parent = c
+				c.Parent = model
+				sound(c, SOUND.stone, 0.6, 0.6 + math.random() * 0.6)
+				task.wait(0.12)
+			end
+		end
+		local dust = Instance.new("ParticleEmitter")
+		dust.Color = ColorSequence.new(rgb(210, 204, 194))
+		dust.Size = NumberSequence.new(4, 8)
+		dust.Transparency = NumberSequence.new(0.3, 1)
+		dust.Lifetime = NumberRange.new(1.5, 2.5)
+		dust.Rate = 60
+		dust.Speed = NumberRange.new(2, 6)
+		dust.Parent = b.root
+		task.wait(0.8)
+		-- разваливается: суставы рвутся, куски падают на пол
+		sound(b.root, SOUND.stone, 2.4, 0.35)
+		for _, dsc in model:GetDescendants() do
+			if dsc:IsA("Motor6D") then
+				dsc:Destroy()
+			end
+		end
+		for _, dsc in model:GetDescendants() do
+			if dsc:IsA("BasePart") and dsc ~= b.root then
+				dsc.Anchored = false
+				if dsc.Transparency < 1 then
+					dsc.CanCollide = true
+					dsc.AssemblyLinearVelocity = Vector3.new(math.random(-10, 10), math.random(4, 12), math.random(-10, 10))
+				else
+					dsc.CanCollide = false
+				end
+			end
+		end
+		local hum = model:FindFirstChildOfClass("Humanoid")
+		if hum then
+			hum:Destroy()
+		end
+		task.wait(1.5)
+		dust.Rate = 0
+		local pos = b.root.Position
+		boss = nil
+		Debris:AddItem(model, 40)
+		G.bossDead(info, pos)
 	end)
+end
+
+-- люстра упала: ослеплённый зверь под ней — побеждён
+function E.chandelierHit(pos: Vector3, radius: number): boolean
+	local b = boss
+	if not b or not b.root.Parent then
+		return false
+	end
+	local near = flat(b.root.Position - pos).Magnitude < radius
+	if near and b.state == "stun" then
+		defeat(b)
+		return true
+	end
+	return false
 end
 
 local function stepColossus()
 	local b = boss
-	if not b or not b.root.Parent or b.state == "statue" or b.state == "melt" then
+	if not b or not b.root.Parent or b.state == "statue" or b.state == "defeat" then
 		return
 	end
 	local now = os.clock()
 	local C = Rules.COLOSSUS
 	local arena = b.info.arena
-	-- слышит шаги и ловит тех, кто рядом
+	-- слышит шаги и ловит тех, кто рядом на полу зала (на галереях не достаёт)
 	for _, p in G.alivePlayers() do
 		local r = G.rootOf(p)
 		if r and G.inRoom(b.info, r.Position) then
@@ -730,7 +856,8 @@ local function stepColossus()
 			if radius > 0 then
 				E.noise(r.Position, radius)
 			end
-			if flat(r.Position - b.root.Position).Magnitude < 8.5 and b.state ~= "eat" then
+			local low = r.Position.Y < arena.floorY + 7
+			if low and flat(r.Position - b.root.Position).Magnitude < 8.5 and b.state ~= "eat" and b.state ~= "stun" then
 				G.kill(p, "colossus")
 				sound(b.root, SOUND.stone, 1.6, 0.5)
 				if b.state == "hunt" then
@@ -744,29 +871,47 @@ local function stepColossus()
 		b.hum.WalkSpeed = C.hunt
 		bossGo(b.target)
 		if flat(b.target - b.root.Position).Magnitude < 7 then
-			if arena.solved then
-				melt(b)
+			b.hum:MoveTo(b.root.Position)
+			G.eatBait(b.info)
+			local inLight = arena.lit and flat(b.target - arena.zone.Position).Magnitude < Rules.ARENA.zone
+			if inLight then
+				-- свет ударил в камень: зверь ослеплён и бьётся на месте
+				b.state = "stun"
+				b.until_ = now + Rules.ARENA.stun
+				pose(b, "stun", Rules.ARENA.stun)
+				sound(b.root, SOUND.scream, 2, 0.5)
+				G.sendAll({ type = "fx", kind = "shake" })
 			else
+				-- мясо не там: съедает и уходит
 				b.state = "eat"
 				b.until_ = now + 2.5
-				b.hum:MoveTo(b.root.Position)
-				G.eatBait(b.info)
+				pose(b, "eat", 2.5)
 				sound(b.root, SOUND.hit, 1.4, 0.4)
 			end
 		end
-	elseif b.state == "eat" then
+	elseif b.state == "eat" or b.state == "stun" then
+		b.hum:MoveTo(b.root.Position)
 		if now > b.until_ then
 			b.state = "wander"
 			b.target = nil
+			b.pose = nil
+		end
+	elseif b.state == "listen" then
+		b.hum:MoveTo(b.root.Position)
+		if now > b.until_ then
+			b.state = "hunt"
+			b.hunting = true
+			pose(b, "roar", 0.9)
+			sound(b.root, SOUND.scream, 1.2, 0.6)
 		end
 	elseif b.state == "sniff" then
 		b.hum:MoveTo(b.root.Position)
 		if now > b.until_ then
-			-- учуял того, кто рядом
+			-- учуял того, кто рядом на полу
 			local best, bestD = nil, C.sniffRange
 			for _, p in G.alivePlayers() do
 				local r = G.rootOf(p)
-				if r then
+				if r and r.Position.Y < arena.floorY + 7 and not G.isHidden(p) then
 					local dd = (r.Position - b.root.Position).Magnitude
 					if dd < bestD then
 						best, bestD = r, dd
@@ -776,8 +921,16 @@ local function stepColossus()
 			if best then
 				b.state = "hunt"
 				b.target = best.Position
+				pose(b, "roar", 0.9)
+				sound(b.root, SOUND.scream, 1.2, 0.6)
 			else
+				if b.hunting then
+					-- потерял след: мотает головой и возвращается к обходу
+					pose(b, "lost", 1.6)
+					b.hunting = false
+				end
 				b.state = "wander"
+				b.target = nil
 			end
 			b.sniffAt = now + C.sniffEvery
 		end
@@ -791,6 +944,10 @@ local function stepColossus()
 		end
 	else
 		b.hum.WalkSpeed = C.wander
+		if b.pose and b.pose.kind == "lost" and now - b.pose.t0 < b.pose.dur then
+			b.hum:MoveTo(b.root.Position)
+			return
+		end
 		if now > b.sniffAt then
 			b.state = "sniff"
 			b.until_ = now + C.sniffTime

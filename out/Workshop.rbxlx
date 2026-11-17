@@ -59,6 +59,8 @@ C.LIST = {
 	{ id = "skip", en = "Open 5 doors ahead", ru = "Открыть 5 дверей вперёд" },
 	{ id = "skip20", en = "Open 20 doors ahead", ru = "Открыть 20 дверей вперёд" },
 	{ id = "to_code", en = "To door 048 (hall of three locks)", ru = "К двери 048 (зал трёх замков)" },
+	{ id = "to_boss", en = "To door 050 (the Colossus)", ru = "К двери 050 (Колосс)" },
+	{ id = "arena_kit", en = "Pole, small mirror, cold room key, meat, clock key", ru = "Шест, зеркальце, ключ от камеры, мясо, ключ-часы" },
 	{ id = "to_lift", en = "To door 099 (elevator and stairs)", ru = "К двери 099 (лифт и лестница)" },
 	{ id = "darkness", en = "Summon the Darkness", ru = "Вызвать Тьму" },
 	{ id = "unseal", en = "Solve the puzzle of this room", ru = "Решить загадку этого зала" },
@@ -96,6 +98,29 @@ Lang.en = {
 	Leave = "Leave",
 	BackToLobby = "Back to the street",
 	Journal = "Journal",
+	Achievements = "Achievements",
+	AchNew = "Achievement: %s",
+	AchLocked = "Not yet",
+	p_ach = "Achievements",
+	p_enter = "Enter the museum",
+	a_darkness = "Lights out",
+	a_darkness_t = "Meet the Darkness for the first time",
+	a_darkness_hid = "Holding my breath",
+	a_darkness_hid_t = "Live through the Darkness flying past",
+	a_coinkeeper = "Small change",
+	a_coinkeeper_t = "Meet the Coinkeeper",
+	a_coin_paid = "Toll paid",
+	a_coin_paid_t = "Pay the Coinkeeper with gold or with yourself",
+	a_mimic_solved = "Not me",
+	a_mimic_solved_t = "Put every figurine on its pedestal and break YOUrself",
+	a_door50 = "The marble hall",
+	a_door50_t = "Open door 050",
+	a_colossus_down = "Heavy light",
+	a_colossus_down_t = "Bring the chandelier down on the Colossus",
+	a_door100 = "One hundred",
+	a_door100_t = "Pass door 100",
+	a_finale = "To be continued",
+	a_finale_t = "Reach the end of the open part of the museum",
 	JournalEmpty = "The pages are empty for now",
 	JournalNew = "A new page in the journal",
 	MuseumSign = "MUSEUM",
@@ -108,6 +133,24 @@ Lang.en = {
 	item_key = "Key",
 	item_hammer = "Hammer",
 	item_meat = "Meat",
+	item_pole = "Long pole with a hook",
+	item_lens = "Small mirror",
+	item_coldkey = "Cold room key",
+	item_clockkey = "Clock key",
+	p_turnl = "Turn left (hold)",
+	p_turnr = "Turn right (hold)",
+	p_crank = "Lower / raise the chandelier",
+	p_knock = "Knock out the brake pin",
+	p_release = "Drop the chandelier",
+	p_insert = "Insert the key",
+	p_hour = "Hour hand",
+	p_minute = "Minute hand",
+	BaitFloor = "The meat has to lie on the floor of the hall",
+	NeedLens = "Something small and shiny belongs in this holder",
+	NeedPole = "Too high, you need something long",
+	BrakeHolds = "The brake pin holds the winch",
+	NeedClockKey = "The keyhole is round, like a clock",
+	ClockOpen = "The mechanism clicked and the door unlocked",
 
 	p_hide = "Hide / leave",
 	p_drawer = "Open / close",
@@ -162,11 +205,11 @@ Lang.en = {
 	j_darkness = "The Darkness",
 	j_darkness_t = "The lights flicker before it comes, and it flies through every open hall to the last door, opens it, and then comes back even faster, and the lamps burst wherever it has been, so hide in a locker and stay there until it returns",
 	j_mimic = "YOUrself",
-	j_mimic_t = "A marble statue of you that walks the very path you walked, and it does not stop when you stop, though when it has caught up it waits a second before following again, and it crumbles when every figurine stands on the pedestal of its colour, or under a hammer",
+	j_mimic_t = "A marble statue of you that repeats every step you took a couple of seconds later, so where you stood still it stands still too, and when it has caught up it waits a second before following again, and it crumbles when every figurine stands on the pedestal of its colour, or under a hammer",
 	j_coinkeeper = "The Coinkeeper",
 	j_coinkeeper_t = "A golden coin with a moustache that blocks the door and wants gold, and if you pay with yourself it takes most of your health, or all of it when you have almost none left, and it is afraid of the Darkness and runs into its hole when the lights flicker",
 	j_colossus = "The Colossus",
-	j_colossus_t = "A huge blind statue that hears footsteps and sometimes stops to sniff the air, and then it smells whoever stands near, so move crouching, and it walks to meat, and the light gathered by the mirrors melts stone",
+	j_colossus_t = "A huge blind marble beast that hears footsteps and sometimes stops to sniff the air, and then it smells whoever stands near, so move crouching, and it walks to any meat lying on the floor, and the light gathered by the mirrors and the chandelier blinds it, and a falling chandelier breaks it",
 	j_void = "The Breach",
 	j_void_t = "A corridor that is far too long, with no ceiling and with holes in the walls, and behind the holes there is nothing, and that nothing pulls you in, and whoever walks slowly past a hole does not walk past it",
 }
@@ -184,6 +227,29 @@ Lang.ru = {
 	Leave = "Выйти",
 	BackToLobby = "На улицу",
 	Journal = "Журнал",
+	Achievements = "Достижения",
+	AchNew = "Достижение: %s",
+	AchLocked = "Пока нет",
+	p_ach = "Достижения",
+	p_enter = "Войти в музей",
+	a_darkness = "Свет погас",
+	a_darkness_t = "Впервые встретить Тьму",
+	a_darkness_hid = "Затаив дыхание",
+	a_darkness_hid_t = "Пережить пролёт Тьмы",
+	a_coinkeeper = "Мелочь",
+	a_coinkeeper_t = "Встретить Монетчика",
+	a_coin_paid = "Плата внесена",
+	a_coin_paid_t = "Расплатиться с Монетчиком золотом или собой",
+	a_mimic_solved = "Это не я",
+	a_mimic_solved_t = "Расставить все фигурки и разбить тебЯ",
+	a_door50 = "Мраморный зал",
+	a_door50_t = "Открыть дверь 050",
+	a_colossus_down = "Тяжёлый свет",
+	a_colossus_down_t = "Обрушить люстру на Колосса",
+	a_door100 = "Сотая",
+	a_door100_t = "Пройти дверь 100",
+	a_finale = "Продолжение следует",
+	a_finale_t = "Дойти до конца открытой части музея",
 	JournalEmpty = "Страницы пока пусты",
 	JournalNew = "В журнале новая страница",
 	MuseumSign = "МУЗЕЙ",
@@ -196,6 +262,24 @@ Lang.ru = {
 	item_key = "Ключ",
 	item_hammer = "Молоток",
 	item_meat = "Мясо",
+	item_pole = "Длинный шест с крюком",
+	item_lens = "Зеркальце",
+	item_coldkey = "Ключ от холодильной камеры",
+	item_clockkey = "Ключ-часы",
+	p_turnl = "Повернуть влево (держать)",
+	p_turnr = "Повернуть вправо (держать)",
+	p_crank = "Опустить / поднять люстру",
+	p_knock = "Выбить тормозной штырь",
+	p_release = "Сбросить люстру",
+	p_insert = "Вставить ключ",
+	p_hour = "Часовая стрелка",
+	p_minute = "Минутная стрелка",
+	BaitFloor = "Мясо нужно положить на пол зала",
+	NeedLens = "В этот держатель вставляется что-то маленькое и блестящее",
+	NeedPole = "Слишком высоко, нужно что-то длинное",
+	BrakeHolds = "Лебёдку держит тормозной штырь",
+	NeedClockKey = "Скважина круглая, как часы",
+	ClockOpen = "Механизм щёлкнул, и дверь отперлась",
 
 	p_hide = "Спрятаться / выйти",
 	p_drawer = "Открыть / закрыть",
@@ -250,11 +334,11 @@ Lang.ru = {
 	j_darkness = "Тьма",
 	j_darkness_t = "Перед ней мигает свет, и она летит через все открытые залы до последней двери, открывает её, а потом возвращается обратно ещё быстрее, и там, где она пролетела, лопаются лампы, так что прячься в шкафчик и сиди, пока она не вернётся",
 	j_mimic = "тебЯ",
-	j_mimic_t = "Мраморная статуя тебя самого, которая идёт тем же путём, каким шёл ты, и не останавливается, когда останавливаешься ты, но, догнав, ждёт секунду и снова идёт следом, а рассыпается она, когда все фигурки стоят на постаментах своего цвета, или под молотком",
+	j_mimic_t = "Мраморная статуя тебя самого, которая повторяет каждый твой шаг на пару секунд позже, и где ты стоял, там постоит и она, а догнав, ждёт секунду и снова идёт следом, рассыпается же она, когда все фигурки стоят на постаментах своего цвета, или под молотком",
 	j_coinkeeper = "Монетчик",
 	j_coinkeeper_t = "Золотая монета с усами, которая загораживает дверь и требует золото, а если расплатиться собой, забирает почти всё здоровье, или всё, когда его почти не осталось, и ещё он боится Тьмы и убегает в свою норку, когда мигает свет",
 	j_colossus = "Колосс",
-	j_colossus_t = "Огромная слепая статуя, которая слышит шаги и иногда останавливается принюхаться, и тогда чует того, кто стоит рядом, так что двигайся пригнувшись, а ещё он идёт на мясо, и свет, собранный зеркалами, плавит камень",
+	j_colossus_t = "Огромный слепой мраморный зверь, который слышит шаги и иногда останавливается принюхаться, и тогда чует того, кто стоит рядом, так что двигайся пригнувшись, а ещё он идёт к любому мясу на полу, свет, собранный зеркалами и люстрой, ослепляет его, а упавшая люстра разбивает",
 	j_void = "Пролом",
 	j_void_t = "Слишком длинный коридор без потолка и с дырами в стенах, за которыми ничего нет, и это ничто тянет к себе, и кто идёт мимо дыры медленно, тот мимо не проходит",
 }
@@ -407,18 +491,22 @@ Plan.TEMPLATES = {
 	rotunda = { w = 46, l = 46, h = 24, weight = 6, min = 10, exits = { "front", "frontL", "frontR", "side" }, branch = 3, door = "grand", hides = 3 },
 	oddities = { w = 30, l = 30, h = 14, weight = 7, exits = { "front", "frontL", "frontR" }, door = "normal", hides = 2 },
 	blank = { w = 30, l = 30, h = 14, weight = 2, min = 15, exits = { "front", "frontL", "frontR" }, door = "normal", hides = 1 },
+	clocks = { w = 30, l = 36, h = 16, weight = 6, min = 3, exits = { "front", "frontL", "frontR", "side" }, door = "normal", hides = 2 },
+	music = { w = 32, l = 34, h = 16, weight = 6, min = 3, exits = { "front", "frontL", "frontR", "side" }, door = "normal", hides = 2 },
+	archaeology = { w = 40, l = 44, h = 18, weight = 5, min = 8, exits = { "front", "frontL", "frontR", "side" }, branch = 2, door = "grand", hides = 2 },
+	mechanisms = { w = 34, l = 38, h = 18, weight = 5, min = 12, exits = { "front", "frontL", "frontR", "side" }, door = "small", hides = 2 },
 	-- особые: выбираются отдельно
 	figures = { w = 40, l = 40, h = 16, exits = { "front" }, door = "normal", hides = 0 },
 	voidhall = { w = 12, l = 180, h = 14, exits = { "front" }, door = "normal", hides = 2 },
 	start = { w = 30, l = 30, h = 16, exits = { "front" }, door = "grand", hides = 0 },
 	codehall = { w = 76, l = 44, h = 18, exits = { "front" }, door = "grand", hides = 2 },
 	passage = { w = 18, l = 44, h = 16, exits = { "front" }, door = "grand", hides = 1 },
-	arena = { w = 80, l = 104, h = 26, dy = -10, exits = { "front" }, door = "grand", hides = 0 },
+	arena = { w = 80, l = 104, h = 26, dy = -10, stairW = 56, exits = { "front" }, door = "grand", hides = 0 },
 	lifthall = { w = 30, l = 30, h = 16, exits = { "front" }, door = "small", hides = 0 },
 	final = { w = 50, l = 60, h = 20, exits = { "front" }, door = "normal", hides = 0 },
 }
 
-Plan.ORDER = { "corridor", "longhall", "shorthall", "gallery", "sculpture", "cases", "fossil", "armory", "ceramics", "archive", "storage", "tech", "stairsup", "stairsdown", "restroom", "cafe", "rotunda", "oddities", "blank" }
+Plan.ORDER = { "corridor", "longhall", "shorthall", "gallery", "sculpture", "cases", "fossil", "armory", "ceramics", "archive", "storage", "tech", "stairsup", "stairsdown", "restroom", "cafe", "rotunda", "oddities", "blank", "clocks", "music", "archaeology", "mechanisms" }
 
 Plan.DOORS = { small = { w = 4, h = 7.5 }, normal = { w = 5, h = 8 }, grand = { w = 8, h = 11 } }
 local RANK = { small = 1, normal = 2, grand = 3 }
@@ -598,6 +686,7 @@ function Plan.room(state, door: number)
 	local quiet = special or d.kind == "figures" or d.kind == "voidhall"
 	local t = Plan.TEMPLATES[d.kind]
 	d.w, d.l, d.h, d.dy = t.w, t.l, t.h, t.dy or 0
+	d.stairW = t.stairW
 	-- настоящий выход: из разрешённых, с местом для следующего большого зала
 	local mine = footprint(state, d.w, d.l)
 	local options = {}
@@ -811,7 +900,23 @@ end
 
 -- тебЯ ----------------------------------------------------------------------
 
-Rules.MIMIC = { speed = 13, wait = 1, damage = 35, from = 20, gap = 8, chance = 0.07 }
+-- delay — на сколько секунд статуя отстаёт от игрока: повторяет его путь с этой задержкой
+-- (стоял пять секунд — и она постоит пять секунд на том же месте)
+Rules.MIMIC = { speed = 17, wait = 1, damage = 35, from = 20, gap = 8, chance = 0.07, delay = 2.5 }
+
+-- где статуя должна быть сейчас: последняя запись, сделанная не позже now - delay
+function Rules.replayAt(log: { { t: number, x: number, z: number } }, now: number): number?
+	local cut = now - Rules.MIMIC.delay
+	local found = nil
+	for i, e in log do
+		if e.t &lt;= cut then
+			found = i
+		else
+			break
+		end
+	end
+	return found
+end
 
 -- фонарик --------------------------------------------------------------------
 
@@ -832,7 +937,7 @@ end
 
 -- предметы -------------------------------------------------------------------
 
-Rules.CAP = { battery = 5, plant = 2, lockpick = 3, key = 9, hammer = 1, meat = 3 }
+Rules.CAP = { battery = 5, plant = 2, lockpick = 3, key = 9, hammer = 1, meat = 3, pole = 1, lens = 1, coldkey = 1, clockkey = 1 }
 Rules.PLANT_HEAL = 40
 Rules.SPEED = { walk = 15, sneak = 7 }
 
@@ -927,46 +1032,132 @@ function Rules.code(rand: () -&gt; number)
 	return { digits = digits, order = order, text = text, roman = roman, sequence = sequence }
 end
 
--- зеркала: сетка клеток (i, j). Зеркало в состоянии 1 меняет местами оси луча,
--- в состоянии 3 — меняет и разворачивает; в 0 и 2 стоит ребром и гасит луч
-Rules.MIRRORS = {
-	source = { i = -2, j = 0, di = 0, dj = 1 },
-	target = { i = 0, j = 5 },
-	cells = { { i = -2, j = 3, need = 1 }, { i = 2, j = 3, need = 3 }, { i = 2, j = 1, need = 1 }, { i = 0, j = 1, need = 3 } },
+-- достижения: порядок в списке лобби; названия и описания — в Lang (a_id, a_id_t)
+Rules.ACHIEVEMENTS = { "darkness", "darkness_hid", "coinkeeper", "coin_paid", "mimic_solved", "door50", "colossus_down", "door100", "finale" }
+
+-- Арена Колосса (зал 050). Координаты — в осях зала: x поперёк, z вглубь (отрицательный)
+-- Галереи второго этажа на высоте 0 (пол зала на -10), луч идёт над ними на высоте y.
+-- Солнечный луч из круглого окна в дальней стене → четыре зеркала на галереях →
+-- зеркальце в люстре → вниз, в круг света на полу
+Rules.ARENA = {
+	y = 6.6, -- высота луча над входом
+	source = { x = -34, z = -103.2, dx = 0, dz = 1 },
+	mirrors = { { x = -34, z = -92 }, { x = 34, z = -92 }, { x = 34, z = -40 }, { x = -34, z = -40 } },
+	lens = { x = 0, z = -66 },
+	tol = math.rad(6), -- допуск направления луча (зеркалу — вдвое меньше)
+	turn = 24, -- градусов в секунду, пока держат кнопку
+	zone = 7.5, -- радиус круга света на полу
+	bounds = { x = 39.3, zFar = -103.3, zNear = -12 },
+	stun = 14, -- сколько стоит, ослеплённый светом
+	coldOpen = 5, -- сколько секунд открыта дверь холодильной камеры
+	drop = 10, -- люстра задевает всё ближе этого
 }
 
--- Путь луча. states[k] — состояние зеркала k. Возвращает точки пути и попал ли в цель
-function Rules.trace(states: { number })
-	local M = Rules.MIRRORS
-	local i, j, di, dj = M.source.i, M.source.j, M.source.di, M.source.dj
-	local path = { { i = i, j = j } }
-	for _ = 1, 40 do
-		i += di
-		j += dj
-		if i &lt; -4 or i &gt; 4 or j &lt; -1 or j &gt; 6 then
-			table.insert(path, { i = i, j = j })
-			return path, false
-		end
-		if i == M.target.i and j == M.target.j then
-			table.insert(path, { i = i, j = j })
-			return path, true
-		end
-		for k, c in M.cells do
-			if c.i == i and c.j == j then
-				table.insert(path, { i = i, j = j })
-				local s = states[k]
-				if s == 1 then
-					di, dj = dj, di
-				elseif s == 3 then
-					di, dj = -dj, -di
-				else
-					return path, false
-				end
-				break
+local function norm(x: number, z: number): (number, number)
+	local l = math.sqrt(x * x + z * z)
+	if l &lt; 1e-9 then
+		return 0, 0
+	end
+	return x / l, z / l
+end
+
+-- Путь луча. angles[k] — угол нормали зеркала k в радианах (нормаль = (cos a, sin a)).
+-- Луч цепляется за следующее зеркало, если смотрит на него с ошибкой меньше допуска.
+-- Люстра ловит луч только после всех четырёх зеркал. Возвращает точки пути
+-- { x, z, k? }, цепочку зеркал и попал ли луч в люстру
+function Rules.beam(angles: { number })
+	local A = Rules.ARENA
+	local x, z, dx, dz = A.source.x, A.source.z, A.source.dx, A.source.dz
+	local path = { { x = x, z = z } }
+	local chain, used = {}, {}
+	for _ = 1, 6 do
+		local best, bestD, bestK = nil, math.huge, nil
+		local function try(t, k)
+			local vx, vz = t.x - x, t.z - z
+			local d = math.sqrt(vx * vx + vz * vz)
+			if d &lt; 0.5 then
+				return
+			end
+			local c = (vx * dx + vz * dz) / d
+			if c &gt; math.cos(A.tol) and d &lt; bestD then
+				best, bestD, bestK = t, d, k
 			end
 		end
+		for k, mr in A.mirrors do
+			if not used[k] then
+				try(mr, k)
+			end
+		end
+		if #chain == #A.mirrors then
+			try(A.lens, 0)
+		end
+		if not best then
+			-- в стену зала
+			local t = math.huge
+			local B = A.bounds
+			if dx &gt; 1e-6 then
+				t = math.min(t, (B.x - x) / dx)
+			elseif dx &lt; -1e-6 then
+				t = math.min(t, (-B.x - x) / dx)
+			end
+			if dz &gt; 1e-6 then
+				t = math.min(t, (B.zNear - z) / dz)
+			elseif dz &lt; -1e-6 then
+				t = math.min(t, (B.zFar - z) / dz)
+			end
+			table.insert(path, { x = x + dx * t, z = z + dz * t })
+			return path, chain, false
+		end
+		-- луч точно в центр того, за что зацепился
+		dx, dz = norm(best.x - x, best.z - z)
+		x, z = best.x, best.z
+		table.insert(path, { x = x, z = z, k = bestK })
+		if bestK == 0 then
+			return path, chain, true
+		end
+		used[bestK] = true
+		table.insert(chain, bestK)
+		local a = angles[bestK] or 0
+		local nx, nz = math.cos(a), math.sin(a)
+		local dot = dx * nx + dz * nz
+		if math.abs(dot) &lt; 0.12 then
+			-- зеркало стоит ребром к лучу: свет гаснет на раме
+			return path, chain, false
+		end
+		dx, dz = dx - 2 * dot * nx, dz - 2 * dot * nz
 	end
-	return path, false
+	return path, chain, false
+end
+
+-- углы нормалей, при которых луч проходит зеркала по порядку 1→2→3→4→люстра
+function Rules.beamSolution(): { number }
+	local A = Rules.ARENA
+	local pts = { A.source }
+	for _, mr in A.mirrors do
+		table.insert(pts, mr)
+	end
+	table.insert(pts, A.lens)
+	local out = {}
+	for k = 2, #pts - 1 do
+		local ix, iz = norm(pts[k].x - pts[k - 1].x, pts[k].z - pts[k - 1].z)
+		local ox, oz = norm(pts[k + 1].x - pts[k].x, pts[k + 1].z - pts[k].z)
+		local nx, nz = norm(ox - ix, oz - iz)
+		out[k - 1] = math.atan2(nz, nx)
+	end
+	return out
+end
+
+-- остановленные часы в зале: час 1–12 и минуты кратно 15; стрелки механизма
+-- двери переводятся по одному шагу
+function Rules.clockTime(rand: () -&gt; number): (number, number)
+	return 1 + math.floor(rand() * 12), math.floor(rand() * 4) * 15
+end
+
+function Rules.clockStep(h: number, m: number, hand: string): (number, number)
+	if hand == "hour" then
+		return h % 12 + 1, m
+	end
+	return h, (m + 15) % 60
 end
 
 return Rules
@@ -1091,7 +1282,12 @@ Config.BADGES = {
 	colossus = 0, -- первая встреча с Колоссом
 	void = 0, -- коридор с проломами
 	colossus_down = 0, -- Колосс побеждён
-	finale = 0, -- первая локация пройдена
+	finale = 0, -- первая локация пройдена (достижение «Продолжение следует»)
+	darkness_hid = 0, -- пережил пролёт Тьмы
+	coin_paid = 0, -- расплатился с Монетчиком
+	mimic_solved = 0, -- разгадал фигурки тебЯ
+	door50 = 0, -- открыл дверь 050
+	door100 = 0, -- прошёл дверь 100
 }
 
 return Config
@@ -1267,6 +1463,14 @@ local RUN = {
 	end,
 	to_code = function()
 		skip(math.max(0, Rules.CODE_ROOM - G.run.front))
+	end,
+	to_boss = function()
+		skip(math.max(0, Rules.BOSS_ROOM - G.run.front))
+	end,
+	arena_kit = function(p)
+		for _, it in { "pole", "lens", "coldkey", "meat", "meat", "meat", "clockkey" } do
+			G.give(p, it)
+		end
 	end,
 	to_lift = function()
 		skip(math.max(0, Rules.LIFT_ROOM - G.run.front))
@@ -1581,6 +1785,10 @@ function E.darkness()
 	body:Destroy()
 	G.sendAll({ type = "dark", phase = "gone" })
 	E.darkActive = false
+	-- кто пережил пролёт, тот спрятался
+	for _, p in G.alivePlayers() do
+		G.achieve(p, "darkness_hid")
+	end
 end
 
 -- ---------------------------------------------------------------------------
@@ -1683,7 +1891,7 @@ function E.spawnMimic(info)
 	model.Parent = info.model
 	hum.WalkSpeed = Rules.MIMIC.speed
 	CollectionService:AddTag(model, "Mimic")
-	mimics[info] = { model = model, hum = hum, root = root, info = info, awake = false, samples = {}, idx = 1, waitUntil = 0, hitAt = 0, caught = false }
+	mimics[info] = { model = model, hum = hum, root = root, info = info, awake = false, log = {}, waitUntil = 0, hitAt = 0, caught = false }
 end
 
 function E.removeMimic(info)
@@ -1766,30 +1974,33 @@ local function stepMimics()
 				G.discover(p, "mimic")
 			end
 		end
-		-- запись пути игрока
-		local last = mm.samples[#mm.samples]
-		if not last or (last - r.Position).Magnitude &gt; 1.5 then
-			table.insert(mm.samples, r.Position)
-			if mm.caught then
-				-- догнала и стояла рядом: секунду ждёт, потом снова идёт следом
-				mm.caught = false
-				mm.waitUntil = now + Rules.MIMIC.wait
-			end
+		-- запись пути игрока со временем; статуя идёт туда, где игрок был delay секунд назад
+		local last = mm.log[#mm.log]
+		if not last or now - last.t &gt; 0.12 then
+			table.insert(mm.log, { t = now, x = r.Position.X, z = r.Position.Z, y = r.Position.Y })
 		end
-		if now &gt;= mm.waitUntil then
-			local target = mm.samples[mm.idx]
-			if target then
-				if flat(target - mm.root.Position).Magnitude &lt; 2.2 then
-					mm.idx += 1
-					target = mm.samples[mm.idx]
-				end
-				if target then
-					mm.hum:MoveTo(target)
-				else
+		while #mm.log &gt; 2 and mm.log[2].t &lt; now - Rules.MIMIC.delay - 1 do
+			table.remove(mm.log, 1)
+		end
+		local idx = Rules.replayAt(mm.log, now)
+		local e = idx and mm.log[idx]
+		if e and now &gt;= mm.waitUntil then
+			local goal = Vector3.new(e.x, e.y, e.z)
+			if (r.Position - mm.root.Position).Magnitude &lt; 4.2 then
+				-- догнала: секунду ждёт
+				if not mm.caught then
 					mm.caught = true
+					mm.waitUntil = now + Rules.MIMIC.wait
+					mm.hum:MoveTo(mm.root.Position)
 				end
 			else
-				mm.caught = true
+				mm.caught = false
+				if flat(goal - mm.root.Position).Magnitude &gt; 0.8 then
+					mm.hum:MoveTo(goal)
+				else
+					-- игрок тогда стоял: стоит и она
+					mm.hum:MoveTo(mm.root.Position)
+				end
 			end
 		end
 		-- касание
@@ -1921,23 +2132,37 @@ function E.wakeColossus()
 	sound(b.root, SOUND.stone, 2, 0.4)
 end
 
+-- поза головы на время: listen — прислушивается, roar — учуял и рычит, lost — потерял
+-- след и мотает головой, eat — ест, stun — ослеплён светом
+local function pose(b, kind: string, dur: number)
+	b.pose = { kind = kind, t0 = os.clock(), dur = dur }
+end
+
 -- шум в точке
 function E.noise(pos: Vector3, radius: number)
 	local b = boss
-	if not b or b.state == "statue" or b.state == "melt" or b.state == "bait" or b.state == "eat" then
+	if not b or b.state == "statue" or b.state == "defeat" or b.state == "bait" or b.state == "eat" or b.state == "stun" then
 		return
 	end
 	if (b.root.Position - pos).Magnitude &gt; radius then
 		return
 	end
-	b.state = "hunt"
+	if b.state == "hunt" or b.state == "listen" then
+		b.target = pos
+		return
+	end
+	-- сначала замирает и прислушивается, потом идёт на звук
+	b.state = "listen"
 	b.target = pos
+	b.until_ = os.clock() + 1.1
+	b.hum:MoveTo(b.root.Position)
+	pose(b, "listen", 1.1)
 end
 
--- на плите лежит мясо: идёт к нему
+-- на полу лежит мясо: идёт к нему
 function E.bait(pos: Vector3)
 	local b = boss
-	if b and b.state ~= "statue" and b.state ~= "melt" then
+	if b and b.state ~= "statue" and b.state ~= "defeat" and b.state ~= "stun" then
 		b.state = "bait"
 		b.target = pos
 		b.path = nil
@@ -1979,24 +2204,44 @@ local function sniffAnim(b)
 	sound(b.root, SOUND.rumble, 1.4, 0.5)
 end
 
--- ноги шагают, пока он идёт; голова качается, когда принюхивается
+-- ноги шагают, пока он идёт; голова живёт своей позой
 local function animateBeast()
 	local b = boss
-	if not b or not b.motors or not b.root.Parent then
+	if not b or not b.motors or not b.root.Parent or b.state == "defeat" then
 		return
 	end
 	local t = os.clock()
 	local v = b.root.AssemblyLinearVelocity
 	local speed = Vector3.new(v.X, 0, v.Z).Magnitude
 	local amp = math.clamp(speed / 12, 0, 1) * 0.45
+	local tremble = if b.state == "stun" then math.sin(t * 23) * 0.05 else 0
 	for _, leg in b.motors.legs do
-		local a = math.sin(t * (3 + speed * 0.25) + leg.phase) * amp
+		local a = math.sin(t * (3 + speed * 0.25) + leg.phase) * amp + tremble
 		local c0 = leg.rest * CFrame.Angles(a, 0, 0)
 		leg[1].C0 = c0
 		leg[2].C0 = c0
 	end
-	local yaw, pitch = 0, 0
-	if b.sniffFrom and t - b.sniffFrom &lt; Rules.COLOSSUS.sniffTime then
+	local yaw, pitch, roll = 0, 0, 0
+	local ps = b.pose
+	if ps and t - ps.t0 &lt; ps.dur then
+		local k = (t - ps.t0) / ps.dur
+		if ps.kind == "listen" then
+			-- замер, голова чуть набок и вверх
+			roll = math.sin(math.min(1, k * 3) * math.pi / 2) * 0.35
+			pitch = -0.12
+		elseif ps.kind == "roar" then
+			pitch = -0.5 * math.sin(k * math.pi)
+			yaw = math.sin(t * 30) * 0.04
+		elseif ps.kind == "lost" then
+			yaw = math.sin(k * math.pi * 4) * 0.55
+			pitch = 0.1
+		elseif ps.kind == "eat" then
+			pitch = 0.5 + math.sin(t * 7) * 0.08
+		elseif ps.kind == "stun" then
+			pitch = -0.55 + math.sin(t * 17) * 0.1
+			yaw = math.sin(t * 5) * 0.3
+		end
+	elseif b.sniffFrom and t - b.sniffFrom &lt; Rules.COLOSSUS.sniffTime then
 		local k = (t - b.sniffFrom) / Rules.COLOSSUS.sniffTime
 		yaw = math.sin(k * math.pi * 3) * 0.6
 		pitch = -0.25 * math.sin(k * math.pi)
@@ -2006,46 +2251,131 @@ local function animateBeast()
 	for _, mt in b.motors.head do
 		local rest = mt:GetAttribute("Rest")
 		if typeof(rest) == "CFrame" then
-			mt.C0 = rest * CFrame.Angles(pitch, yaw, 0)
+			mt.C0 = rest * CFrame.Angles(pitch, yaw, roll)
 		end
 	end
 end
 
-local function melt(b)
-	b.state = "melt"
-	b.hum:MoveTo(b.root.Position)
+-- поражение: люстра падает на ослеплённого зверя. Ноги подгибаются, голова
+-- падает, по камню бегут светящиеся трещины, и он разваливается на куски
+local function defeat(b)
+	b.state = "defeat"
 	b.hum.WalkSpeed = 0
+	b.hum:MoveTo(b.root.Position)
+	b.root.Anchored = true
 	G.sendAll({ type = "fx", kind = "melt" })
 	sound(b.root, SOUND.scream, 2, 0.3)
-	local fire = Instance.new("ParticleEmitter")
-	fire.Color = ColorSequence.new(rgb(255, 200, 110), rgb(120, 110, 100))
-	fire.Size = NumberSequence.new(3, 0)
-	fire.Lifetime = NumberRange.new(0.6, 1.2)
-	fire.Rate = 80
-	fire.Speed = NumberRange.new(4, 9)
-	fire.LightEmission = 0.8
-	fire.Parent = b.root
-	for _, d in b.model:GetDescendants() do
-		if d:IsA("BasePart") and d.Transparency &lt; 1 then
-			TweenService:Create(d, TweenInfo.new(4), { Color = rgb(60, 40, 30), Transparency = 0.9 }):Play()
+	local info = b.info
+	local model = b.model
+	local base = b.root.CFrame
+	task.spawn(function()
+		local t0 = os.clock()
+		while os.clock() - t0 &lt; 1.8 and model.Parent do
+			local k = math.min(1, (os.clock() - t0) / 1.8)
+			for _, leg in b.motors.legs do
+				local side = if leg.rest.Position.X &lt; 0 then -1 else 1
+				local c0 = leg.rest * CFrame.Angles(0.2 * k, 0, side * 0.9 * k)
+				leg[1].C0 = c0
+				leg[2].C0 = c0
+			end
+			for _, mt in b.motors.head do
+				local rest = mt:GetAttribute("Rest")
+				if typeof(rest) == "CFrame" then
+					mt.C0 = rest * CFrame.Angles(0.75 * k, math.sin(k * 9) * 0.1 * (1 - k), 0)
+				end
+			end
+			b.root.CFrame = base * CFrame.new(0, -3.4 * k, 0) * CFrame.Angles(0, 0, 0.12 * k)
+			task.wait()
 		end
-	end
-	task.delay(4.2, function()
-		local info = b.info
-		E.removeColossus()
-		G.bossDead(info)
+		if not model.Parent then
+			return
+		end
+		-- трещины светятся изнутри
+		local body = model:FindFirstChild("Body") :: BasePart
+		for i = 1, 12 do
+			local host = if i % 2 == 0 then body else (model:FindFirstChild("Chest") or body)
+			if host then
+				local c = Instance.new("Part")
+				c.Name = "GlowCrack"
+				c.Size = Vector3.new(0.3, 1.5 + math.random() * 3, 0.3)
+				c.Material = Enum.Material.Neon
+				c.Color = rgb(255, 214, 140)
+				c.CanCollide = false
+				c.Massless = true
+				local hs = host.Size
+				c.CFrame = host.CFrame * CFrame.new((math.random() - 0.5) * hs.X, (math.random() - 0.5) * hs.Y, (math.random() - 0.5) * hs.Z) * CFrame.Angles(math.random() * 3, math.random() * 3, math.random() * 3)
+				local w = Instance.new("WeldConstraint")
+				w.Part0 = host
+				w.Part1 = c
+				w.Parent = c
+				c.Parent = model
+				sound(c, SOUND.stone, 0.6, 0.6 + math.random() * 0.6)
+				task.wait(0.12)
+			end
+		end
+		local dust = Instance.new("ParticleEmitter")
+		dust.Color = ColorSequence.new(rgb(210, 204, 194))
+		dust.Size = NumberSequence.new(4, 8)
+		dust.Transparency = NumberSequence.new(0.3, 1)
+		dust.Lifetime = NumberRange.new(1.5, 2.5)
+		dust.Rate = 60
+		dust.Speed = NumberRange.new(2, 6)
+		dust.Parent = b.root
+		task.wait(0.8)
+		-- разваливается: суставы рвутся, куски падают на пол
+		sound(b.root, SOUND.stone, 2.4, 0.35)
+		for _, dsc in model:GetDescendants() do
+			if dsc:IsA("Motor6D") then
+				dsc:Destroy()
+			end
+		end
+		for _, dsc in model:GetDescendants() do
+			if dsc:IsA("BasePart") and dsc ~= b.root then
+				dsc.Anchored = false
+				if dsc.Transparency &lt; 1 then
+					dsc.CanCollide = true
+					dsc.AssemblyLinearVelocity = Vector3.new(math.random(-10, 10), math.random(4, 12), math.random(-10, 10))
+				else
+					dsc.CanCollide = false
+				end
+			end
+		end
+		local hum = model:FindFirstChildOfClass("Humanoid")
+		if hum then
+			hum:Destroy()
+		end
+		task.wait(1.5)
+		dust.Rate = 0
+		local pos = b.root.Position
+		boss = nil
+		Debris:AddItem(model, 40)
+		G.bossDead(info, pos)
 	end)
+end
+
+-- люстра упала: ослеплённый зверь под ней — побеждён
+function E.chandelierHit(pos: Vector3, radius: number): boolean
+	local b = boss
+	if not b or not b.root.Parent then
+		return false
+	end
+	local near = flat(b.root.Position - pos).Magnitude &lt; radius
+	if near and b.state == "stun" then
+		defeat(b)
+		return true
+	end
+	return false
 end
 
 local function stepColossus()
 	local b = boss
-	if not b or not b.root.Parent or b.state == "statue" or b.state == "melt" then
+	if not b or not b.root.Parent or b.state == "statue" or b.state == "defeat" then
 		return
 	end
 	local now = os.clock()
 	local C = Rules.COLOSSUS
 	local arena = b.info.arena
-	-- слышит шаги и ловит тех, кто рядом
+	-- слышит шаги и ловит тех, кто рядом на полу зала (на галереях не достаёт)
 	for _, p in G.alivePlayers() do
 		local r = G.rootOf(p)
 		if r and G.inRoom(b.info, r.Position) then
@@ -2054,7 +2384,8 @@ local function stepColossus()
 			if radius &gt; 0 then
 				E.noise(r.Position, radius)
 			end
-			if flat(r.Position - b.root.Position).Magnitude &lt; 8.5 and b.state ~= "eat" then
+			local low = r.Position.Y &lt; arena.floorY + 7
+			if low and flat(r.Position - b.root.Position).Magnitude &lt; 8.5 and b.state ~= "eat" and b.state ~= "stun" then
 				G.kill(p, "colossus")
 				sound(b.root, SOUND.stone, 1.6, 0.5)
 				if b.state == "hunt" then
@@ -2068,29 +2399,47 @@ local function stepColossus()
 		b.hum.WalkSpeed = C.hunt
 		bossGo(b.target)
 		if flat(b.target - b.root.Position).Magnitude &lt; 7 then
-			if arena.solved then
-				melt(b)
+			b.hum:MoveTo(b.root.Position)
+			G.eatBait(b.info)
+			local inLight = arena.lit and flat(b.target - arena.zone.Position).Magnitude &lt; Rules.ARENA.zone
+			if inLight then
+				-- свет ударил в камень: зверь ослеплён и бьётся на месте
+				b.state = "stun"
+				b.until_ = now + Rules.ARENA.stun
+				pose(b, "stun", Rules.ARENA.stun)
+				sound(b.root, SOUND.scream, 2, 0.5)
+				G.sendAll({ type = "fx", kind = "shake" })
 			else
+				-- мясо не там: съедает и уходит
 				b.state = "eat"
 				b.until_ = now + 2.5
-				b.hum:MoveTo(b.root.Position)
-				G.eatBait(b.info)
+				pose(b, "eat", 2.5)
 				sound(b.root, SOUND.hit, 1.4, 0.4)
 			end
 		end
-	elseif b.state == "eat" then
+	elseif b.state == "eat" or b.state == "stun" then
+		b.hum:MoveTo(b.root.Position)
 		if now &gt; b.until_ then
 			b.state = "wander"
 			b.target = nil
+			b.pose = nil
+		end
+	elseif b.state == "listen" then
+		b.hum:MoveTo(b.root.Position)
+		if now &gt; b.until_ then
+			b.state = "hunt"
+			b.hunting = true
+			pose(b, "roar", 0.9)
+			sound(b.root, SOUND.scream, 1.2, 0.6)
 		end
 	elseif b.state == "sniff" then
 		b.hum:MoveTo(b.root.Position)
 		if now &gt; b.until_ then
-			-- учуял того, кто рядом
+			-- учуял того, кто рядом на полу
 			local best, bestD = nil, C.sniffRange
 			for _, p in G.alivePlayers() do
 				local r = G.rootOf(p)
-				if r then
+				if r and r.Position.Y &lt; arena.floorY + 7 and not G.isHidden(p) then
 					local dd = (r.Position - b.root.Position).Magnitude
 					if dd &lt; bestD then
 						best, bestD = r, dd
@@ -2100,8 +2449,16 @@ local function stepColossus()
 			if best then
 				b.state = "hunt"
 				b.target = best.Position
+				pose(b, "roar", 0.9)
+				sound(b.root, SOUND.scream, 1.2, 0.6)
 			else
+				if b.hunting then
+					-- потерял след: мотает головой и возвращается к обходу
+					pose(b, "lost", 1.6)
+					b.hunting = false
+				end
 				b.state = "wander"
+				b.target = nil
 			end
 			b.sniffAt = now + C.sniffEvery
 		end
@@ -2115,6 +2472,10 @@ local function stepColossus()
 		end
 	else
 		b.hum.WalkSpeed = C.wander
+		if b.pose and b.pose.kind == "lost" and now - b.pose.t0 &lt; b.pose.dur then
+			b.hum:MoveTo(b.root.Position)
+			return
+		end
 		if now &gt; b.sniffAt then
 			b.state = "sniff"
 			b.until_ = now + C.sniffTime
@@ -2191,6 +2552,7 @@ local TweenService = game:GetService("TweenService")
 local TeleportService = game:GetService("TeleportService")
 local RunService = game:GetService("RunService")
 local BadgeService = game:GetService("BadgeService")
+local Debris = game:GetService("Debris")
 
 local Shared = game:GetService("ReplicatedStorage").Workshop.Shared
 local Rules = require(Shared.Rules)
@@ -2345,10 +2707,27 @@ local function badge(p: Player, id: string)
 	end
 end
 
+-- достижение: значок (если его ID вписан в Config) и надпись у игрока
+function G.achieve(p: Player, id: string)
+	if players[p] and Records.achieve(p, id) then
+		send(p, { type = "achieve", id = id })
+		badge(p, id)
+	end
+end
+
+function G.achieveAll(id: string)
+	for _, p in G.alivePlayers() do
+		G.achieve(p, id)
+	end
+end
+
 function G.discover(p: Player, id: string)
 	if players[p] and Records.discover(p, id) then
 		send(p, { type = "journal", id = id, new = true })
 		badge(p, id)
+	end
+	if id == "darkness" or id == "coinkeeper" then
+		G.achieve(p, id)
 	end
 end
 
@@ -2363,6 +2742,10 @@ local ITEM_LOOK = {
 	key = { size = Vector3.new(0.15, 0.15, 1), color = Color3.fromRGB(190, 156, 88), mat = M.Metal },
 	hammer = { size = Vector3.new(0.2, 0.2, 1.6), color = Color3.fromRGB(112, 78, 52), mat = M.Wood },
 	meat = { size = Vector3.new(0.9, 0.5, 1.2), color = Color3.fromRGB(150, 40, 40), mat = M.SmoothPlastic },
+	pole = { size = Vector3.new(0.25, 0.25, 4.5), color = Color3.fromRGB(150, 110, 70), mat = M.Wood },
+	lens = { size = Vector3.new(1.2, 1.2, 0.12), color = Color3.fromRGB(200, 220, 230), mat = M.Glass },
+	coldkey = { size = Vector3.new(0.15, 0.15, 1), color = Color3.fromRGB(120, 170, 200), mat = M.Metal },
+	clockkey = { size = Vector3.new(1, 1, 0.3), color = Color3.fromRGB(24, 22, 22), mat = M.Metal },
 }
 
 local setFlash
@@ -2418,6 +2801,11 @@ local function makeTool(p: Player, item: string)
 		extra("Bow", Vector3.new(0.15, 0.5, 0.5), CFrame.new(0, 0, 0.6), Color3.fromRGB(190, 156, 88), M.Metal)
 	elseif item == "hammer" then
 		extra("Head", Vector3.new(0.9, 0.4, 0.4), CFrame.new(0, 0, -0.8), Color3.fromRGB(90, 92, 96), M.Metal)
+	elseif item == "pole" then
+		extra("Hook", Vector3.new(0.15, 0.6, 0.15), CFrame.new(0, 0.25, -2.2), Color3.fromRGB(70, 70, 74), M.Metal)
+	elseif item == "clockkey" then
+		extra("Rim", Vector3.new(1.1, 1.1, 0.2), CFrame.new(0, 0, 0.05), Color3.fromRGB(214, 170, 70), M.Metal)
+		extra("Dial", Vector3.new(0.8, 0.8, 0.05), CFrame.new(0, 0, -0.17), Color3.fromRGB(244, 236, 214), M.SmoothPlastic)
 	elseif item == "meat" then
 		extra("Bone", Vector3.new(0.2, 0.2, 1.9), CFrame.new(0, 0, 0), Color3.fromRGB(230, 224, 204), M.SmoothPlastic)
 	end
@@ -2638,6 +3026,13 @@ function G.use(p: Player, item: string)
 		if info and info.puzzle and not info.puzzle.solved and Entities.mimicNear(info, r.Position) and Rules.take(s.inv, "hammer") then
 			solveFigures(info)
 		end
+	elseif item == "meat" then
+		-- на арене мясо кладут на пол как приманку
+		local r = rootOf(p)
+		local info = r and roomOf(r.Position)
+		if not (info and info.arena and G.dropBait(p, info)) then
+			return
+		end
 	else
 		return
 	end
@@ -2658,7 +3053,7 @@ end
 local openDoor
 
 local function makeDoor(info, n: number, cf: CFrame, opts)
-	local m, leaves = Props.door(info.model, cf, opts.plate, opts.locked, opts.size)
+	local m, leaves = Props.door(info.model, cf, opts.plate, opts.locked, opts.size, opts.style)
 	local door = { model = m, leaves = leaves, number = n, locked = opts.locked, cf = cf, opened = false, decoy = opts.decoy, size = opts.size or "normal" }
 	if opts.locked and not opts.noPick then
 		local trig = Props.P(m, "LockTrigger", Vector3.new(1, 1, 1), cf * CFrame.new(1.2, 4.5, 0.6), Color3.new(0, 0, 0), M.SmoothPlastic, Props.nc({ Transparency = 1 }))
@@ -2896,6 +3291,7 @@ local function wireFigures(info)
 				puzzle.placed += 1
 				sound(socket.part, SOUND.pick, 0.9, 1 + puzzle.placed * 0.08)
 				if puzzle.placed &gt;= puzzle.n then
+					G.achieveAll("mimic_solved")
 					solveFigures(info)
 				end
 			else
@@ -2946,21 +3342,35 @@ local function keeperLeaves(t, fast: boolean)
 	end
 	local from = m:GetPivot()
 	local to = t.hole * CFrame.new(0, 0, 1.6) * CFrame.Angles(0, math.pi, 0)
-	local v = Instance.new("NumberValue")
-	v.Changed:Connect(function(a)
-		if m.Parent then
-			local cf = from:Lerp(to, a) * CFrame.new(0, math.abs(math.sin(a * math.pi * 5)) * 0.8, 0) * CFrame.Angles(0, 0, math.sin(a * math.pi * 6) * 0.25)
-			m:PivotTo(cf)
-			pcall(function()
-				m:ScaleTo(1 - a * 0.45)
-			end)
+	task.spawn(function()
+		if fast then
+			-- заметил Тьму: вздрагивает и отступает на шаг, потом торопливо уходит
+			for i = 1, 6 do
+				if not m.Parent then
+					return
+				end
+				m:PivotTo(from * CFrame.new(math.sin(i * 2.4) * 0.12, 0, 0.1 * i) * CFrame.Angles(0, 0, math.sin(i * 2.4) * 0.06))
+				task.wait(0.05)
+			end
+			from = m:GetPivot()
 		end
-	end)
-	local tw = TweenService:Create(v, TweenInfo.new(if fast then 0.9 else 1.6, Enum.EasingStyle.Sine), { Value = 1 })
-	tw:Play()
-	tw.Completed:Connect(function()
-		v:Destroy()
-		m:Destroy()
+		-- идёт ровно, без прыжков: лишь слегка покачивается с ноги на ногу
+		local dur = if fast then 1.1 else 2.2
+		local look = CFrame.lookAt(from.Position, Vector3.new(to.Position.X, from.Position.Y, to.Position.Z))
+		local t0 = os.clock()
+		while m.Parent do
+			local a = math.min(1, (os.clock() - t0) / dur)
+			local pos = from.Position:Lerp(to.Position, a)
+			local rot = if a &lt; 0.9 then look.Rotation else look.Rotation:Lerp(to.Rotation, (a - 0.9) / 0.1)
+			m:PivotTo(CFrame.new(pos) * rot * CFrame.Angles(0, 0, math.sin(a * math.pi * (if fast then 8 else 6)) * 0.05))
+			if a &gt;= 1 then
+				break
+			end
+			task.wait()
+		end
+		if m.Parent then
+			m:Destroy()
+		end
 	end)
 	sound(t.holePart, SOUND.pick, 0.7, 1.8)
 end
@@ -3007,6 +3417,7 @@ function G.pay(p: Player, how: string)
 	end
 	syncTools(p)
 	keeperLeaves(t, false)
+	G.achieve(p, "coin_paid")
 	return { ok = true }
 end
 
@@ -3104,52 +3515,317 @@ function G.eatBait(info)
 	end
 end
 
-function G.bossDead(info)
-	info.sealed = false
+-- Колосс повержен: из обломков выкатывается ключ-часы
+function G.bossDead(info, pos: Vector3?)
+	local a = info.arena
 	for _, p in G.alivePlayers() do
-		badge(p, "colossus_down")
+		G.achieve(p, "colossus_down")
 		give(p, "coins", 40)
 	end
 	G.sendAll({ type = "fx", kind = "calm" })
+	local at = pos or a.zone.Position
+	local cf = CFrame.new(Vector3.new(at.X, a.floorY + 0.1, at.Z))
+	local pm = Props.pickup(info.model, cf, "clockkey")
+	local _ = pm
+	wirePickups(info)
+end
+
+-- мясо можно положить где угодно на полу арены
+local function dropBait(p: Player, info): boolean
+	local a = info.arena
+	local r = rootOf(p)
+	local s = players[p]
+	if not r or not s then
+		return false
+	end
+	if r.Position.Y &gt; a.floorY + 6 then
+		-- с галереи мясо не бросить
+		toast(p, "BaitFloor")
+		return false
+	end
+	if not Rules.take(s.inv, "meat") then
+		return false
+	end
+	G.eatBait(info)
+	local pos = r.Position + r.CFrame.LookVector * 2.5
+	local cf = CFrame.new(Vector3.new(pos.X, a.floorY, pos.Z)) * CFrame.Angles(0, math.random() * 6, 0)
+	local mm = Props.model(info.model, "Bait")
+	Props.P(mm, "Meat", Vector3.new(1.6, 0.7, 1.1), cf * CFrame.new(0, 0.35, 0), Color3.fromRGB(150, 40, 40), M.SmoothPlastic, Props.nc())
+	Props.P(mm, "Bone", Vector3.new(2.3, 0.22, 0.22), cf * CFrame.new(0, 0.4, 0), Color3.fromRGB(230, 224, 204), M.SmoothPlastic, Props.nc())
+	a.meat = mm
+	sound(r, SOUND.slam, 0.4, 1.4)
+	Entities.bait(cf.Position + Vector3.new(0, 3, 0))
+	return true
+end
+G.dropBait = dropBait
+
+local function arenaHas(p: Player, item: string): boolean
+	local s = players[p]
+	return s ~= nil and s.alive and (s.inv[item] or 0) &gt; 0
+end
+
+-- люстра едет вверх или вниз (down: 0 — наверху, 1 — внизу)
+local function moveChandelier(info, toDown: number, time: number, style)
+	local ch = info.arena.chand
+	ch.busy = true
+	Special.drawBeam(info)
+	local v = Instance.new("NumberValue")
+	v.Value = ch.down or 0
+	v.Changed:Connect(function(x)
+		Special.placeChandelier(info, x)
+	end)
+	local t = TweenService:Create(v, TweenInfo.new(time, style or Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), { Value = toDown })
+	t:Play()
+	t.Completed:Wait()
+	v:Destroy()
+	ch.down = toDown
+	ch.up = toDown == 0
+	ch.busy = false
+	ch.slotPrompt.Enabled = toDown == 1 and ch.lens == nil
+	Special.drawBeam(info)
 end
 
 local function wireArena(info)
 	local a = info.arena
-	Special.drawBeam(info)
-	for _, mr in a.mirrors do
-		mr.glass:FindFirstChildOfClass("ProximityPrompt").Triggered:Connect(function(p)
-			if not G.isAlive(p) or mr.busy then
-				return
+	local A = Rules.ARENA
+	-- зеркала: держишь кнопку — зеркало плавно поворачивается; когда луч ловит
+	-- следующее зеркало или люстру, оно щёлкает и встаёт точно
+	for k, mr in a.mirrors do
+		for _, pr in mr.glass:GetChildren() do
+			if pr:IsA("ProximityPrompt") then
+				local dir = if pr.Name == "turnl" then 1 else -1
+				pr.PromptButtonHoldBegan:Connect(function(p)
+					if G.isAlive(p) and not mr.turning then
+						mr.turning = dir
+						mr.by = p
+						mr.noiseAt = 0
+					end
+				end)
+				pr.PromptButtonHoldEnded:Connect(function(p)
+					if mr.by == p then
+						mr.turning = nil
+						mr.by = nil
+					end
+				end)
 			end
-			mr.busy = true
-			local from = mr.state
-			mr.state = (mr.state + 1) % 4
-			local v = Instance.new("NumberValue")
-			v.Changed:Connect(function(x)
-				mr.head:PivotTo(mr.cf * CFrame.Angles(0, (from + x) * math.pi / 4, 0))
-			end)
-			local t = TweenService:Create(v, TweenInfo.new(0.35), { Value = 1 })
-			t:Play()
-			t.Completed:Connect(function()
-				v:Destroy()
-				mr.busy = false
-				Special.drawBeam(info)
-			end)
-			sound(mr.glass, SOUND.switch, 0.8)
-			Entities.noise(mr.cf.Position, 30)
-		end)
+		end
+		mr.k = k
 	end
-	a.plate:FindFirstChildOfClass("ProximityPrompt").Triggered:Connect(function(p)
+	local drawAt = 0
+	a.conn = RunService.Heartbeat:Connect(function(dt)
+		if not info.model.Parent then
+			a.conn:Disconnect()
+			return
+		end
+		local now = os.clock()
+		for k, mr in a.mirrors do
+			if mr.turning then
+				if not G.isAlive(mr.by) then
+					mr.turning = nil
+					continue
+				end
+				local before = #(a.chain or {})
+				mr.angle += mr.turning * math.rad(A.turn) * dt
+				Special.turnMirror(info, k)
+				if now - mr.noiseAt &gt; 1 then
+					mr.noiseAt = now
+					sound(mr.glass, SOUND.switch, 0.25, 0.5)
+					Entities.noise(mr.cf.Position, 22)
+				end
+				if now - drawAt &gt; 0.06 then
+					drawAt = now
+					local chain, hit = Special.drawBeam(info)
+					-- луч поймал что-то новое за этим зеркалом: щелчок и точная установка
+					local idx = table.find(chain, k)
+					if idx and (#chain &gt; before or hit) and (idx &lt; #chain or hit) then
+						local cur = {}
+						for j, m2 in a.mirrors do
+							cur[j] = m2.angle
+						end
+						local path = Rules.beam(cur)
+						-- нормаль = направление «наружу» минус направление «внутрь»
+						local pi_, po = path[idx], path[idx + 2]
+						local pm = path[idx + 1]
+						if pi_ and po and pm then
+							local ix, iz = pm.x - pi_.x, pm.z - pi_.z
+							local il = math.sqrt(ix * ix + iz * iz)
+							local ox, oz = po.x - pm.x, po.z - pm.z
+							local ol = math.sqrt(ox * ox + oz * oz)
+							mr.angle = math.atan2(oz / ol - iz / il, ox / ol - ix / il)
+							Special.turnMirror(info, k)
+							Special.drawBeam(info)
+						end
+						mr.turning = nil
+						sound(mr.glass, SOUND.locked, 1, 1.2)
+					end
+				end
+			end
+		end
+	end)
+	-- лебёдка: опустить/поднять люстру
+	a.drum:FindFirstChildOfClass("ProximityPrompt").Triggered:Connect(function(p)
+		local ch = a.chand
+		if not G.isAlive(p) or ch.busy or ch.fallen then
+			return
+		end
+		sound(a.drum, SOUND.switch, 1, 0.6)
+		Entities.noise(a.drum.Position, 30)
+		task.spawn(moveChandelier, info, if ch.up then 1 else 0, 5)
+	end)
+	-- зеркальце в люстру
+	a.chand.slotPrompt.Triggered:Connect(function(p)
+		local ch = a.chand
 		local s = players[p]
-		if not s or not s.alive or a.meat or not Rules.take(s.inv, "meat") then
+		if not s or not s.alive or ch.lens or not ch.down or ch.down &lt; 1 then
+			return
+		end
+		if not Rules.take(s.inv, "lens") then
+			toast(p, "NeedLens")
 			return
 		end
 		syncTools(p)
-		local mm = Props.model(info.model, "Bait")
-		Props.P(mm, "Meat", Vector3.new(1.6, 0.7, 1.1), a.plateCF * CFrame.new(0, 0.55, 0), Color3.fromRGB(150, 40, 40), M.SmoothPlastic, Props.nc())
-		Props.P(mm, "Bone", Vector3.new(2.3, 0.22, 0.22), a.plateCF * CFrame.new(0, 0.55, 0), Color3.fromRGB(230, 224, 204), M.SmoothPlastic, Props.nc())
-		a.meat = mm
-		Entities.bait(a.plateCF.Position + Vector3.new(0, 3, 0))
+		ch.lens = Props.C(ch.model, "Lens", 0.12, 2, ch.slot.CFrame, Color3.fromRGB(200, 220, 230), M.Glass, { Reflectance = 0.7, CanCollide = false })
+		ch.slot.Transparency = 0
+		ch.slotPrompt.Enabled = false
+		sound(ch.slot, SOUND.pick, 1)
+	end)
+	-- тормозной штырь высоко на стене: выбить длинным шестом
+	local pinPrompt = a.pin:FindFirstChildOfClass("ProximityPrompt")
+	pinPrompt.Triggered:Connect(function(p)
+		if not G.isAlive(p) or a.pinOut then
+			return
+		end
+		if not arenaHas(p, "pole") then
+			toast(p, "NeedPole")
+			return
+		end
+		local r = rootOf(p)
+		a.pinOut = true
+		pinPrompt.Enabled = false
+		-- шест поднимается от рук к штырю и выбивает его
+		local from = r.Position + Vector3.new(0, 1.5, 0)
+		local pole = Props.rod(info.model, "PoleSwing", from, from + (a.pin.Position - from).Unit * 2, 0.3, Props.WOOD, M.Wood, Props.nc())
+		local target = (a.pin.Position - from)
+		local steps = 12
+		for i = 1, steps do
+			local tip = from + target * (i / steps)
+			local len = (tip - from).Magnitude
+			pole.Size = Vector3.new(0.3, 0.3, len)
+			pole.CFrame = CFrame.lookAt((from + tip) / 2, tip)
+			task.wait(0.04)
+		end
+		sound(a.pin, SOUND.slam, 1.2, 1.3)
+		a.pin.Anchored = false
+		a.pin.CanCollide = true
+		a.pin.AssemblyLinearVelocity = Vector3.new(0, 6, 0) + (a.pin.Position - from).Unit * 8
+		Debris:AddItem(a.pin, 8)
+		task.wait(0.3)
+		pole:Destroy()
+		Entities.noise(a.pin.Position, 30)
+	end)
+	-- рычаг: сбросить люстру
+	a.lever:FindFirstChildOfClass("ProximityPrompt").Triggered:Connect(function(p)
+		local ch = a.chand
+		if not G.isAlive(p) or ch.busy or ch.fallen then
+			return
+		end
+		if not a.pinOut then
+			sound(a.lever, SOUND.locked, 1, 0.6)
+			toast(p, "BrakeHolds")
+			return
+		end
+		if not ch.up then
+			sound(a.lever, SOUND.locked, 1, 0.6)
+			return
+		end
+		a.lever.CFrame = a.lever.CFrame * CFrame.Angles(0, 0, math.rad(-50))
+		sound(a.drum, SOUND.slam, 1.4, 0.5)
+		task.spawn(function()
+			moveChandelier(info, 1.6, 0.7, Enum.EasingStyle.Quad)
+			ch.fallen = true
+			local pos = ch.pos
+			sound(a.spot, SOUND.slam, 2.2, 0.35)
+			G.sendAll({ type = "fx", kind = "shake" })
+			local hit = Entities.chandelierHit(Vector3.new(pos.X, a.floorY, pos.Z), A.drop)
+			if not hit then
+				-- мимо: грохот слышно во всём зале, люстру поднимает лебёдка
+				Entities.noise(pos, 200)
+				task.wait(7)
+				if info.model.Parent then
+					ch.fallen = false
+					moveChandelier(info, 0, 6)
+					a.lever.CFrame = a.lever.CFrame * CFrame.Angles(0, 0, math.rad(50))
+				end
+			end
+		end)
+	end)
+	-- холодильная камера: открывается ключом на 5 секунд и сама захлопывается
+	local cold = a.cold
+	cold.trigger:FindFirstChildOfClass("ProximityPrompt").Triggered:Connect(function(p)
+		if not G.isAlive(p) or cold.open then
+			return
+		end
+		if not arenaHas(p, "coldkey") then
+			sound(cold.trigger, SOUND.locked, 1, 0.8)
+			toast(p, "Locked")
+			return
+		end
+		cold.open = true
+		swing(cold, true, 0.8)
+		task.delay(A.coldOpen, function()
+			if info.model.Parent then
+				swing(cold, false, 0.5)
+				cold.open = false
+			end
+		end)
+	end)
+	-- механизм выхода: вставить ключ-часы и перевести стрелки как на остановленных часах
+	local mech = a.mech
+	local hourPr = mech.hourKnob:FindFirstChildOfClass("ProximityPrompt")
+	local minPr = mech.minuteKnob:FindFirstChildOfClass("ProximityPrompt")
+	mech.keyhole:FindFirstChildOfClass("ProximityPrompt").Triggered:Connect(function(p)
+		local s = players[p]
+		if not s or not s.alive or mech.inserted then
+			return
+		end
+		if not Rules.take(s.inv, "clockkey") then
+			sound(mech.keyhole, SOUND.locked, 1, 0.8)
+			toast(p, "NeedClockKey")
+			return
+		end
+		syncTools(p)
+		mech.inserted = true
+		Props.clockKey(info.model, mech.keyhole.CFrame * CFrame.new(0, 0, -0.5) * CFrame.Angles(math.pi / 2, 0, 0))
+		mech.keyhole:FindFirstChildOfClass("ProximityPrompt").Enabled = false
+		hourPr.Enabled = true
+		minPr.Enabled = true
+		sound(mech.keyhole, SOUND.switch, 1)
+	end)
+	local function step(hand: string)
+		if not mech.inserted or mech.done then
+			return
+		end
+		mech.h, mech.m = Rules.clockStep(mech.h, mech.m, hand)
+		Special.setMechHands(info)
+		sound(mech.keyhole, SOUND.switch, 0.6, 1.4)
+		if mech.h == a.clock.h and mech.m == a.clock.m then
+			mech.done = true
+			hourPr.Enabled = false
+			minPr.Enabled = false
+			sound(mech.keyhole, SOUND.pick, 1.2, 0.8)
+			info.sealed = false
+			G.sendAll({ type = "toast", key = "ClockOpen" })
+		end
+	end
+	hourPr.Triggered:Connect(function(p)
+		if G.isAlive(p) then
+			step("hour")
+		end
+	end)
+	minPr.Triggered:Connect(function(p)
+		if G.isAlive(p) then
+			step("minute")
+		end
 	end)
 end
 
@@ -3212,7 +3888,18 @@ local function buildRoom(n: number)
 	if d.kind ~= "final" then
 		local special = d.kind == "codehall"
 		local size = if d.kind == "lifthall" then "normal" else d.exitSize
-		info.door = makeDoor(info, n + 1, info.doorCF, { plate = Rules.plate(n + 1), locked = d.locked == true or special, size = size, noPick = special })
+		-- вид двери: служебные и технические — маленькие, стальные — в служебных и старых залах
+		local style = nil
+		if special then
+			style = "code"
+		elseif d.kind == "figures" then
+			style = "puzzle"
+		elseif size == "small" then
+			style = if n % 2 == 0 then "tech" else "service"
+		elseif size ~= "grand" and (d.kind == "storage" or d.kind == "tech" or d.kind == "mechanisms" or n % 5 == 0) then
+			style = "metal"
+		end
+		info.door = makeDoor(info, n + 1, info.doorCF, { plate = Rules.plate(n + 1), locked = d.locked == true or special, size = size, noPick = special, style = style })
 		info.decoys = {}
 		for _, cf in info.decoyCFs do
 			table.insert(info.decoys, makeDoor(info, n + 1, cf, { plate = Rules.plate(n + 1), decoy = true }))
@@ -3362,6 +4049,7 @@ function openDoor(n: number, force: boolean?)
 		G.sendAll({ type = "cutscene", kind = "boss", focus = entered.arena.spawn, model = model })
 		for _, p in G.alivePlayers() do
 			G.discover(p, "colossus")
+			G.achieve(p, "door50")
 		end
 		task.delay(5.5, Entities.wakeColossus)
 	elseif entered.desc.kind == "voidhall" then
@@ -3474,6 +4162,7 @@ function G.finale(p: Player)
 		return
 	end
 	openDoor(Rules.FINAL_ROOM, true)
+	G.achieveAll("door100")
 	local final = run.rooms[Rules.FINAL_ROOM]
 	G.sendAll({ type = "cutscene", kind = "final", door = info.doorCF })
 	task.wait(2.4)
@@ -3488,7 +4177,7 @@ function G.finale(p: Player)
 	task.wait(9)
 	for _, q in G.alivePlayers() do
 		Records.complete(q)
-		badge(q, "finale")
+		G.achieve(q, "finale")
 		send(q, { type = "tbc" })
 	end
 end
@@ -3630,6 +4319,29 @@ function G.startHere()
 	end
 end
 
+-- уйти группой в отдельный сервер забега
+local function goIn(group: { Player })
+	if RunService:IsStudio() then
+		G.startHere()
+		return
+	end
+	task.spawn(function()
+		local ok, err = pcall(function()
+			local code = TeleportService:ReserveServer(game.PlaceId)
+			local opts = Instance.new("TeleportOptions")
+			opts.ReservedServerAccessCode = code
+			TeleportService:TeleportAsync(game.PlaceId, group, opts)
+		end)
+		if not ok then
+			warn("[Museum] teleport: " .. tostring(err))
+			for _, p in group do
+				send(p, { type = "enterFailed" })
+				teleport(p, lobby.spawn)
+			end
+		end
+	end)
+end
+
 -- вход в музей из лобби: кто стоит во тьме за дверями три секунды, уходит в забег
 local enterAt = nil
 local function lobbyStep()
@@ -3666,25 +4378,7 @@ local function lobbyStep()
 	for i = 1, math.min(4, #inside) do
 		table.insert(group, inside[i])
 	end
-	if RunService:IsStudio() then
-		G.startHere()
-		return
-	end
-	task.spawn(function()
-		local ok, err = pcall(function()
-			local code = TeleportService:ReserveServer(game.PlaceId)
-			local opts = Instance.new("TeleportOptions")
-			opts.ReservedServerAccessCode = code
-			TeleportService:TeleportAsync(game.PlaceId, group, opts)
-		end)
-		if not ok then
-			warn("[Museum] teleport: " .. tostring(err))
-			for _, p in group do
-				send(p, { type = "enterFailed" })
-				teleport(p, lobby.spawn)
-			end
-		end
-	end)
+	goIn(group)
 end
 
 -- ---------------------------------------------------------------------------
@@ -3702,6 +4396,32 @@ function G.init()
 		startRun()
 	else
 		lobby = Special.lobby(world)
+		-- кнопка у приоткрытых дверей: войти сразу (вместе с теми, кто стоит рядом)
+		local going = false
+		lobby.enter.Triggered:Connect(function(p)
+			if going or not rootOf(p) then
+				return
+			end
+			going = true
+			local group = { p }
+			local door = lobby.enter.Parent.Position
+			for q in players do
+				local r = rootOf(q)
+				if q ~= p and r and #group &lt; 4 and (r.Position - door).Magnitude &lt; 16 then
+					table.insert(group, q)
+				end
+			end
+			for _, q in group do
+				send(q, { type = "enter" })
+			end
+			task.delay(1.2, function()
+				goIn(group)
+				going = false
+			end)
+		end)
+		lobby.ach.Triggered:Connect(function(p)
+			send(p, { type = "openAch" })
+		end)
 	end
 
 	local function added(p: Player)
@@ -3762,7 +4482,7 @@ function G.init()
 		elseif action == "Order" then
 			return G.order(p, arg)
 		elseif action == "Journal" then
-			return { ok = true, journal = Records.journal(p) }
+			return { ok = true, journal = Records.journal(p), ach = Records.achievements(p) }
 		elseif action == "Lobby" then
 			-- вернуться на улицу можно только после смерти или в конце локации
 			if not s.alive or run.done or G.mode == "lobby" then
@@ -3827,7 +4547,8 @@ function G.init()
 				end
 				for _, k in run.keepers do
 					if not k.paid and k.model.Parent then
-						k.model:PivotTo(k.base * CFrame.new(0, 0.3 + math.sin(t * 2.4) * 0.3, 0) * CFrame.Angles(0, 0, math.sin(t * 1.7) * 0.08))
+						-- стоит строго: едва заметно переносит вес и постукивает тростью
+						k.model:PivotTo(k.base * CFrame.Angles(0, 0, math.sin(t * 0.9) * 0.025))
 					end
 				end
 			end
@@ -3853,6 +4574,7 @@ local Records = {}
 local store = nil
 local best: { [number]: number } = {}
 local journal: { [number]: { [string]: boolean } } = {}
+local ach: { [number]: { [string]: boolean } } = {}
 
 local function key(userId: number): string
 	return "u_" .. userId
@@ -3884,6 +4606,7 @@ function Records.load(p: Player): number
 	local d = if ok and type(data) == "table" then data else {}
 	best[p.UserId] = if type(d.best) == "number" then d.best else 0
 	journal[p.UserId] = if type(d.journal) == "table" then d.journal else {}
+	ach[p.UserId] = if type(d.ach) == "table" then d.ach else {}
 	return best[p.UserId]
 end
 
@@ -3924,6 +4647,28 @@ function Records.discover(p: Player, id: string): boolean
 	return true
 end
 
+function Records.achievements(p: Player): { [string]: boolean }
+	return ach[p.UserId] or {}
+end
+
+-- новое достижение; true, если раньше его не было
+function Records.achieve(p: Player, id: string): boolean
+	local a = ach[p.UserId]
+	if not a then
+		a = {}
+		ach[p.UserId] = a
+	end
+	if a[id] then
+		return false
+	end
+	a[id] = true
+	update(p, function(o)
+		o.ach = if type(o.ach) == "table" then o.ach else {}
+		o.ach[id] = true
+	end)
+	return true
+end
+
 function Records.complete(p: Player)
 	update(p, function(o)
 		o.done = (tonumber(o.done) or 0) + 1
@@ -3933,6 +4678,7 @@ end
 function Records.forget(p: Player)
 	best[p.UserId] = nil
 	journal[p.UserId] = nil
+	ach[p.UserId] = nil
 end
 
 return Records
@@ -4123,11 +4869,15 @@ end
 -- Двери трёх размеров: служебная железная, обычная филёнчатая, парадная двустворчатая.
 -- cf — середина проёма на полу, LookVector — в следующий зал. Возвращает модель и створки
 Props.DOORS = { small = { w = 4, h = 7.5 }, normal = { w = 5, h = 8 }, grand = { w = 8, h = 11 } }
-function Props.door(parent, cf: CFrame, plate: string?, locked: boolean?, size: string?)
+-- style: wood — деревянная с филёнками, metal — стальная с заклёпками, service — служебная,
+-- tech — техническая с полосами и решёткой, code — стальная с кодовой панелью,
+-- puzzle — с четырьмя цветными гнёздами (зал с фигурками)
+function Props.door(parent, cf: CFrame, plate: string?, locked: boolean?, size: string?, style: string?)
 	local m = model(parent, "Door")
 	local kind = size or "normal"
 	local w, h = Props.DOORS[kind].w, Props.DOORS[kind].h
-	local metal = kind == "small"
+	style = style or (if kind == "small" then "service" else "wood")
+	local metal = kind == "small" or style == "metal" or style == "tech" or style == "service" or style == "code"
 	local trim = if metal then rgb(70, 74, 76) else Props.WOOD_DARK
 	local tmat = if metal then M.Metal else M.Wood
 	-- наличник заходит в проём на 0.1, чтобы его грани не совпадали с краями проёма
@@ -4136,7 +4886,7 @@ function Props.door(parent, cf: CFrame, plate: string?, locked: boolean?, size: 
 	end
 	P(m, "Head", Vector3.new(w + 1.2, 0.7, 1.5), cf * CFrame.new(0, h + 0.25, 0), trim, tmat)
 	P(m, "Cornice", Vector3.new(w + 1.8, 0.3, 1.7), cf * CFrame.new(0, h + 0.75, 0), trim, tmat)
-	local wood = if metal then rgb(96, 104, 106) elseif kind == "grand" then rgb(84, 52, 34) else Props.WOOD
+	local wood = if style == "tech" then rgb(120, 116, 96) elseif style == "metal" or style == "code" then rgb(78, 86, 92) elseif metal then rgb(96, 104, 106) elseif kind == "grand" then rgb(84, 52, 34) elseif style == "puzzle" then rgb(70, 44, 32) else Props.WOOD
 	local leaves = {}
 	local specs = if kind == "grand" then { { -1, (w - 0.3) / 2 - 0.04 }, { 1, (w - 0.3) / 2 - 0.04 } } else { { -1, w - 0.3 } }
 	for _, sp in specs do
@@ -4146,9 +4896,34 @@ function Props.door(parent, cf: CFrame, plate: string?, locked: boolean?, size: 
 		local cx = hinge - side * lw / 2
 		P(leaf, "Slab", Vector3.new(lw, h - 0.25, 0.3), cf * CFrame.new(cx, (h - 0.25) / 2 + 0.02, 0), wood, if metal then M.Metal else M.WoodPlanks)
 		for _, face in { -1, 1 } do
-			if metal then
+			if style == "tech" then
+				-- полосатый низ, окошко с решёткой, ручка-скоба
+				for k = 0, 3 do
+					P(leaf, "Stripe", Vector3.new(0.5, 1.2, 0.05), cf * CFrame.new(cx - lw / 2 + 0.6 + k * (lw - 1.2) / 3, 0.9, face * 0.175) * CFrame.Angles(0, 0, 0.6), if k % 2 == 0 then rgb(220, 180, 40) else rgb(30, 30, 30), M.SmoothPlastic, nc())
+				end
+				P(leaf, "Grate", Vector3.new(lw * 0.45, 1, 0.05), cf * CFrame.new(cx, h - 2, face * 0.175), rgb(20, 22, 24), M.DiamondPlate, nc())
+				P(leaf, "Grip", Vector3.new(0.2, 1.2, 0.2), cf * CFrame.new(cx - side * (lw / 2 - 0.45), 3.8, face * 0.3), rgb(40, 40, 42), M.Metal, nc())
+			elseif style == "metal" or style == "code" then
+				-- стальной лист: два пояса и ряды заклёпок, ручка-штанга
+				for _, y in { h * 0.3, h * 0.72 } do
+					P(leaf, "Band", Vector3.new(lw - 0.3, 0.35, 0.06), cf * CFrame.new(cx, y, face * 0.18), rgb(56, 62, 66), M.Metal, nc())
+					for k = 0, 4 do
+						S(leaf, "Rivet", 0.16, cf * CFrame.new(cx - lw / 2 + 0.4 + k * (lw - 0.8) / 4, y, face * 0.22), rgb(150, 150, 156), M.Metal, nc())
+					end
+				end
+				P(leaf, "Bar", Vector3.new(lw - 1.2, 0.2, 0.2), cf * CFrame.new(cx, 3.9, face * 0.32), rgb(170, 170, 176), M.Metal, nc())
+			elseif metal then
 				P(leaf, "Plate", Vector3.new(lw - 0.8, 1.4, 0.06), cf * CFrame.new(cx, h - 2, face * 0.18), rgb(60, 64, 66), M.DiamondPlate, nc())
 				P(leaf, "Bar", Vector3.new(lw - 1, 0.25, 0.25), cf * CFrame.new(cx, 4, face * 0.3), rgb(150, 150, 156), M.Metal, nc())
+			elseif style == "puzzle" then
+				-- четыре цветных гнезда по кругу: дверь откроется, когда фигурки встанут на места
+				local colors = { rgb(190, 50, 50), rgb(50, 90, 190), rgb(60, 160, 70), rgb(220, 190, 50) }
+				C(leaf, "Ring", 0.06, 2.2, cf * CFrame.new(cx, h * 0.55, face * 0.18) * CFrame.Angles(math.pi / 2, 0, 0), Props.BRASS, M.Metal, nc())
+				for k = 1, 4 do
+					local a = k / 4 * math.pi * 2
+					C(leaf, "Socket", 0.08, 0.5, cf * CFrame.new(cx + math.cos(a) * 0.75, h * 0.55 + math.sin(a) * 0.75, face * 0.2) * CFrame.Angles(math.pi / 2, 0, 0), colors[k], M.SmoothPlastic, nc())
+				end
+				S(leaf, "Knob", 0.45, cf * CFrame.new(cx - side * (lw / 2 - 0.5), 4.2, face * 0.44), Props.BRASS, M.Metal, nc())
 			else
 				for _, y in { h * 0.27, h * 0.7 } do
 					P(leaf, "Panel", Vector3.new(lw - 1.2, h * 0.3, 0.06), cf * CFrame.new(cx, y, face * 0.18), wood:Lerp(rgb(0, 0, 0), 0.2), M.Wood, nc())
@@ -4157,6 +4932,7 @@ function Props.door(parent, cf: CFrame, plate: string?, locked: boolean?, size: 
 				P(leaf, "Rose", Vector3.new(0.5, 0.9, 0.06), cf * CFrame.new(cx - side * (lw / 2 - 0.5), 4.1, face * 0.2), Props.BRASS, M.Metal, nc())
 			end
 		end
+		leaf:SetAttribute("KnobX", cx - side * (lw / 2 - 0.5))
 		leaf.WorldPivot = cf * CFrame.new(hinge, 0, 0)
 		leaf:SetAttribute("Dir", -side)
 		table.insert(leaves, leaf)
@@ -4179,7 +4955,25 @@ function Props.door(parent, cf: CFrame, plate: string?, locked: boolean?, size: 
 		t.Text = plate
 		t.Parent = gui
 	end
+	if style == "code" then
+		-- кодовая панель на наличнике
+		local pad = model(m, "CodeBox")
+		P(pad, "Box", Vector3.new(0.9, 1.4, 0.3), cf * CFrame.new(w / 2 + 0.25, 4.6, 0.9), rgb(40, 44, 46), M.Metal, nc())
+		for r = 0, 2 do
+			for q = 0, 2 do
+				P(pad, "Key", Vector3.new(0.18, 0.18, 0.06), cf * CFrame.new(w / 2 + 0.05 + q * 0.2, 4.95 - r * 0.24, 1.07), rgb(200, 200, 190), M.SmoothPlastic, nc())
+			end
+		end
+		P(pad, "Led", Vector3.new(0.5, 0.12, 0.06), cf * CFrame.new(w / 2 + 0.25, 5.15, 1.07), rgb(200, 40, 30), M.Neon, nc())
+	end
 	if locked then
+		-- латунная накладка с большой скважиной: сюда подходит ключ
+		local leaf = leaves[#leaves]
+		local kx = leaf:GetAttribute("KnobX") or 0
+		for _, face in { -1, 1 } do
+			P(leaf, "Escutcheon", Vector3.new(0.4, 0.8, 0.06), cf * CFrame.new(kx, 3.2, face * 0.2), Props.BRASS, M.Metal, nc())
+			P(leaf, "Keyhole", Vector3.new(0.14, 0.34, 0.06), cf * CFrame.new(kx, 3.15, face * 0.22), rgb(10, 10, 10), M.SmoothPlastic, nc())
+		end
 		local lock = model(m, "Padlock")
 		local lx = w / 2 - 0.9
 		P(lock, "Hasp", Vector3.new(0.9, 0.3, 0.1), cf * CFrame.new(lx, 5.3, 0.25), Props.IRON, M.Metal, nc())
@@ -4776,6 +5570,30 @@ function Props.pickup(parent, cf: CFrame, item: string)
 	elseif item == "lockpick" then
 		root = P(m, "Pick", Vector3.new(1.2, 0.08, 0.15), cf * CFrame.new(0, 0.05, 0), rgb(170, 170, 176), M.Metal)
 		P(m, "Grip", Vector3.new(0.4, 0.12, 0.3), cf * CFrame.new(-0.6, 0.07, 0), rgb(40, 40, 40), M.SmoothPlastic, nc())
+	elseif item == "pole" then
+		-- длинный шест с крюком: лежит на полу или прислонён
+		root = C(m, "Pole", 9, 0.3, cf * CFrame.new(0, 0.15, 0) * CFrame.Angles(0, 0, math.pi / 2), Props.WOOD, M.Wood)
+		P(m, "Hook", Vector3.new(0.2, 0.9, 0.2), cf * CFrame.new(4.6, 0.55, 0), Props.IRON, M.Metal, nc())
+		P(m, "HookTip", Vector3.new(0.6, 0.2, 0.26), cf * CFrame.new(4.35, 0.95, 0), Props.IRON, M.Metal, nc())
+	elseif item == "lens" then
+		root = C(m, "Lens", 0.2, 1.8, cf * CFrame.new(0, 0.12, 0), rgb(200, 220, 230), M.Glass, { Reflectance = 0.6 })
+		C(m, "Rim", 0.14, 2.06, cf * CFrame.new(0, 0.07, 0), Props.BRASS, M.Metal, nc())
+		local l = Instance.new("PointLight")
+		l.Range = 6
+		l.Brightness = 0.5
+		l.Color = rgb(200, 230, 255)
+		l.Parent = root
+	elseif item == "coldkey" then
+		root = P(m, "Key", Vector3.new(1.4, 0.14, 0.4), cf * CFrame.new(0, 0.08, 0), rgb(120, 170, 200), M.Metal)
+		C(m, "Tag", 0.08, 0.8, cf * CFrame.new(-0.95, 0.06, 0), rgb(200, 230, 255), M.SmoothPlastic, nc())
+		P(m, "Bit", Vector3.new(0.3, 0.12, 0.4), cf * CFrame.new(0.5, 0.08, 0.3), rgb(120, 170, 200), M.Metal, nc())
+		local l = Instance.new("PointLight")
+		l.Range = 6
+		l.Brightness = 0.7
+		l.Color = rgb(150, 210, 255)
+		l.Parent = root
+	elseif item == "clockkey" then
+		root = Props.clockKey(m, cf * CFrame.new(0, 0.3, 0))
 	else
 		-- стопка монет
 		root = C(m, "Coins", 0.3, 0.9, cf * CFrame.new(0, 0.15, 0), rgb(226, 186, 70), M.Metal)
@@ -4784,6 +5602,28 @@ function Props.pickup(parent, cf: CFrame, item: string)
 	root:SetAttribute("Item", item)
 	Props.prompt(root, "pick", 0, 7)
 	return m, root
+end
+
+-- ключ-часы: круглый чёрный корпус с золотым ободом, светлый циферблат, чёрные
+-- стрелки и деления; снизу бородка ключа. cf — центр, циферблат смотрит вверх
+function Props.clockKey(parent, cf: CFrame)
+	local body = C(parent, "ClockBody", 0.5, 1.6, cf, rgb(24, 22, 22), M.Metal)
+	C(parent, "Rim", 0.4, 1.8, cf * CFrame.new(0, -0.02, 0), rgb(214, 170, 70), M.Metal, nc())
+	C(parent, "Dial", 0.06, 1.3, cf * CFrame.new(0, 0.27, 0), rgb(244, 236, 214), M.SmoothPlastic, nc())
+	for k = 0, 11 do
+		local a = k / 12 * math.pi * 2
+		P(parent, "Mark", Vector3.new(0.05, 0.04, if k % 3 == 0 then 0.2 else 0.1), cf * CFrame.new(math.sin(a) * 0.52, 0.31, -math.cos(a) * 0.52) * CFrame.Angles(0, -a, 0), rgb(20, 20, 20), M.SmoothPlastic, nc())
+	end
+	P(parent, "HandH", Vector3.new(0.06, 0.04, 0.34), cf * CFrame.new(0.08, 0.33, -0.12) * CFrame.Angles(0, -0.6, 0), rgb(16, 16, 16), M.Metal, nc())
+	P(parent, "HandM", Vector3.new(0.04, 0.04, 0.5), cf * CFrame.new(-0.1, 0.34, -0.2) * CFrame.Angles(0, 0.5, 0), rgb(16, 16, 16), M.Metal, nc())
+	P(parent, "Stem", Vector3.new(0.2, 0.2, 1.1), cf * CFrame.new(0, 0, 1.3), rgb(214, 170, 70), M.Metal, nc())
+	P(parent, "Bit", Vector3.new(0.5, 0.16, 0.24), cf * CFrame.new(0.2, 0, 1.75), rgb(214, 170, 70), M.Metal, nc())
+	local l = Instance.new("PointLight")
+	l.Range = 8
+	l.Brightness = 0.8
+	l.Color = rgb(255, 220, 150)
+	l.Parent = body
+	return body
 end
 
 -- генератор для зала Слепого
@@ -4990,17 +5830,6 @@ function Props.statue(parent, cf: CFrame, kind: string, seed: number?)
 end
 
 -- ваза на тумбе
-function Props.vase(parent, cf: CFrame, seed: number)
-	local m = model(parent, "Vase")
-	local _, top = Props.plinth(m, cf, 1.8, 2.2)
-	local col = Color3.fromHSV(({ 0.58, 0.02, 0.1, 0.45, 0.75 })[seed % 5 + 1], 0.45, 0.6)
-	C(m, "FootRing", 0.3, 0.8, top * CFrame.new(0, 0.15, 0), col, M.SmoothPlastic, nc())
-	S(m, "Belly", 1.4, top * CFrame.new(0, 0.95, 0), col, M.SmoothPlastic, nc())
-	C(m, "Neck", 0.7, 0.55, top * CFrame.new(0, 1.85, 0), col, M.SmoothPlastic, nc())
-	C(m, "Rim", 0.12, 0.85, top * CFrame.new(0, 2.25, 0), col:Lerp(rgb(255, 255, 255), 0.3), M.SmoothPlastic, nc())
-	C(m, "Stripe", 0.1, 1.44, top * CFrame.new(0, 0.95, 0), rgb(236, 226, 200), M.SmoothPlastic, nc())
-	return m
-end
 
 -- доспех на стойке у стены
 function Props.armor(parent, cf: CFrame)
@@ -5189,6 +6018,284 @@ function Props.lampPost(parent, cf: CFrame)
 end
 
 
+-- ---------------------------------------------------------------------------
+-- новые залы: часы, музыка, археология, механизмы
+
+local DARKWOOD = rgb(58, 36, 24)
+
+-- циферблат: cf смотрит лицом вперёд (LookVector), r — радиус, h:m — время
+local function dialFace(m, cf: CFrame, r: number, h: number, mi: number, face: Color3?)
+	local flat = CFrame.Angles(math.pi / 2, 0, 0)
+	C(m, "DialRim", 0.12, r * 2 + 0.2, cf * CFrame.new(0, 0, -0.06) * flat, Props.BRASS, M.Metal, nc())
+	C(m, "Dial", 0.1, r * 2, cf * CFrame.new(0, 0, -0.1) * flat, face or rgb(240, 232, 210), M.SmoothPlastic, nc())
+	for k = 0, 11 do
+		local a = k / 12 * math.pi * 2
+		P(m, "Mark", Vector3.new(0.06, if k % 3 == 0 then r * 0.22 else r * 0.12, 0.04), cf * CFrame.Angles(0, 0, a) * CFrame.new(0, r * 0.8, -0.17), rgb(20, 20, 20), M.SmoothPlastic, nc())
+	end
+	local ha = ((h % 12) + mi / 60) / 12 * math.pi * 2
+	P(m, "HourHand", Vector3.new(r * 0.1, r * 0.5, 0.04), cf * CFrame.Angles(0, 0, ha) * CFrame.new(0, r * 0.25 - 0.05, -0.2), rgb(16, 16, 16), M.Metal, nc())
+	P(m, "MinuteHand", Vector3.new(r * 0.06, r * 0.78, 0.04), cf * CFrame.Angles(0, 0, mi / 60 * math.pi * 2) * CFrame.new(0, r * 0.39 - 0.05, -0.23), rgb(16, 16, 16), M.Metal, nc())
+end
+
+-- напольные часы у стены
+function Props.grandfatherClock(parent, cf: CFrame, seed: number)
+	local m = model(parent, "GrandfatherClock")
+	local wood = DARKWOOD:Lerp(rgb(110, 70, 40), (seed % 3) / 3)
+	local b = cf * CFrame.new(0, 0, -0.05 - 0.6)
+	P(m, "Plinth", Vector3.new(2.3, 0.6, 1.3), b * CFrame.new(0, 0.3, 0.05), wood, M.Wood)
+	P(m, "Trunk", Vector3.new(1.8, 4.6, 1.2), b * CFrame.new(0, 2.9, 0), wood, M.Wood)
+	P(m, "Hood", Vector3.new(2.2, 2.4, 1.24), b * CFrame.new(0, 6.4, 0.02), wood, M.Wood)
+	P(m, "Crown", Vector3.new(2.5, 0.4, 1.36), b * CFrame.new(0, 7.8, 0.06), wood:Lerp(rgb(0, 0, 0), 0.3), M.Wood, nc())
+	P(m, "Window", Vector3.new(1, 3, 0.05), b * CFrame.new(0, 3.1, -0.62), rgb(30, 26, 22), M.Glass, nc({ Transparency = 0.2 }))
+	P(m, "PendulumRod", Vector3.new(0.06, 2, 0.04), b * CFrame.new(0.1 * ((seed % 3) - 1), 3.6, -0.67), Props.BRASS, M.Metal, nc())
+	C(m, "Bob", 0.04, 0.6, b * CFrame.new(0.1 * ((seed % 3) - 1), 2.6, -0.67) * CFrame.Angles(math.pi / 2, 0, 0), Props.BRASS, M.Metal, nc())
+	dialFace(m, b * CFrame.new(0, 6.4, -0.6), 0.8, seed % 12, (seed * 7) % 60)
+	return m
+end
+
+-- часы на стене (cf — точка на стене, лицо в зал)
+function Props.wallClock(parent, cf: CFrame, r: number, seed: number)
+	local m = model(parent, "WallClock")
+	C(m, "Case", 0.24, r * 2 + 0.5, cf * CFrame.new(0, 0, -0.12) * CFrame.Angles(math.pi / 2, 0, 0), DARKWOOD, M.Wood, nc())
+	dialFace(m, cf * CFrame.new(0, 0, -0.2), r, seed % 12, (seed * 11) % 60)
+	return m
+end
+
+-- астрономические часы на тумбе посреди зала
+function Props.astroClock(parent, cf: CFrame, seed: number)
+	local m = model(parent, "AstroClock")
+	P(m, "Base", Vector3.new(3.4, 1, 3.4), cf * CFrame.new(0, 0.5, 0), rgb(80, 60, 40), M.Wood)
+	P(m, "Column", Vector3.new(2.2, 4, 2.2), cf * CFrame.new(0, 3, 0), rgb(96, 70, 46), M.Wood)
+	P(m, "Head", Vector3.new(3, 3, 3), cf * CFrame.new(0, 6.5, 0), rgb(70, 50, 34), M.Wood)
+	for k = 0, 3 do
+		local face = cf * CFrame.new(0, 6.5, 0) * CFrame.Angles(0, k * math.pi / 2, 0) * CFrame.new(0, 0, -1.5)
+		dialFace(m, face, 1.15, (seed + k * 3) % 12, (seed * 13 + k * 15) % 60, if k % 2 == 0 then rgb(30, 40, 80) else rgb(240, 232, 210))
+	end
+	S(m, "Dome", 2.6, cf * CFrame.new(0, 8.2, 0), Props.BRASS, M.Metal, nc())
+	S(m, "Star", 0.5, cf * CFrame.new(0, 9.7, 0), rgb(255, 214, 120), M.Neon, nc())
+	return m
+end
+
+-- виолончель или скрипка на подставке
+function Props.stringInstrument(parent, cf: CFrame, big: boolean)
+	local m = model(parent, "Instrument")
+	local k = if big then 1 else 0.55
+	local wood = rgb(140, 70, 30)
+	local body = cf * CFrame.new(0, 2.4 * k + 0.2, 0) * CFrame.Angles(-0.18, 0, 0)
+	local flat = CFrame.Angles(math.pi / 2, 0, 0)
+	C(m, "Lower", 0.6 * k, 2.2 * k, body * CFrame.new(0, -0.6 * k, 0) * flat, wood, M.Wood)
+	C(m, "Upper", 0.58 * k, 1.7 * k, body * CFrame.new(0, 0.9 * k, 0) * flat, wood, M.Wood)
+	P(m, "Waist", Vector3.new(1.3 * k, 0.8 * k, 0.56 * k), body * CFrame.new(0, 0.15 * k, 0), wood, M.Wood)
+	P(m, "Neck", Vector3.new(0.24 * k, 2.6 * k, 0.2 * k), body * CFrame.new(0, 2.8 * k, -0.18 * k), rgb(30, 22, 18), M.Wood, nc())
+	S(m, "Scroll", 0.4 * k, body * CFrame.new(0, 4.2 * k, -0.18 * k), wood, M.Wood, nc())
+	for s = -1, 1, 2 do
+		P(m, "Sound", Vector3.new(0.08, 0.6 * k, 0.04), body * CFrame.new(s * 0.4 * k, -0.2 * k, -0.33 * k), rgb(20, 14, 10), M.SmoothPlastic, nc())
+	end
+	P(m, "Strings", Vector3.new(0.16 * k, 4.2 * k, 0.03), body * CFrame.new(0, 1.2 * k, -0.34 * k), rgb(220, 220, 210), M.Metal, nc())
+	-- подставка-тренога
+	for a = 0, 2 do
+		local ang = a / 3 * math.pi * 2
+		rod(m, "Stand", (cf * CFrame.new(0, 1.2 * k, 0.2)).Position, (cf * CFrame.new(math.cos(ang) * 0.9, 0.02, math.sin(ang) * 0.9 + 0.2)).Position, 0.1, Props.IRON, M.Metal, nc())
+	end
+	return m
+end
+
+-- ударная установка
+function Props.drumKit(parent, cf: CFrame)
+	local m = model(parent, "Drums")
+	local red = rgb(150, 30, 34)
+	local side = CFrame.Angles(math.pi / 2, 0, 0)
+	C(m, "BassDrum", 1.4, 2.4, cf * CFrame.new(0, 1.2, 0) * side, red, M.SmoothPlastic)
+	C(m, "BassSkin", 1.44, 2.1, cf * CFrame.new(0, 1.2, 0) * side, rgb(236, 230, 214), M.Fabric, nc())
+	for i, p in { { -1.3, 2.9, -0.6, 1.2 }, { 1.3, 2.9, -0.6, 1.3 }, { 2.1, 1.4, 0.6, 1.6 } } do
+		C(m, "Tom", 0.9, p[4], cf * CFrame.new(p[1], p[2], p[3]), red, M.SmoothPlastic, nc())
+		C(m, "Skin", 0.94, p[4] - 0.12, cf * CFrame.new(p[1], p[2], p[3]), rgb(236, 230, 214), M.Fabric, nc())
+		rod(m, "Leg", (cf * CFrame.new(p[1], p[2] - 0.45, p[3])).Position, (cf * CFrame.new(p[1] * 1.1, 0, p[3] + 0.3)).Position, 0.08, Props.IRON, M.Metal, nc())
+		local _ = i
+	end
+	for _, x in { -2.4, 2.6 } do
+		rod(m, "CymbalStand", (cf * CFrame.new(x, 0, 0.4)).Position, (cf * CFrame.new(x, 4, 0.4)).Position, 0.08, Props.IRON, M.Metal, nc())
+		C(m, "Cymbal", 0.05, 1.8, cf * CFrame.new(x, 4.02, 0.4) * CFrame.Angles(0.15, 0, 0), Props.BRASS, M.Metal, nc())
+	end
+	C(m, "Stool", 0.4, 1.2, cf * CFrame.new(0, 1.8, 2.2), rgb(30, 30, 30), M.Fabric)
+	C(m, "StoolLeg", 1.6, 0.2, cf * CFrame.new(0, 0.8, 2.2), Props.IRON, M.Metal, nc())
+	return m
+end
+
+-- арфа
+function Props.harp(parent, cf: CFrame)
+	local m = model(parent, "Harp")
+	local gold = rgb(196, 156, 70)
+	P(m, "Base", Vector3.new(1.4, 0.4, 1), cf * CFrame.new(0, 0.2, 0), gold, M.Metal)
+	local p0 = (cf * CFrame.new(-1.6, 0.4, 0)).Position
+	local p1 = (cf * CFrame.new(-1.6, 6.4, 0)).Position
+	local p2 = (cf * CFrame.new(0.4, 5.6, 0)).Position
+	local p3 = (cf * CFrame.new(1.4, 5.0, 0)).Position
+	local p4 = (cf * CFrame.new(0.4, 0.4, 0)).Position
+	rod(m, "Pillar", p0, p1, 0.36, gold, M.Metal)
+	rod(m, "Neck", p1, p2, 0.3, gold, M.Metal, nc())
+	rod(m, "Neck", p2, p3, 0.3, gold, M.Metal, nc())
+	rod(m, "Soundboard", p4, p3, 0.6, rgb(150, 96, 50), M.Wood)
+	for k = 1, 9 do
+		local t = k / 10
+		local top = (cf * CFrame.new(-1.6 + t * 3, 6.3 - t * 1.3, 0)).Position
+		local bottom = p4:Lerp(p3, t * 0.92 + 0.04)
+		if top.Y &gt; bottom.Y + 0.4 then
+			rod(m, "String", bottom, top, 0.04, rgb(230, 226, 214), M.Metal, nc())
+		end
+	end
+	return m
+end
+
+-- граммофон на столике
+function Props.gramophone(parent, cf: CFrame)
+	local m = model(parent, "Gramophone")
+	for _, x in { -0.8, 0.8 } do
+		for _, z in { -0.8, 0.8 } do
+			P(m, "Leg", Vector3.new(0.2, 2.6, 0.2), cf * CFrame.new(x, 1.3, z), DARKWOOD, M.Wood, nc())
+		end
+	end
+	P(m, "Top", Vector3.new(2.2, 0.2, 2.2), cf * CFrame.new(0, 2.7, 0), DARKWOOD, M.Wood)
+	P(m, "Box", Vector3.new(1.6, 0.8, 1.6), cf * CFrame.new(0, 3.2, 0), rgb(90, 50, 30), M.Wood)
+	C(m, "Record", 0.06, 1.4, cf * CFrame.new(0, 3.63, 0), rgb(16, 16, 16), M.SmoothPlastic, nc())
+	C(m, "Label", 0.08, 0.4, cf * CFrame.new(0, 3.64, 0), rgb(170, 40, 40), M.SmoothPlastic, nc())
+	rod(m, "Arm", (cf * CFrame.new(0.7, 3.7, 0.6)).Position, (cf * CFrame.new(0.5, 4.6, 0.7)).Position, 0.12, Props.BRASS, M.Metal, nc())
+	-- раструб: всё шире к краю
+	local start = cf * CFrame.new(0.5, 4.7, 0.7)
+	for k = 0, 5 do
+		local d = 0.3 + k * k * 0.12
+		C(m, "Horn", 0.34, d, start * CFrame.Angles(math.rad(-50), 0, 0) * CFrame.new(0, k * 0.32, 0), Props.BRASS, M.Metal, nc())
+	end
+	return m
+end
+
+-- раскоп: дощатая рамка, песок, кости, черепки, сетка из бечёвки, инструменты
+function Props.digPit(parent, cf: CFrame, w: number, l: number, seed: number)
+	local m = model(parent, "DigPit")
+	P(m, "Sand", Vector3.new(w - 0.4, 0.3, l - 0.4), cf * CFrame.new(0, 0.15, 0), rgb(196, 170, 120), M.Sand)
+	for _, s in { -1, 1 } do
+		P(m, "Board", Vector3.new(0.4, 0.6, l), cf * CFrame.new(s * (w / 2 - 0.2), 0.3, 0), rgb(110, 80, 50), M.WoodPlanks)
+		P(m, "Board", Vector3.new(w - 0.8, 0.56, 0.4), cf * CFrame.new(0, 0.28, s * (l / 2 - 0.2)), rgb(110, 80, 50), M.WoodPlanks)
+	end
+	for k = 1, 3 do
+		rod(m, "Grid", (cf * CFrame.new(-w / 2 + 0.2, 0.62, -l / 2 + k * l / 4)).Position, (cf * CFrame.new(w / 2 - 0.2, 0.62, -l / 2 + k * l / 4)).Position, 0.04, rgb(220, 210, 180), M.Fabric, nc())
+		rod(m, "Grid", (cf * CFrame.new(-w / 2 + k * w / 4, 0.64, -l / 2 + 0.2)).Position, (cf * CFrame.new(-w / 2 + k * w / 4, 0.64, l / 2 - 0.2)).Position, 0.04, rgb(220, 210, 180), M.Fabric, nc())
+	end
+	local bone = rgb(226, 216, 190)
+	local r = Random.new(seed)
+	S(m, "Skull", 0.9, cf * CFrame.new(-w * 0.2, 0.45, -l * 0.15), bone, M.SmoothPlastic, nc())
+	for _ = 1, 6 do
+		local a = cf * CFrame.new(r:NextNumber(-w * 0.35, w * 0.35), 0.36, r:NextNumber(-l * 0.35, l * 0.35)) * CFrame.Angles(0, r:NextNumber(0, 3), 0)
+		P(m, "Bone", Vector3.new(0.22, 0.2, r:NextNumber(0.8, 1.8)), a, bone, M.SmoothPlastic, nc())
+	end
+	for _ = 1, 5 do
+		local a = cf * CFrame.new(r:NextNumber(-w * 0.35, w * 0.35), 0.33, r:NextNumber(-l * 0.35, l * 0.35)) * CFrame.Angles(r:NextNumber(-0.4, 0.4), r:NextNumber(0, 3), 0)
+		P(m, "Shard", Vector3.new(r:NextNumber(0.4, 0.8), 0.08, r:NextNumber(0.3, 0.6)), a, rgb(170, 90, 50), M.SmoothPlastic, nc())
+	end
+	-- совок и ведро у края
+	P(m, "Trowel", Vector3.new(0.5, 0.05, 0.8), cf * CFrame.new(w * 0.3, 0.33, l * 0.3) * CFrame.Angles(0, 0.6, 0), rgb(160, 160, 166), M.Metal, nc())
+	C(m, "Bucket", 0.9, 0.9, cf * CFrame.new(w / 2 + 0.9, 0.45, l * 0.3), rgb(120, 120, 126), M.Metal)
+	return m
+end
+
+-- каменная табличка с письменами
+function Props.tablet(parent, cf: CFrame, seed: number)
+	local m = model(parent, "Tablet")
+	P(m, "Stand", Vector3.new(2.6, 0.6, 1.2), cf * CFrame.new(0, 0.3, 0), rgb(70, 60, 50), M.Wood)
+	local slab = cf * CFrame.new(0, 2.3, 0) * CFrame.Angles(-0.08, 0, 0)
+	P(m, "Slab", Vector3.new(2.2, 3.4, 0.4), slab, rgb(150, 140, 120), M.Slate)
+	local r = Random.new(seed)
+	for k = 0, 6 do
+		P(m, "Glyphs", Vector3.new(r:NextNumber(0.8, 1.8), 0.12, 0.04), slab * CFrame.new(r:NextNumber(-0.2, 0.2), 1.3 - k * 0.42, -0.21), rgb(70, 64, 56), M.SmoothPlastic, nc())
+	end
+	P(m, "Crack", Vector3.new(0.06, 1.6, 0.06), slab * CFrame.new(0.7, -0.4, -0.2) * CFrame.Angles(0, 0, 0.5), rgb(40, 36, 30), M.SmoothPlastic, nc())
+	return m
+end
+
+-- большая шестерня на стене (cf — точка на стене, лицо в зал)
+function Props.bigGear(parent, cf: CFrame, r: number, seed: number)
+	local m = model(parent, "BigGear")
+	local col = Props.BRASS:Lerp(Props.IRON, (seed % 3) / 3)
+	local c = cf * CFrame.new(0, 0, -0.3) * CFrame.Angles(0, 0, (seed % 7) * 0.2)
+	local flat = CFrame.Angles(math.pi / 2, 0, 0)
+	C(m, "Disc", 0.4, r * 2, c * flat, col, M.Metal, nc())
+	local n = math.floor(r * 5)
+	for k = 0, n - 1 do
+		local a = k / n * math.pi * 2
+		P(m, "Tooth", Vector3.new(r * 0.28, 0.6, 0.36), c * CFrame.Angles(0, 0, a) * CFrame.new(0, r + 0.25, 0), col, M.Metal, nc())
+	end
+	C(m, "Hub", 0.6, r * 0.5, c * CFrame.new(0, 0, -0.1) * flat, col:Lerp(rgb(0, 0, 0), 0.3), M.Metal, nc())
+	for k = 0, 3 do
+		P(m, "Spoke", Vector3.new(0.3, r * 1.5, 0.46), c * CFrame.Angles(0, 0, k * math.pi / 4) * CFrame.new(0, 0, -0.02 - k * 0.012), col:Lerp(rgb(0, 0, 0), 0.15), M.Metal, nc())
+	end
+	return m
+end
+
+-- планетарий: солнце посередине и планеты на латунных кронштейнах
+function Props.orrery(parent, cf: CFrame, seed: number)
+	local m = model(parent, "Orrery")
+	C(m, "Base", 0.6, 3.4, cf * CFrame.new(0, 0.3, 0), rgb(70, 50, 34), M.Wood)
+	C(m, "Pole", 3.6, 0.3, cf * CFrame.new(0, 2.4, 0), Props.BRASS, M.Metal)
+	S(m, "Sun", 1.3, cf * CFrame.new(0, 4.6, 0), rgb(255, 196, 90), M.Neon, nc())
+	local colors = { rgb(150, 150, 160), rgb(210, 170, 110), rgb(60, 110, 190), rgb(190, 80, 50), rgb(200, 170, 130) }
+	for k = 1, 5 do
+		local a = (seed * 0.7 + k * 1.3) % (math.pi * 2)
+		local rr = 0.9 + k * 0.6
+		local y = 4.6 + (k % 2) * 0.3 - 0.15
+		local tip = (cf * CFrame.new(math.cos(a) * rr, y, math.sin(a) * rr)).Position
+		rod(m, "Arm", (cf * CFrame.new(0, y, 0)).Position, tip, 0.08, Props.BRASS, M.Metal, nc())
+		S(m, "Planet", 0.3 + k * 0.08, CFrame.new(tip + Vector3.new(0, 0.3, 0)), colors[k], M.SmoothPlastic, nc())
+	end
+	return m
+end
+
+-- маятник под потолком над розой ветров
+function Props.pendulum(parent, cf: CFrame, top: number)
+	local m = model(parent, "Pendulum")
+	rod(m, "Wire", (cf * CFrame.new(0, top - 0.1, 0)).Position, (cf * CFrame.new(0.6, 2.2, 0)).Position, 0.08, Props.IRON, M.Metal, nc())
+	S(m, "Bob", 1.4, cf * CFrame.new(0.62, 1.6, 0), Props.BRASS, M.Metal, nc())
+	C(m, "Rose", 0.08, 7, cf * CFrame.new(0, 0.04, 0), rgb(120, 100, 70), M.Marble, nc())
+	for k = 0, 7 do
+		P(m, "RoseRay", Vector3.new(0.2, 0.02, if k % 2 == 0 then 3.2 else 2), cf * CFrame.Angles(0, k * math.pi / 4, 0) * CFrame.new(0, 0.09 + k * 0.004, -(if k % 2 == 0 then 1.6 else 1)), rgb(60, 50, 40), M.SmoothPlastic, nc())
+	end
+	return m
+end
+
+-- ваза «с гончарного круга»: тонкие кольца по профилю, а не шар и не коробка
+local VASE_PROFILES = {
+	{ 0.62, 0.9, 1.3, 1.62, 1.75, 1.68, 1.42, 1.06, 0.72, 0.56, 0.52, 0.66, 0.8 }, -- амфора с ручками
+	{ 0.8, 1.15, 1.5, 1.74, 1.84, 1.8, 1.66, 1.42, 1.16, 0.98, 0.94, 1.04 }, -- пузатый кувшин
+	{ 0.56, 0.64, 0.78, 0.92, 1.02, 1.08, 1.06, 0.96, 0.8, 0.66, 0.58, 0.56, 0.62, 0.78 }, -- высокая узкая
+	{ 0.9, 1.3, 1.6, 1.76, 1.78, 1.7, 1.5, 1.2, 0.96 }, -- низкая чаша
+}
+function Props.vase(parent, cf: CFrame, seed: number)
+	local m = model(parent, "Vase")
+	local _, top = Props.plinth(m, cf, 1.8, 2.2)
+	local kind = seed % #VASE_PROFILES + 1
+	local prof = VASE_PROFILES[kind]
+	local col = Color3.fromHSV(({ 0.58, 0.02, 0.07, 0.45, 0.75, 0.1 })[seed % 6 + 1], 0.5, 0.62)
+	local band = if seed % 2 == 0 then rgb(236, 226, 200) else rgb(30, 26, 24)
+	local h = 0.22
+	for i, d in prof do
+		local isBand = i == math.floor(#prof * 0.4) or i == math.floor(#prof * 0.4) + 1
+		C(m, "Ring", h, d, top * CFrame.new(0, (i - 0.5) * h, 0), if isBand then band else col, M.SmoothPlastic, nc())
+	end
+	-- горлышко тёмное изнутри
+	local last = prof[#prof]
+	C(m, "Mouth", 0.03, last * 0.8, top * CFrame.new(0, #prof * h + 0.005, 0), rgb(24, 20, 18), M.SmoothPlastic, nc())
+	if kind == 1 then
+		for _, s in { -1, 1 } do
+			local a = (top * CFrame.new(s * 0.32, (#prof - 2.5) * h, 0)).Position
+			local b = (top * CFrame.new(s * 0.95, (#prof - 3.5) * h, 0)).Position
+			local c2 = (top * CFrame.new(s * 0.8, (#prof - 6.5) * h, 0)).Position
+			rod(m, "Handle", a, b, 0.12, col, M.SmoothPlastic, nc())
+			rod(m, "Handle", b, c2, 0.12, col, M.SmoothPlastic, nc())
+		end
+	end
+	return m
+end
+
+
 return Props
 </ProtectedString>
           </Properties>
@@ -5353,7 +6460,8 @@ local function shell(m, d, origin: CFrame, st, prevWall)
 		local rise = d.dy
 		local len = math.sqrt(16 * 16 + rise * rise)
 		local ang = math.atan2(rise, 16)
-		local ramp = P(m, "Ramp", Vector3.new(w - 2, 0.6, len), at(origin, 0, rise / 2 - 0.3, -20) * CFrame.Angles(ang, 0, 0), rgb(0, 0, 0), M.SmoothPlastic, { Transparency = 1, CastShadow = false })
+		local sw = d.stairW or w
+		local ramp = P(m, "Ramp", Vector3.new(sw - 2, 0.6, len), at(origin, 0, rise / 2 - 0.3, -20) * CFrame.Angles(ang, 0, 0), rgb(0, 0, 0), M.SmoothPlastic, { Transparency = 1, CastShadow = false })
 		local _ = ramp
 		local steps = 16
 		local bottom = math.min(0, rise)
@@ -5367,13 +6475,14 @@ local function shell(m, d, origin: CFrame, st, prevWall)
 				sh = topY - bottom
 			end
 			if sh &gt; 0.05 then
-				P(m, "Step", Vector3.new(w - 1.6, sh, 1), at(origin, 0, bottom + sh / 2 - 0.001, z0 - 0.5), st.floor:Lerp(rgb(0, 0, 0), 0.15), st.floorMat, nc())
+				P(m, "Step", Vector3.new(sw - 1.6, sh, 1), at(origin, 0, bottom + sh / 2 - 0.001, z0 - 0.5), st.floor:Lerp(rgb(0, 0, 0), 0.15), st.floorMat, nc())
 			end
 		end
 		-- перила вдоль ступеней
 		for _, sx in { -1, 1 } do
-			local a = at(origin, sx * (w / 2 - F - 0.4), 3.2, -12).Position
-			local b = at(origin, sx * (w / 2 - F - 0.4), d.dy + 3.2, -28).Position
+			local hx = if d.stairW then sw / 2 - 1.2 else w / 2 - F - 0.4
+			local a = at(origin, sx * hx, 3.2, -12).Position
+			local b = at(origin, sx * hx, d.dy + 3.2, -28).Position
 			Props.rod(m, "Handrail", a, b, 0.25, Props.WOOD_DARK, M.Wood, nc())
 		end
 	end
@@ -5915,6 +7024,80 @@ L.blank = function(c)
 	ceil(c, 0, -15)
 end
 
+-- зал часов: напольные часы вдоль одной стены, настенные на другой,
+-- астрономические часы не по центру
+L.clocks = function(c)
+	local d, o = c.d, c.origin
+	for k, z in { -7, -11, -15, -19 } do
+		Props.grandfatherClock(c.m, slotL(d, o, z), d.door + k)
+	end
+	Props.wallClock(c.m, slotR(d, o, -8) * CFrame.new(0, 8, F - 0.6), 1.4, d.door)
+	Props.wallClock(c.m, slotR(d, o, -14) * CFrame.new(0, 6.5, F - 0.6), 0.9, d.door + 3)
+	Props.wallClock(c.m, slotR(d, o, -13) * CFrame.new(0, 10, F - 0.6), 0.7, d.door + 5)
+	wallCase(c, 1, -21)
+	Props.astroClock(c.m, spot(d, o, 5, -19, 0.3), d.door)
+	case(c, -6, -26, 1, "clock")
+	hide(c, slotBack(d, o, -10))
+	hide(c, slotBack(d, o, 10))
+	ceil(c, -4, -10)
+	ceil(c, 4, -26)
+end
+
+-- музыкальный зал: рояль у стены, арфа, ударные, виолончель и скрипки, граммофон
+L.music = function(c)
+	local d, o = c.d, c.origin
+	Props.piano(c.m, slotL(d, o, -12))
+	Props.harp(c.m, spot(d, o, -8, -22, 0.4))
+	Props.rug(c.m, spot(d, o, 7, -12), 7, 6, rgb(70, 30, 40))
+	Props.drumKit(c.m, spot(d, o, 7, -12, math.pi))
+	Props.stringInstrument(c.m, spot(d, o, 9, -21, -0.3), true)
+	Props.stringInstrument(c.m, spot(d, o, 5, -23, 0.2), false)
+	Props.stringInstrument(c.m, spot(d, o, 12, -18, -0.5), false)
+	Props.gramophone(c.m, spot(d, o, -3, -27, 0.5))
+	wallCase(c, 1, -8)
+	painting(c, -1, -22, 8, 3, 2.4)
+	hide(c, slotBack(d, o, -10))
+	hide(c, slotBack(d, o, 10))
+	ceil(c, -6, -10)
+	ceil(c, 6, -24)
+	chandelier(c, 0, -17, 3)
+end
+
+-- археология: раскоп с костями, таблички с письменами, амфоры, стеллаж с находками
+L.archaeology = function(c)
+	local d, o = c.d, c.origin
+	Props.digPit(c.m, spot(d, o, -6, -22), 10, 12, d.door)
+	for k, z in { -10, -18, -26 } do
+		Props.tablet(c.m, spot(d, o, 12, z, math.pi / 2), d.door + k)
+	end
+	Props.vase(c.m, spot(d, o, -14, -9), d.door * 4)
+	Props.vase(c.m, spot(d, o, -12, -33), d.door * 4 + 1)
+	Props.rack(c.m, slotL(d, o, -9), 6, d.door)
+	case(c, 4, -34, 1, "skull")
+	case(c, 13, -33, 2, "mask")
+	hide(c, slotBack(d, o, -14))
+	hide(c, slotBack(d, o, 14))
+	ceil(c, -6, -22)
+	ceil(c, 10, -12)
+	ceil(c, 10, -32)
+end
+
+-- древние механизмы: шестерни на стенах, планетарий, маятник, верстак с ящиками
+L.mechanisms = function(c)
+	local d, o = c.d, c.origin
+	Props.bigGear(c.m, slotL(d, o, -10) * CFrame.new(0, 7, F - 0.6), 3, d.door)
+	Props.bigGear(c.m, slotL(d, o, -19) * CFrame.new(0, 4.5, F - 0.6), 2, d.door + 1)
+	Props.bigGear(c.m, slotR(d, o, -14) * CFrame.new(0, 8, F - 0.6), 3.6, d.door + 2)
+	Props.orrery(c.m, spot(d, o, -6, -24), d.door)
+	Props.pendulum(c.m, spot(d, o, 7, -20), c.info.top)
+	search(c, "desk", slotR(d, o, -24))
+	Props.crate(c.m, spot(d, o, 12, -6))
+	hide(c, slotBack(d, o, -12))
+	hide(c, slotBack(d, o, 12))
+	ceil(c, -5, -12)
+	ceil(c, 5, -28)
+end
+
 -- переход к залу Колосса: парадный коридор со статуями
 L.passage = function(c)
 	local d, o = c.d, c.origin
@@ -5957,6 +7140,32 @@ L.voidhall = function(c)
 		local slot = if k % 2 == 1 then slotL else slotR
 		local _, shade = Props.sconce(c.m, slot(d, o, z) * CFrame.new(0, 8, F - 0.6))
 		table.insert(c.info.lights, shade)
+	end
+	-- арки поперёк коридора: пилястры у стен и балка над головой, под открытой тьмой
+	local stone = rgb(150, 142, 128)
+	for z = -10, -(d.l - 8), -13 do
+		local ok = true
+		for _, g in d.gaps do
+			if math.abs(z - g.z) &lt; g.w / 2 + 2.5 then
+				ok = false
+			end
+		end
+		for _, bad in { -18, -52, -96, -134, -168, -66, -102 } do
+			if math.abs(z - bad) &lt; 3 then
+				ok = false
+			end
+		end
+		if ok then
+			for _, sx in { -1, 1 } do
+				P(c.m, "Pilaster", Vector3.new(0.9, d.h - 0.1, 1.6), at(o, sx * (d.w / 2 - 1.2), (d.h - 0.1) / 2, z), stone, M.Limestone)
+				P(c.m, "PilasterCap", Vector3.new(1.3, 0.5, 2), at(o, sx * (d.w / 2 - 1.3), d.h - 2.6, z), stone:Lerp(rgb(0, 0, 0), 0.15), M.Limestone, nc())
+			end
+			P(c.m, "ArchBeam", Vector3.new(d.w - 2.6, 1.2, 1.4), at(o, 0, d.h - 1.3, z), stone, M.Limestone, nc())
+			P(c.m, "Keystone", Vector3.new(1.2, 1.6, 1.6), at(o, 0, d.h - 1.25, z), stone:Lerp(rgb(255, 255, 255), 0.1), M.Limestone, nc())
+			for _, sx in { -1, 1 } do
+				P(c.m, "Haunch", Vector3.new(1.4, 1, 1.3), at(o, sx * (d.w / 2 - 2.3), d.h - 2.1, z) * CFrame.Angles(0, 0, sx * 0.7), stone, M.Limestone, nc())
+			end
+		end
 	end
 	-- чёрная оболочка далеко вокруг: в проломах и над головой только тьма
 	local shell = Props.model(c.m, "VoidShell")
@@ -6141,9 +7350,10 @@ end
 function Special.lobby(parent)
 	local m = Props.model(parent, "Lobby")
 	local stone = rgb(150, 146, 138)
-	P(m, "Ground", Vector3.new(240, 1, 240), CFrame.new(0, -0.5, -20), rgb(34, 52, 36), M.Grass)
-	P(m, "Path", Vector3.new(14, 0.2, 86), CFrame.new(0, 0.1, -11), rgb(110, 106, 100), M.Cobblestone)
-	P(m, "SidePath", Vector3.new(50, 0.2, 8), CFrame.new(32, 0.1, -30), rgb(110, 106, 100), M.Cobblestone)
+	local cobble = rgb(110, 106, 100)
+	local rnd = Random.new(7)
+	P(m, "Ground", Vector3.new(420, 1, 640), CFrame.new(20, -0.5, -170), rgb(34, 52, 36), M.Grass)
+	P(m, "Path", Vector3.new(14, 0.2, 86), CFrame.new(0, 0.1, -11), cobble, M.Cobblestone)
 	-- крыльцо с пологими ступенями (по ним идут без прыжка)
 	P(m, "Porch", Vector3.new(46, 1.6, 22), CFrame.new(0, 0.8, -71), stone, M.Marble)
 	for k = 0, 3 do
@@ -6151,9 +7361,21 @@ function Special.lobby(parent)
 	end
 	local rampLen = math.sqrt(6 * 6 + 1.6 * 1.6)
 	P(m, "StairRamp", Vector3.new(40, 0.4, rampLen), CFrame.new(0, 0.6, -57) * CFrame.Angles(math.atan2(1.6, 6), 0, 0), stone, M.Marble, { Transparency = 1, CastShadow = false })
-	-- фасад с проёмом, колоннами и фронтоном
+	-- большой фасад с проёмом, колоннами и фронтоном, за ним — корпус музея
 	Props.wall(m, CFrame.new(0, 1.6, -76), 130, 0, 44, 4, { { x = 0, w = 10, y = 0, h = 14 } }, rgb(128, 124, 116), M.Limestone, "Facade")
 	P(m, "FacadeBase", Vector3.new(130, 1.6, 4), CFrame.new(0, 0.8, -76.01), rgb(100, 96, 90), M.Limestone)
+	P(m, "MuseumBody", Vector3.new(126, 42, 60), CFrame.new(0, 22.6, -120), rgb(112, 108, 100), M.Limestone)
+	P(m, "MuseumRoof", Vector3.new(132, 2, 76), CFrame.new(0, 44.6, -114), rgb(70, 66, 62), M.Slate)
+	for _, sx in { -1, 1 } do
+		P(m, "MuseumSide", Vector3.new(2, 42, 12), CFrame.new(sx * 62, 22.6, -84), rgb(112, 108, 100), M.Limestone)
+		-- боковые крылья
+		P(m, "Wing", Vector3.new(30, 28, 50), CFrame.new(sx * 80, 14, -112), rgb(120, 116, 108), M.Limestone)
+		P(m, "WingRoof", Vector3.new(32, 1.6, 52), CFrame.new(sx * 80, 28.8, -112), rgb(70, 66, 62), M.Slate)
+		for k = 0, 2 do
+			P(m, "WingWindow", Vector3.new(5, 9, 0.2), CFrame.new(sx * (70 + k * 10), 13, -86.9), rgb(8, 10, 14), M.Glass, nc({ Reflectance = 0.2 }))
+		end
+	end
+	P(m, "Dome", Vector3.new(30, 30, 30), CFrame.new(0, 46, -122), rgb(96, 110, 104), M.Slate, { Shape = Enum.PartType.Ball })
 	for _, x in { -20, -13, -6, 6, 13, 20 } do
 		C(m, "Column", 26, 3, CFrame.new(x, 14.6, -63), rgb(200, 196, 186), M.Marble)
 		P(m, "ColumnBase", Vector3.new(3.8, 0.8, 3.8), CFrame.new(x, 2, -63), stone, M.Marble)
@@ -6165,7 +7387,7 @@ function Special.lobby(parent)
 	end
 	local sign = P(m, "Sign", Vector3.new(22, 2.4, 0.3), CFrame.new(0, 29.3, -59.84), rgb(60, 56, 52), M.Slate, nc())
 	surfaceText(sign, Enum.NormalId.Back, "MUSEUM", "MuseumSign", rgb(214, 190, 130), 20)
-	-- приоткрытые двери, за ними тьма
+	-- приоткрытые двери, за ними тьма; войти — кнопкой у порога
 	local floorIn = P(m, "Threshold", Vector3.new(12, 1.6, 8), CFrame.new(0, 0.8, -86), rgb(20, 20, 20), M.Slate)
 	local _ = floorIn
 	for _, s in { -1, 1 } do
@@ -6175,87 +7397,215 @@ function Special.lobby(parent)
 	P(m, "Dark", Vector3.new(14, 16, 1), CFrame.new(0, 9.6, -87.5), rgb(0, 0, 0), M.SmoothPlastic)
 	P(m, "DarkTop", Vector3.new(14, 1, 10), CFrame.new(0, 17.5, -83), rgb(0, 0, 0), M.SmoothPlastic, nc())
 	local zone = P(m, "EnterZone", Vector3.new(9, 12, 6), CFrame.new(0, 7.6, -82), rgb(0, 0, 0), M.SmoothPlastic, ghost())
+	local enter = P(m, "EnterDoor", Vector3.new(8, 8, 1), CFrame.new(0, 6, -76.5), rgb(0, 0, 0), M.SmoothPlastic, ghost())
+	local enterPrompt = Props.prompt(enter, "enter", 0.6, 10)
 	-- тёмные окна фасада
 	for _, x in { -52, -38, 38, 52 } do
 		P(m, "Window", Vector3.new(6, 12, 0.2), CFrame.new(x, 16, -73.88), rgb(8, 10, 14), M.Glass, nc({ Reflectance = 0.2 }))
 		P(m, "WindowSill", Vector3.new(7.4, 0.6, 1), CFrame.new(x, 9.7, -73.6), stone, M.Marble, nc())
 		P(m, "WindowHead", Vector3.new(7.4, 0.8, 0.8), CFrame.new(x, 22.4, -73.7), stone, M.Marble, nc())
 	end
-	-- второй вход по тропинке: бесконечный режим (пока закрыт)
-	P(m, "Annex", Vector3.new(4, 20, 26), CFrame.new(60, 10, -30), rgb(118, 114, 108), M.Limestone)
-	P(m, "AnnexDoor", Vector3.new(0.3, 9, 6), CFrame.new(57.9, 4.6, -30), rgb(30, 22, 18), M.WoodPlanks, nc())
-	for k = -1, 1 do
-		P(m, "Board", Vector3.new(0.2, 0.9, 8), CFrame.new(57.7, 4.6 + k * 2.4, -30) * CFrame.Angles(k * 0.25, 0, 0), rgb(96, 70, 44), M.WoodPlanks, nc())
-	end
-	local soon = P(m, "SoonSign", Vector3.new(0.3, 3, 12), CFrame.new(57.8, 12.5, -30), rgb(40, 30, 24), M.Wood, nc())
-	surfaceText(soon, Enum.NormalId.Left, "", "EndlessSoon", rgb(226, 200, 140), 20)
-	-- деревья кольцом закрывают улицу
-	local k = 0
-	for a = 0, 35 do
-		local ang = math.rad(a * 10)
-		for ring = 0, 1 do
-			local r = 82 + ring * 16 + (a % 3) * 4
-			local x, z = math.sin(ang) * r, -20 + math.cos(ang) * r
-			if not (z &lt; -52 and math.abs(x) &lt; 70) and not (x &gt; 50 and math.abs(z + 30) &lt; 18) then
-				k += 1
-				Props.tree(m, CFrame.new(x, 0, z), 14 + (k % 4) * 3, k)
-			end
+	-- клумбы у крыльца
+	for _, sx in { -1, 1 } do
+		P(m, "FlowerBed", Vector3.new(12, 0.8, 5), CFrame.new(sx * 16, 0.4, -50), stone, M.Marble)
+		P(m, "Soil", Vector3.new(11, 0.2, 4), CFrame.new(sx * 16, 0.85, -50), rgb(60, 40, 28), M.Ground, nc())
+		for k = 0, 6 do
+			S(m, "Flower", 0.7, CFrame.new(sx * 16 - 4.5 + k * 1.5, 1.3, -50 + (k % 2) - 0.5), ({ rgb(190, 60, 70), rgb(220, 200, 90), rgb(200, 120, 180) })[k % 3 + 1], M.SmoothPlastic, nc())
 		end
 	end
-	for _, p in { { -30, -40 }, { 30, -44 }, { -44, -10 }, { 42, 6 }, { -24, 30 }, { 26, 36 } } do
-		k += 1
-		Props.tree(m, CFrame.new(p[1], 0, p[2]), 13 + (k % 3) * 3, k)
+
+	-- длинная извилистая тропа через деревья ко второму входу ----------------------
+	local trail = { { 7, 8 }, { 22, 14 }, { 36, 6 }, { 44, -10 }, { 60, -18 }, { 76, -8 }, { 92, -16 }, { 100, -34 }, { 112, -46 }, { 129, -50 } }
+	local function nearTrail(x: number, z: number, r: number): boolean
+		for i = 1, #trail - 1 do
+			local a, b = trail[i], trail[i + 1]
+			local dx, dz = b[1] - a[1], b[2] - a[2]
+			local t = math.clamp(((x - a[1]) * dx + (z - a[2]) * dz) / (dx * dx + dz * dz), 0, 1)
+			local px, pz = a[1] + dx * t - x, a[2] + dz * t - z
+			if px * px + pz * pz &lt; r * r then
+				return true
+			end
+		end
+		return false
 	end
+	for i = 1, #trail - 1 do
+		local a = Vector3.new(trail[i][1], 0.1, trail[i][2])
+		local b = Vector3.new(trail[i + 1][1], 0.1, trail[i + 1][2])
+		local len = (b - a).Magnitude
+		P(m, "Trail", Vector3.new(6, 0.2 + (i % 2) * 0.02, len), CFrame.lookAt((a + b) / 2, b), cobble:Lerp(rgb(80, 70, 56), 0.3), M.Cobblestone, nc())
+		if i &gt; 1 then
+			C(m, "TrailBend", 0.2 + ((i + 1) % 2) * 0.02 + 0.01, 6, CFrame.new(a), cobble:Lerp(rgb(80, 70, 56), 0.3), M.Cobblestone, nc())
+		end
+		if i % 2 == 0 then
+			local dir = (b - a).Unit
+			local side = Vector3.new(-dir.Z, 0, dir.X) * 4.6
+			Props.lampPost(m, CFrame.new(a + side + Vector3.new(0, -0.1, 0)))
+		end
+	end
+
+	-- бесконечный фасад: одно и то же крыло повторяется и уходит вдаль --------------
+	local FX = 134
+	local endless = Props.model(m, "EndlessWing")
+	local wallC, trim = rgb(118, 114, 108), rgb(150, 146, 138)
+	local MOD = 12
+	for k = 0, 40 do
+		local z = 60 - k * MOD
+		local cz = z - MOD / 2
+		local isDoor = math.abs(cz - (-50)) &lt; MOD / 2
+		local front = FX - 2
+		if isDoor then
+			Props.wall(endless, CFrame.new(FX, 0, cz) * CFrame.Angles(0, math.pi / 2, 0), MOD, 0, 30, 4, { { x = 0, w = 6, y = 0, h = 9 } }, wallC, M.Limestone, "EndlessWall")
+		else
+			P(endless, "EndlessWall", Vector3.new(4, 30, MOD), CFrame.new(FX, 15, cz), wallC, M.Limestone)
+			P(endless, "EndlessWindow", Vector3.new(0.2, 10, 5), CFrame.new(front - 0.08, 13, cz), rgb(10, 12, 16), M.Glass, nc({ Reflectance = 0.15 }))
+			P(endless, "EndlessSill", Vector3.new(1, 0.5, 6), CFrame.new(front - 0.4, 7.8, cz), trim, M.Marble, nc())
+		end
+		C(endless, "EndlessColumn", 28, 2.4, CFrame.new(front - 1.4, 14, z), rgb(196, 192, 182), M.Marble)
+		P(endless, "EndlessCornice", Vector3.new(3, 1.4, MOD), CFrame.new(front - 0.5, 30.4, cz), trim, M.Marble, nc())
+		P(endless, "EndlessRoof", Vector3.new(16, 1.4, MOD), CFrame.new(FX + 6, 31.2, cz), rgb(70, 66, 62), M.Slate, nc())
+	end
+	-- заколоченная дверь и вывеска «скоро»
+	P(endless, "EndlessDoor", Vector3.new(0.4, 9, 6), CFrame.new(FX + 1.5, 4.5, -50), rgb(30, 22, 18), M.WoodPlanks, nc())
+	for k = -1, 1 do
+		P(endless, "Board", Vector3.new(0.3, 0.9, 8), CFrame.new(FX - 2.3, 4.6 + k * 2.4, -50) * CFrame.Angles(k * 0.25, 0, 0), rgb(96, 70, 44), M.WoodPlanks, nc())
+	end
+	local soon = P(endless, "SoonSign", Vector3.new(0.3, 4, 16), CFrame.new(FX - 2.3, 13, -50), rgb(40, 30, 24), M.Wood, nc())
+	surfaceText(soon, Enum.NormalId.Left, "", "EndlessSoon", rgb(226, 200, 140), 20)
+
+	-- доска достижений у дорожки
+	local board = P(m, "AchBoard", Vector3.new(0.4, 5, 7), CFrame.new(-11.5, 3.6, 16), rgb(56, 40, 28), M.Wood)
+	for _, dz in { -3, 3 } do
+		P(m, "AchPost", Vector3.new(0.5, 6.2, 0.5), CFrame.new(-11.5, 3.1, 16 + dz), rgb(46, 32, 22), M.Wood, nc())
+	end
+	surfaceText(board, Enum.NormalId.Right, "", "Achievements", rgb(230, 196, 120), 30)
+	local achPrompt = Props.prompt(board, "ach", 0, 9)
+
+	-- фонари вдоль главной дорожки, скамейки
 	for _, z in { 24, 4, -16, -40 } do
 		Props.lampPost(m, CFrame.new(-9.5, 0, z))
 		Props.lampPost(m, CFrame.new(9.5, 0, z))
 	end
-	Props.lampPost(m, CFrame.new(40, 0, -35.5))
 	Props.bench(m, CFrame.new(-8.5, 0, -6) * CFrame.Angles(0, -math.pi / 2, 0), 7)
 	Props.bench(m, CFrame.new(8.5, 0, -26) * CFrame.Angles(0, math.pi / 2, 0), 7)
-	-- невидимая ограда за деревьями
-	for _, w in { { 0, 70, 220, 2 }, { -108, -20, 2, 220 }, { 108, -20, 2, 220 } } do
+
+	-- деревья разных размеров, кусты и трава — вразброс, но не на дорожках -------------
+	local function free(x: number, z: number, r: number): boolean
+		if math.abs(x) &lt; 12 + r and z &gt; -60 and z &lt; 40 then
+			return false -- главная дорожка
+		end
+		if z &lt; -44 - r and math.abs(x) &lt; 98 then
+			return false -- крыльцо и корпус
+		end
+		if x &gt; FX - 8 - r then
+			return false -- бесконечное крыло
+		end
+		if nearTrail(x, z, 5 + r) then
+			return false
+		end
+		if math.abs(x + 11.5) &lt; 3 + r and math.abs(z - 16) &lt; 6 + r then
+			return false -- доска
+		end
+		return true
+	end
+	local k = 0
+	local tries = 0
+	while k &lt; 120 and tries &lt; 2000 do
+		tries += 1
+		local x, z = rnd:NextNumber(-104, 128), rnd:NextNumber(-126, 58)
+		if free(x, z, 3) then
+			k += 1
+			Props.tree(m, CFrame.new(x, 0, z) * CFrame.Angles(0, rnd:NextNumber(0, 6.28), 0), rnd:NextInteger(8, 24), k)
+		end
+	end
+	local bushes = 0
+	tries = 0
+	while bushes &lt; 70 and tries &lt; 2000 do
+		tries += 1
+		local x, z = rnd:NextNumber(-100, 126), rnd:NextNumber(-120, 56)
+		if free(x, z, 1) then
+			bushes += 1
+			local g = rgb(30, 64, 34):Lerp(rgb(48, 84, 40), rnd:NextNumber())
+			local s1 = rnd:NextNumber(2.4, 4.2)
+			S(m, "Bush", s1, CFrame.new(x, s1 * 0.3, z), g, M.Grass, nc())
+			S(m, "Bush", s1 * 0.7, CFrame.new(x + s1 * 0.4, s1 * 0.22, z - s1 * 0.2), g, M.Grass, nc())
+		end
+	end
+	-- пучки высокой травы у дорожек
+	for i = 1, 90 do
+		local x, z = rnd:NextNumber(-60, 120), rnd:NextNumber(-70, 50)
+		if free(x, z, 0.5) or (math.abs(x) &gt; 8 and math.abs(x) &lt; 14 and z &gt; -50 and z &lt; 30) then
+			local h = rnd:NextNumber(0.8, 1.8)
+			P(m, "Grass", Vector3.new(0.6, h, 0.1), CFrame.new(x, h / 2, z) * CFrame.Angles(rnd:NextNumber(-0.3, 0.3), rnd:NextNumber(0, 3), 0), rgb(50, 90, 44), M.Grass, nc({ CastShadow = false }))
+			local _ = i
+		end
+	end
+
+	-- округа за оградой: тёмные дома, деревья, всё уходит дальше ----------------------
+	for i, h in { { -150, 40, 26 }, { -160, -10, 34 }, { -146, -70, 22 }, { -40, 110, 30 }, { 30, 118, 24 }, { 90, 106, 36 } } do
+		P(m, "FarHouse", Vector3.new(24, h[3], 20), CFrame.new(h[1], h[3] / 2, h[2]), rgb(52, 50, 54), M.Concrete, nc())
+		P(m, "FarRoof", Vector3.new(26, 2, 22), CFrame.new(h[1], h[3] + 1, h[2]), rgb(36, 34, 38), M.Slate, nc())
+		P(m, "FarWindow", Vector3.new(3, 4, 0.2), CFrame.new(h[1] + 4, h[3] * 0.6, h[2] + (if h[2] &gt; 0 then -10.05 else 10.05)), rgb(255, 196, 120), M.Neon, nc({ Transparency = if i % 2 == 0 then 0.2 else 0.7 }))
+	end
+	for i = 1, 30 do
+		local a = rnd:NextNumber(0, math.pi * 2)
+		local r = rnd:NextNumber(130, 175)
+		local x, z = math.cos(a) * r + 10, math.sin(a) * r - 30
+		if x &lt; FX - 10 then
+			Props.tree(m, CFrame.new(x, 0, z), rnd:NextInteger(14, 26), 200 + i)
+		end
+	end
+	-- невидимая ограда вокруг улицы
+	for _, w in { { 10, 62, 244, 2 }, { -110, -20, 2, 166 }, { -86, -102, 50, 2 }, { 96, -130, 72, 2 }, { 131, 60, 2, 6 } } do
 		P(m, "Fence", Vector3.new(w[3], 60, w[4]), CFrame.new(w[1], 30, w[2]), rgb(0, 0, 0), M.SmoothPlastic, { Transparency = 1, CastShadow = false })
 	end
-	return { model = m, zone = zone, spawn = CFrame.new(0, 3.2, 28) }
+	return { model = m, zone = zone, enter = enterPrompt, ach = achPrompt, spawn = CFrame.new(0, 3.2, 28) }
 end
 
 -- ---------------------------------------------------------------------------
 -- Монетчик: золотая монета с усами. Стоит перед дверью; рядом в стене его норка
 
 function Special.coinKeeper(parent, cf: CFrame, price: number, holeCF: CFrame)
+	-- небольшая золотая монета на тонких ножках: без глаз, с пышными усами и тростью,
+	-- которую он никогда не выпускает; держится строго и почти не двигается
 	local m = Props.model(parent, "CoinKeeper")
 	local gold, dark = rgb(222, 180, 66), rgb(160, 120, 36)
-	local face = cf * CFrame.new(0, 3.4, 0)
+	local face = cf * CFrame.new(0, 2.75, 0)
 	local flatR = CFrame.Angles(math.pi / 2, 0, 0)
-	C(m, "Rim", 0.5, 4.6, face * flatR, dark, M.Metal)
-	C(m, "Face", 0.7, 3.9, face * flatR, gold, M.Metal, nc())
-	for k = 0, 19 do
-		P(m, "Mill", Vector3.new(0.25, 0.3, 0.42), face * CFrame.Angles(0, 0, k * math.pi / 10) * CFrame.new(0, 2.32, 0), dark, M.Metal, nc())
+	C(m, "Rim", 0.4, 2.9, face * flatR, dark, M.Metal)
+	C(m, "Face", 0.56, 2.5, face * flatR, gold, M.Metal, nc())
+	for k = 0, 15 do
+		P(m, "Mill", Vector3.new(0.2, 0.24, 0.34), face * CFrame.Angles(0, 0, k * math.pi / 8) * CFrame.new(0, 1.46, 0), dark, M.Metal, nc())
 	end
-	for _, x in { -0.75, 0.75 } do
-		C(m, "Eye", 0.12, 0.6, face * CFrame.new(x, 0.6, -0.38) * flatR, rgb(250, 246, 230), M.SmoothPlastic, nc())
-		S(m, "Pupil", 0.26, face * CFrame.new(x, 0.55, -0.46), rgb(20, 14, 8), M.SmoothPlastic, nc())
-		P(m, "Brow", Vector3.new(0.9, 0.16, 0.12), face * CFrame.new(x, 1.1, -0.4) * CFrame.Angles(0, 0, if x &lt; 0 then -0.3 else 0.3), dark, M.Metal, nc())
-		-- усы: от носа в сторону и вверх завитком
-		local a = (face * CFrame.new(x * 0.2, -0.25, -0.42)).Position
-		local b = (face * CFrame.new(x * 1.3, -0.5, -0.42)).Position
-		local c = (face * CFrame.new(x * 1.9, -0.05, -0.42)).Position
-		Props.rod(m, "Moustache", a, b, 0.22, rgb(40, 28, 16), M.SmoothPlastic, nc())
-		Props.rod(m, "Moustache", b, c, 0.16, rgb(40, 28, 16), M.SmoothPlastic, nc())
-		S(m, "Curl", 0.26, CFrame.new(c), rgb(40, 28, 16), M.SmoothPlastic, nc())
-		-- ручки и ножки
-		local sh = (face * CFrame.new(x * 2.9, -0.2, 0)).Position
-		local hand = (face * CFrame.new(x * 3.7, -1.2, -0.4)).Position
-		Props.rod(m, "Arm", sh, hand, 0.2, dark, M.Metal, nc())
-		S(m, "Hand", 0.45, CFrame.new(hand), gold, M.Metal, nc())
-		local hip = (face * CFrame.new(x * 0.9, -2.1, 0)).Position
-		local foot = (face * CFrame.new(x * 1, -3.25, 0)).Position
-		Props.rod(m, "Leg", hip, foot, 0.22, dark, M.Metal, nc())
-		P(m, "Shoe", Vector3.new(0.6, 0.3, 0.9), CFrame.new(foot) * cf.Rotation * CFrame.new(0, 0, -0.2), rgb(40, 28, 16), M.SmoothPlastic, nc())
+	-- выпуклый профиль носа и усы — единственное «лицо»
+	P(m, "Nose", Vector3.new(0.3, 0.6, 0.2), face * CFrame.new(0, 0.2, -0.36), dark, M.Metal, nc())
+	for _, x in { -1, 1 } do
+		local a = (face * CFrame.new(x * 0.12, -0.2, -0.36)).Position
+		local b = (face * CFrame.new(x * 0.8, -0.38, -0.38)).Position
+		local c = (face * CFrame.new(x * 1.2, -0.05, -0.38)).Position
+		Props.rod(m, "Moustache", a, b, 0.26, rgb(36, 24, 14), M.SmoothPlastic, nc())
+		Props.rod(m, "Moustache", b, c, 0.18, rgb(36, 24, 14), M.SmoothPlastic, nc())
+		S(m, "Curl", 0.24, CFrame.new(c), rgb(36, 24, 14), M.SmoothPlastic, nc())
+		local hip = (face * CFrame.new(x * 0.55, -1.3, 0)).Position
+		local foot = (face * CFrame.new(x * 0.6, -2.45, 0)).Position
+		Props.rod(m, "Leg", hip, foot, 0.16, dark, M.Metal, nc())
+		P(m, "Shoe", Vector3.new(0.42, 0.24, 0.7), CFrame.new(foot) * cf.Rotation * CFrame.new(0, -0.05, -0.15), rgb(28, 20, 14), M.SmoothPlastic, nc())
 	end
-	S(m, "Nose", 0.4, face * CFrame.new(0, 0, -0.5), dark, M.Metal, nc())
-	P(m, "Mouth", Vector3.new(0.9, 0.12, 0.08), face * CFrame.new(0, -0.9, -0.38), rgb(60, 30, 10), M.SmoothPlastic, nc())
+	-- левая рука упёрта в бок, правая держит трость
+	local shL = (face * CFrame.new(-1.45, -0.1, 0)).Position
+	local elL = (face * CFrame.new(-1.95, -0.55, -0.1)).Position
+	local hdL = (face * CFrame.new(-1.45, -0.95, -0.1)).Position
+	Props.rod(m, "Arm", shL, elL, 0.15, dark, M.Metal, nc())
+	Props.rod(m, "Arm", elL, hdL, 0.15, dark, M.Metal, nc())
+	S(m, "Hand", 0.3, CFrame.new(hdL), gold, M.Metal, nc())
+	local shR = (face * CFrame.new(1.45, -0.1, 0)).Position
+	local hdR = (face * CFrame.new(1.95, -0.7, -0.5)).Position
+	Props.rod(m, "Arm", shR, hdR, 0.15, dark, M.Metal, nc())
+	S(m, "Hand", 0.3, CFrame.new(hdR), gold, M.Metal, nc())
+	local caneTop = hdR + Vector3.new(0, 0.12, 0)
+	local caneFoot = (cf * CFrame.new(2.15, 0.02, -0.65)).Position
+	Props.rod(m, "Cane", caneTop, caneFoot, 0.12, rgb(20, 16, 14), M.Wood, nc())
+	S(m, "CaneKnob", 0.26, CFrame.new(caneTop + Vector3.new(0, 0.12, 0)), gold, M.Metal, nc())
+	C(m, "CaneTip", 0.12, 0.16, CFrame.new(caneFoot + Vector3.new(0, 0.03, 0)), rgb(200, 200, 200), M.Metal, nc())
 	local glow = Instance.new("PointLight")
 	glow.Range = 12
 	glow.Brightness = 0.7
@@ -6270,11 +7620,13 @@ function Special.coinKeeper(parent, cf: CFrame, price: number, holeCF: CFrame)
 	local block = P(parent, "CoinBlock", Vector3.new(9, 12, 1.2), cf * CFrame.new(0, 6, 0.9), rgb(0, 0, 0), M.SmoothPlastic, { Transparency = 1, CastShadow = false })
 	-- норка в стене по его размеру
 	local hole = Props.model(parent, "CoinHole")
-	P(hole, "Dark", Vector3.new(4.2, 4.6, 0.3), holeCF * CFrame.new(0, 2.3, 0.75), rgb(0, 0, 0), M.SmoothPlastic, nc())
+	-- норка по его росту: человеку туда не пролезть
+	P(hole, "Dark", Vector3.new(3.6, 4.4, 0.3), holeCF * CFrame.new(0, 2.2, 0.75), rgb(0, 0, 0), M.SmoothPlastic, nc())
 	for _, s in { -1, 1 } do
-		P(hole, "Jamb", Vector3.new(0.5, 4.8, 0.5), holeCF * CFrame.new(s * 2.35, 2.4, 0.9), rgb(120, 114, 104), M.Limestone, nc())
+		P(hole, "Jamb", Vector3.new(0.5, 4.6, 0.5), holeCF * CFrame.new(s * 2.05, 2.3, 0.9), rgb(120, 114, 104), M.Limestone, nc())
 	end
-	P(hole, "Arch", Vector3.new(5.6, 0.6, 0.6), holeCF * CFrame.new(0, 5.1, 0.9), rgb(120, 114, 104), M.Limestone, nc())
+	P(hole, "Arch", Vector3.new(5, 0.6, 0.6), holeCF * CFrame.new(0, 4.9, 0.9), rgb(120, 114, 104), M.Limestone, nc())
+	P(hole, "Step", Vector3.new(3.8, 0.2, 0.5), holeCF * CFrame.new(0, 0.11, 0.95), rgb(100, 94, 86), M.Limestone, nc())
 	return m, pr, block, hole
 end
 
@@ -6425,108 +7777,389 @@ function Special.codeHall(parent, d, origin: CFrame, rand, prev)
 end
 
 -- ---------------------------------------------------------------------------
--- Арена Колосса: парадная лестница вниз, зеркала на стойках, луч из дыры в потолке,
--- куски мяса, плита-приманка перед кристаллом
+-- Арена Колосса по чертежу: внизу — пол зала, по бокам — галереи второго этажа
+-- (вход ведёт прямо на них), в дальнем конце две лестницы вниз. На галереях четыре
+-- зеркала, луч приходит из круглого окна в дальней стене. Посередине — большая люстра
+-- на лебёдке, в неё нужно поставить зеркальце, тогда луч падает вниз, в круг света.
+-- Под левой галереей — холодильная камера с мясом. Выход — дверь с часовым механизмом
+
+local ARENA_GALLERY = 27.2 -- внутренний край галерей
 
 function Special.arena(parent, d, origin: CFrame, rand, prev)
 	local m, info = begin(parent, d, origin, rand, prev)
+	local A = Rules.ARENA
 	local fy = d.dy
-	-- зал хорошо освещён: зверя видно издалека
+	local function L(x: number, y: number, z: number): CFrame
+		return at(origin, x, y, z)
+	end
 	Props.LIGHT = 1.5
-	for _, x in { -24, 24 } do
-		for _, z in { -46, -86 } do
-			chandelier(info, m, at(origin, x, d.h, z).Position, 6)
+	local stone, stoneDark = rgb(150, 144, 136), rgb(104, 100, 94)
+	local arena = { mirrors = {}, origin = origin, y = A.y, fy = fy, solved = false, lit = false, meat = nil }
+	arena.floorY = L(0, fy, 0).Position.Y
+	arena.zone = L(A.lens.x, fy, A.lens.z)
+
+	-- галереи второго этажа (на уровне входа) --------------------------------
+	local G0, G1 = ARENA_GALLERY, A.bounds.x
+	local gw = G1 - G0
+	for _, sx in { -1, 1 } do
+		local cx = sx * (G0 + G1) / 2
+		P(m, "Gallery", Vector3.new(gw, 1, 103.2 - 12), L(cx, -0.5, -(12 + 103.2) / 2), stone, M.Marble)
+		-- под галереей у лестницы входа — сплошная кладка
+		P(m, "GalleryBase", Vector3.new(gw, -fy - 1, 16), L(cx, (fy - 1) / 2, -20), stoneDark, M.Slate)
+		-- карниз по краю
+		P(m, "GalleryEdge", Vector3.new(0.5, 1.4, 103 - 28.4), L(sx * (G0 + 0.24), -0.9, -(28.4 + 103) / 2), stoneDark, M.Marble, nc())
+	end
+	-- колонны под галереями
+	local columns = { [-1] = { -36, -48, -92 }, [1] = { -36, -50, -64, -78, -92 } }
+	for sx, zs in columns do
+		for _, z in zs do
+			Props.pillar(m, L(sx * (G0 + 1.6), fy, z), -fy - 1, rgb(170, 160, 146))
 		end
 	end
-	local function cell(i: number, j: number): CFrame
-		return at(origin, i * 10, fy, -(40 + j * 10))
+	-- лестницы с галерей вниз в дальнем конце (под ними — невидимый пандус)
+	local SZ0, SZ1 = -80, -100
+	for _, sx in { -1, 1 } do
+		local x0, x1 = sx * (G0 - 6.2), sx * G0
+		local cx = (x0 + x1) / 2
+		local len = math.abs(SZ1 - SZ0)
+		local n = 14
+		for k = 0, n - 1 do
+			local zTop = SZ0 - k * len / n
+			local hgt = -fy * (n - k) / n
+			P(m, "Step", Vector3.new(6.1, hgt, len / n), L(cx, fy + hgt / 2, zTop - len / n / 2), stoneDark, M.Marble, nc())
+		end
+		local slope = math.sqrt(len * len + fy * fy)
+		P(m, "Ramp", Vector3.new(6, 0.6, slope), L(cx, fy / 2 - 0.3, (SZ0 + SZ1) / 2) * CFrame.Angles(math.atan2(-fy, len), 0, 0), rgb(0, 0, 0), M.SmoothPlastic, { Transparency = 1, CastShadow = false })
+		Props.rod(m, "Handrail", L(sx * (G0 - 6.3), 3.2, SZ0).Position, L(sx * (G0 - 6.3), fy + 3.2, SZ1).Position, 0.25, Props.WOOD_DARK, M.Wood, nc())
 	end
-	local MR = Rules.MIRRORS
-	-- дыра в потолке и столб света на первое (неподвижное) зеркало
-	local src = cell(MR.source.i, MR.source.j)
-	C(m, "Skylight", 0.4, 7, src * CFrame.new(0, d.h - fy - 0.2, 0), rgb(255, 244, 200), M.Neon, nc())
-	local shaft = C(m, "LightShaft", d.h - fy - 6, 1.4, src * CFrame.new(0, 5.6 + (d.h - fy - 6) / 2, 0), rgb(255, 240, 190), M.Neon, nc({ Transparency = 0.6 }))
-	local sl = Instance.new("PointLight")
-	sl.Range = 46
-	sl.Brightness = 1.2
-	sl.Color = rgb(255, 236, 190)
-	sl.Parent = shaft
-	local _, srcHead = Props.mirrorStand(m, src)
-	srcHead:PivotTo(src * CFrame.Angles(0, math.rad(45), 0))
-	local arena = { cell = cell, mirrors = {}, y = 5.6, solved = false, meat = nil }
-	for k, c in MR.cells do
-		local cf = cell(c.i, c.j)
-		local sm, head, glass = Props.mirrorStand(m, cf)
-		local state = (c.need + 1 + math.floor(rand() * 3)) % 4
-		head:PivotTo(cf * CFrame.Angles(0, state * math.pi / 4, 0))
-		Props.prompt(glass, "turn", 0, 8)
-		arena.mirrors[k] = { model = sm, head = head, glass = glass, cf = cf, state = state }
-	end
-	-- кристалл в конце пути луча и плита для приманки перед ним
-	local tcf = cell(MR.target.i, MR.target.j)
-	C(m, "CrystalStand", 4.6, 0.5, tcf * CFrame.new(0, 2.3, 0), Props.IRON, M.Metal)
-	arena.crystal = P(m, "Crystal", Vector3.new(1.8, 1.8, 1.8), tcf * CFrame.new(0, 5.6, 0) * CFrame.Angles(0.6, 0.8, 0.3), rgb(150, 190, 220), M.Glass, nc({ Transparency = 0.3 }))
-	local plateCF = at(origin, 0, fy, -84)
-	local plate = C(m, "BaitPlate", 0.2, 5, plateCF * CFrame.new(0, 0.1, 0), rgb(60, 56, 54), M.Slate)
-	Props.prompt(plate, "bait", 0.5, 8)
-	arena.plate = plate
-	arena.plateCF = plateCF
-	-- 18 кусков мяса
-	local k = 0
-	for _, x in { -35, -28, -12, 12, 28, 35 } do
-		for _, z in { -34, -56, -78 } do
-			k += 1
-			local cf = at(origin, x, fy, z) * CFrame.Angles(0, k * 0.7, 0)
-			P(m, "Tray", Vector3.new(1.8, 0.1, 1.4), cf * CFrame.new(0, 0.05, 0), rgb(150, 150, 154), M.Metal, nc())
-			Props.pickup(m, cf * CFrame.new(0, 0.1, 0), "meat")
+	-- перила галерей с проходом к лестнице
+	for _, sx in { -1, 1 } do
+		local x = sx * (G0 + 0.25)
+		local runs = { { -12.5, SZ0 + 0.4 }, { SZ1 - 0.4, -103 } }
+		for _, r in runs do
+			local a, b = r[1], r[2]
+			Props.rod(m, "Rail", L(x, 3.4, a).Position, L(x, 3.4, b).Position, 0.3, Props.WOOD_DARK, M.Wood, nc())
+			local cnt = math.max(1, math.floor(math.abs(b - a) / 3))
+			for k = 0, cnt do
+				local z = a + (b - a) * k / cnt
+				P(m, "Baluster", Vector3.new(0.3, 3.2, 0.3), L(x, 1.6, z), stone, M.Marble, nc())
+			end
 		end
 	end
-	-- постамент, с которого сойдёт Колосс
-	P(m, "ColossusBase", Vector3.new(9, 0.6, 9), at(origin, -20, fy + 0.3, -80), rgb(120, 116, 110), M.Marble, nc())
-	arena.spawn = at(origin, -20, fy + 0.6, -80) * CFrame.Angles(0, math.pi, 0)
-	arena.wander = {}
-	for _, p in { { -30, -45 }, { 30, -45 }, { -30, -65 }, { 30, -65 }, { -10, -95 }, { 10, -95 }, { -30, -92 }, { 30, -92 }, { 10, -38 }, { -10, -62 } } do
-		table.insert(arena.wander, at(origin, p[1], fy + 3, p[2]).Position)
+
+	-- свет: зал хорошо освещён, зверя видно издалека --------------------------
+	for _, x in { -14, 14 } do
+		for _, z in { -38, -94 } do
+			chandelier(info, m, L(x, d.h, z).Position, 8)
+		end
 	end
-	for _, z in { -50, -88 } do
-		for _, slot in { Builder.slotL, Builder.slotR } do
-			local _, shade = Props.sconce(m, slot(d, origin, z) * CFrame.new(0, 9, Builder.F - 0.6))
+	for _, z in { -30, -56, -84 } do
+		for _, sx in { -1, 1 } do
+			local slot = if sx &lt; 0 then Builder.slotL else Builder.slotR
+			local _, shade = Props.sconce(m, slot(d, origin, z) * CFrame.new(0, 6, Builder.F - 0.6))
 			table.insert(info.lights, shade)
 		end
+	end
+
+	-- окно-источник: круглое окно в дальней стене над левой галереей ------------
+	local src = L(A.source.x, A.y, -103.3)
+	C(m, "SunWindow", 0.2, 6, src * CFrame.Angles(math.pi / 2, 0, 0), rgb(255, 244, 200), M.Neon, nc())
+	C(m, "SunFrame", 0.16, 6.8, L(A.source.x, A.y, -103.38) * CFrame.Angles(math.pi / 2, 0, 0), Props.BRASS, M.Metal, nc())
+	local sl = Instance.new("PointLight")
+	sl.Range = 24
+	sl.Brightness = 1.2
+	sl.Color = rgb(255, 236, 190)
+	sl.Parent = m:FindFirstChild("SunWindow")
+
+	-- зеркала на галереях: поворачиваются плавно, держи кнопку -------------------
+	local sol = Rules.beamSolution()
+	for k, mp in A.mirrors do
+		local base = L(mp.x, 0, mp.z)
+		P(m, "MirrorBase", Vector3.new(3.2, 1, 3.2), base * CFrame.new(0, 0.5, 0), stoneDark, M.Marble)
+		local cf = base * CFrame.new(0, 1, 0)
+		local sm, head, glass = Props.mirrorStand(m, cf)
+		-- случайный угол, заведомо далеко от нужного
+		local angle = sol[k] + math.rad(40 + rand() * 280)
+		arena.mirrors[k] = { model = sm, head = head, glass = glass, cf = cf, angle = angle }
+		local l = Props.prompt(glass, "turnl", 30, 9)
+		local r = Props.prompt(glass, "turnr", 30, 9)
+		l.UIOffset = Vector2.new(0, 40)
+		r.UIOffset = Vector2.new(0, -40)
+		l.KeyboardKeyCode = Enum.KeyCode.Q
+		r.KeyboardKeyCode = Enum.KeyCode.E
+	end
+
+	-- большая люстра на лебёдке -------------------------------------------------
+	local ch = Props.model(m, "BigChandelier")
+	local hub = L(A.lens.x, A.y + 3.2, A.lens.z)
+	C(ch, "Hub", 2.2, 1.4, hub, Props.BRASS, M.Metal)
+	C(ch, "Crown", 0.6, 3, hub * CFrame.new(0, 1.3, 0), Props.BRASS, M.Metal, nc())
+	for ring = 1, 2 do
+		local rad, y = if ring == 1 then 4.6 else 2.8, if ring == 1 then -0.6 else 0.7
+		local cnt = if ring == 1 then 14 else 9
+		for k = 0, cnt - 1 do
+			local a0, a1 = k / cnt * math.pi * 2, (k + 1) / cnt * math.pi * 2
+			local p0 = (hub * CFrame.new(math.cos(a0) * rad, y, math.sin(a0) * rad)).Position
+			local p1 = (hub * CFrame.new(math.cos(a1) * rad, y, math.sin(a1) * rad)).Position
+			Props.rod(ch, "Ring", p0, p1, 0.22, Props.BRASS, M.Metal, nc())
+			C(ch, "Candle", 0.8, 0.3, CFrame.new(p0 + Vector3.new(0, 0.5, 0)), rgb(240, 232, 210), M.SmoothPlastic, nc())
+			S(ch, "Flame", 0.26, CFrame.new(p0 + Vector3.new(0, 1.05, 0)), rgb(255, 196, 110), M.Neon, nc())
+			if ring == 1 and k % 2 == 0 then
+				S(ch, "Drop", 0.45, CFrame.new(p0 - Vector3.new(0, 0.9, 0)), rgb(220, 236, 244), M.Glass, nc({ Transparency = 0.3 }))
+			end
+		end
+		for k = 0, 3 do
+			local a = k / 4 * math.pi * 2 + 0.4
+			Props.rod(ch, "Arm", hub.Position, (hub * CFrame.new(math.cos(a) * rad, y, math.sin(a) * rad)).Position, 0.2, Props.BRASS, M.Metal, nc())
+		end
+	end
+	local glow = S(ch, "Glow", 0.4, hub * CFrame.new(0, -0.6, 0), rgb(255, 214, 150), M.Neon, nc({ Transparency = 1 }))
+	local gl = Instance.new("PointLight")
+	gl.Range = 40
+	gl.Brightness = 1.6
+	gl.Color = rgb(255, 214, 160)
+	gl.Parent = glow
+	-- держатель для зеркальца под люстрой
+	P(ch, "LensFork", Vector3.new(0.3, 2.2, 0.3), hub * CFrame.new(0, -2.2, 0), Props.BRASS, M.Metal, nc())
+	local slot = C(ch, "LensSlot", 0.14, 2.2, hub * CFrame.new(0, -3.2, 0) * CFrame.Angles(0, 0, math.rad(45)), Props.BRASS, M.Metal, nc({ Transparency = 0.5 }))
+	local slotPrompt = Props.prompt(slot, "place", 0.5, 9)
+	slotPrompt.Enabled = false
+	ch.WorldPivot = hub
+	-- цепь до потолка и трос через блок к лебёдке на левой галерее
+	local chain = C(m, "ChandelierChain", d.h - A.y - 4.6, 0.3, CFrame.new(), Props.IRON, M.Metal, nc())
+	local winch = L(-(G1 - 1.6), 0, A.lens.z)
+	C(m, "Pulley", 0.6, 1.6, L(A.lens.x, d.h - 0.8, A.lens.z) * CFrame.Angles(0, 0, math.pi / 2), Props.IRON, M.Metal, nc())
+	C(m, "WallPulley", 0.6, 1.6, L(-(G1 - 0.8), d.h - 0.8, A.lens.z) * CFrame.Angles(0, 0, math.pi / 2), Props.IRON, M.Metal, nc())
+	Props.rod(m, "Cable", L(A.lens.x, d.h - 0.4, A.lens.z).Position, L(-(G1 - 0.8), d.h - 0.4, A.lens.z).Position, 0.16, Props.IRON, M.Metal, nc())
+	Props.rod(m, "Cable", L(-(G1 - 1.6), d.h - 0.8, A.lens.z).Position, L(-(G1 - 1.6), 2.6, A.lens.z).Position, 0.16, Props.IRON, M.Metal, nc())
+	-- лебёдка: барабан с ручкой, тормозной штырь высоко на стене, рычаг сброса
+	local drum = C(m, "WinchDrum", 2.4, 1.8, winch * CFrame.new(0, 2.2, 0) * CFrame.Angles(math.pi / 2, 0, 0), stoneDark:Lerp(Props.IRON, 0.6), M.Metal)
+	for _, z in { -1.4, 1.4 } do
+		P(m, "WinchFrame", Vector3.new(1.4, 2.6, 0.3), winch * CFrame.new(0, 1.3, z), Props.IRON, M.Metal, nc())
+	end
+	P(m, "Crank", Vector3.new(0.25, 1.4, 0.25), winch * CFrame.new(0.6, 2.5, 1.7), Props.IRON, M.Metal, nc())
+	Props.prompt(drum, "crank", 1, 8)
+	P(m, "BrakePlate", Vector3.new(0.3, 2.2, 2.2), L(-(G1 - 0.15), 10.5, A.lens.z), Props.IRON, M.Metal)
+	local pin = P(m, "BrakePin", Vector3.new(1.6, 0.4, 0.4), L(-(G1 - 1), 10.5, A.lens.z), rgb(170, 60, 40), M.Metal)
+	Props.prompt(pin, "knock", 0.6, 16)
+	local lever = P(m, "ReleaseLever", Vector3.new(0.3, 2.4, 0.3), winch * CFrame.new(0.4, 1.4, -2.6) * CFrame.Angles(0, 0, math.rad(25)), rgb(170, 40, 30), M.Metal)
+	P(m, "LeverBase", Vector3.new(1, 0.4, 1), winch * CFrame.new(0, 0.2, -2.6), Props.IRON, M.Metal, nc())
+	Props.prompt(lever, "release", 0.4, 8)
+	arena.chand = { model = ch, hubUp = hub, chain = chain, slot = slot, slotPrompt = slotPrompt, up = true, busy = false, lens = nil }
+	arena.drum, arena.pin, arena.lever = drum, pin, lever
+	arena.ceilingY = L(0, d.h, 0).Position.Y
+
+	-- холодильная камера под левой галереей --------------------------------------
+	local CX0, CX1, CZ0, CZ1 = -(G1 - 0.05), -(G0 + 0.6), -62, -76
+	local ch2 = (CZ0 + CZ1) / 2
+	local cold = Props.model(m, "ColdRoom")
+	local ice = rgb(196, 214, 224)
+	local hole = { { x = 0, w = Props.DOORS.small.w, y = 0, h = Props.DOORS.small.h } }
+	Props.wall(cold, L(CX1, fy, ch2) * CFrame.Angles(0, math.pi / 2, 0), math.abs(CZ1 - CZ0), 0, -fy - 1, 0.6, hole, rgb(170, 180, 186), M.DiamondPlate, "ColdWall")
+	for _, z in { CZ0, CZ1 } do
+		P(cold, "ColdWall", Vector3.new(math.abs(CX1 - CX0) - 0.3, -fy - 1, 0.6), L((CX0 + CX1) / 2 - 0.15, fy / 2 - 0.5, z), rgb(170, 180, 186), M.DiamondPlate)
+	end
+	P(cold, "Frost", Vector3.new(math.abs(CX1 - CX0) - 0.9, 0.1, math.abs(CZ1 - CZ0) - 0.6), L((CX0 + CX1) / 2 - 0.3, fy + 0.05, ch2), ice, M.Ice, nc())
+	local coldLamp = P(cold, "ColdLamp", Vector3.new(3, 0.3, 0.8), L((CX0 + CX1) / 2, -1.65, ch2), rgb(200, 230, 255), M.Neon, nc())
+	local cl = Instance.new("PointLight")
+	cl.Range = 16
+	cl.Brightness = 1
+	cl.Color = rgb(150, 200, 255)
+	cl.Parent = coldLamp
+	-- полки и крюки: 18 кусков мяса
+	local meatSpots = {}
+	for _, z in { CZ0 - 1.2, CZ1 + 1.2 } do
+		for _, y in { 0.8, 3.2, 5.6 } do
+			P(cold, "Shelf", Vector3.new(8.6, 0.2, 1.6), L((CX0 + CX1) / 2 - 0.4, fy + y, z), rgb(150, 156, 160), M.Metal, nc())
+			for k = -1, 1 do
+				table.insert(meatSpots, L((CX0 + CX1) / 2 - 0.4 + k * 2.8, fy + y + 0.1, z))
+			end
+		end
+	end
+	for k = -1, 1 do
+		local hx = (CX0 + CX1) / 2 - 1 + k * 2.6
+		Props.rod(cold, "HookBar", L(hx, -1.3, CZ0 - 3).Position, L(hx, -1.3, CZ1 + 3).Position, 0.14, Props.IRON, M.Metal, nc())
+		local hm = P(cold, "HangingMeat", Vector3.new(1, 2.2, 0.8), L(hx, -3.2, ch2 + k), rgb(140, 36, 40), M.SmoothPlastic, nc())
+		hm.CanCollide = false
+	end
+	for i, cf in meatSpots do
+		if i &lt;= Rules.COLOSSUS.meat then
+			Props.pickup(cold, cf * CFrame.Angles(0, i * 0.7, 0), "meat")
+		end
+	end
+	local doorCF = L(CX1, fy, ch2) * CFrame.Angles(0, -math.pi / 2, 0)
+	local coldDoor, leaves = Props.door(cold, doorCF, nil, true, "small")
+	local trig = P(cold, "ColdLock", Vector3.new(1, 1, 1), doorCF * CFrame.new(1.4, 3.6, 0.8), rgb(0, 0, 0), M.SmoothPlastic, nc({ Transparency = 1 }))
+	Props.prompt(trig, "open", 0, 7)
+	P(cold, "ColdSign", Vector3.new(2.6, 0.8, 0.1), L(CX1 + 0.36, fy + 8.1, ch2), rgb(80, 130, 170), M.SmoothPlastic, nc())
+	arena.cold = { model = coldDoor, leaves = leaves, trigger = trig, open = false }
+
+	-- статуи и витрины на полу: за ними можно стоять ------------------------------
+	for i, sp in { { -14, -46 }, { 14, -46 }, { -14, -88 }, { 14, -88 } } do
+		Props.statue(m, L(sp[1], fy, sp[2]) * CFrame.Angles(0, if sp[1] &lt; 0 then math.pi / 2 else -math.pi / 2, 0), ({ "figure", "bust", "obelisk", "broken" })[i], d.door + i)
+	end
+	for i, sp in { { -20, -66 }, { 20, -60 } } do
+		Props.displayCase(m, L(sp[1], fy, sp[2]), Props.ODD[(d.door + i * 3) % #Props.ODD + 1])
+	end
+
+	-- остановленные часы над выходом и механизм у двери ----------------------------
+	local ex = d.exit.x or 0
+	local hh, mm = Rules.clockTime(rand)
+	arena.clock = { h = hh, m = mm }
+	local clockCF = L(ex, fy + 16, -103.25) * CFrame.Angles(0, math.pi, 0)
+	local function dial(parent2, cf: CFrame, r: number, h: number, mi: number)
+		C(parent2, "ClockRim", 0.3, r * 2 + 0.5, cf * CFrame.Angles(math.pi / 2, 0, 0), rgb(26, 24, 24), M.Metal)
+		C(parent2, "ClockGold", 0.34, r * 2 + 0.1, cf * CFrame.new(0, 0, -0.02) * CFrame.Angles(math.pi / 2, 0, 0), rgb(210, 168, 70), M.Metal, nc())
+		C(parent2, "ClockFace", 0.36, r * 2 - 0.3, cf * CFrame.new(0, 0, -0.05) * CFrame.Angles(math.pi / 2, 0, 0), rgb(240, 232, 210), M.SmoothPlastic, nc())
+		for k = 0, 11 do
+			local a = k / 12 * math.pi * 2
+			P(parent2, "Mark", Vector3.new(if k % 3 == 0 then 0.24 else 0.14, if k % 3 == 0 then r * 0.22 else r * 0.12, 0.06), cf * CFrame.Angles(0, 0, a) * CFrame.new(0, r * 0.8, -0.24), rgb(20, 20, 20), M.SmoothPlastic, nc())
+		end
+		local hand = function(name, len, w, a, dz)
+			return P(parent2, name, Vector3.new(w, len, 0.06), cf * CFrame.Angles(0, 0, a) * CFrame.new(0, len / 2 - 0.1, dz), rgb(16, 16, 16), M.Metal, nc())
+		end
+		local ha = ((h % 12) + mi / 60) / 12 * math.pi * 2
+		local hp = hand("HourHand", r * 0.5, 0.22, ha, -0.3)
+		local mp = hand("MinuteHand", r * 0.78, 0.14, mi / 60 * math.pi * 2, -0.34)
+		return hp, mp
+	end
+	local stopped = Props.model(m, "StoppedClock")
+	dial(stopped, clockCF, 3, hh, mm)
+	-- механизм: циферблат со стрелками и скважиной, две ручки
+	local mech = Props.model(m, "ClockLock")
+	local mcf = L(ex + 7.5, fy + 5, -103.25) * CFrame.Angles(0, math.pi, 0)
+	P(mech, "MechPlate", Vector3.new(4, 5.4, 0.3), mcf, rgb(36, 32, 30), M.Metal)
+	local mh, mmh = dial(mech, mcf * CFrame.new(0, 0.6, -0.1), 1.5, 12, 0)
+	local keyhole = P(mech, "Keyhole", Vector3.new(0.5, 0.8, 0.1), mcf * CFrame.new(0, -1.6, -0.12), rgb(10, 10, 10), M.Metal, nc())
+	Props.prompt(keyhole, "insert", 0.5, 7)
+	local kh = P(mech, "HourKnob", Vector3.new(0.6, 0.6, 0.4), mcf * CFrame.new(-1.3, -1.9, -0.3), rgb(210, 168, 70), M.Metal, nc())
+	local km = P(mech, "MinuteKnob", Vector3.new(0.6, 0.6, 0.4), mcf * CFrame.new(1.3, -1.9, -0.3), rgb(210, 168, 70), M.Metal, nc())
+	Props.prompt(kh, "hour", 0, 7).Enabled = false
+	Props.prompt(km, "minute", 0, 7).Enabled = false
+	arena.mech = { cf = mcf * CFrame.new(0, 0.6, -0.1), h = 12, m = 0, hourHand = mh, minuteHand = mmh, keyhole = keyhole, hourKnob = kh, minuteKnob = km, inserted = false }
+
+	-- шест, зеркальце и ключ от камеры лежат в случайных местах ----------------------
+	local spots = {
+		L(-33, 0, -24) * CFrame.Angles(0, math.pi / 2, 0), L(33, 0, -100) * CFrame.Angles(0, math.pi / 2, 0), L(36, 0, -70) * CFrame.Angles(0, math.pi / 2, 0), L(-36, 0, -84) * CFrame.Angles(0, math.pi / 2, 0),
+		L(-16, fy, -101), L(24, fy, -34), L(-6, fy, -100), L(6, fy, -74) * CFrame.Angles(0, 0.8, 0), L(-22, fy, -36),
+	}
+	for i = #spots, 2, -1 do
+		local j = 1 + math.floor(rand() * i)
+		spots[i], spots[j] = spots[j], spots[i]
+	end
+	Props.pickup(m, spots[1], "pole")
+	Props.pickup(m, spots[2], "lens")
+	Props.pickup(m, spots[3], "coldkey")
+
+	-- круг света под люстрой (виден, когда луч доходит) ------------------------------
+	arena.spot = C(m, "LightSpot", 0.08, A.zone * 2, arena.zone * CFrame.new(0, 0.05, 0), rgb(255, 236, 170), M.Neon, nc({ Transparency = 1 }))
+	-- постамент, с которого сойдёт Колосс
+	P(m, "ColossusBase", Vector3.new(10, 0.6, 10), L(16, fy + 0.3, -78), rgb(120, 116, 110), M.Marble, nc())
+	arena.spawn = L(16, fy + 0.6, -78) * CFrame.Angles(0, math.pi, 0)
+	arena.wander = {}
+	for _, p in { { -18, -36 }, { 18, -36 }, { -20, -56 }, { 20, -52 }, { 0, -66 }, { -18, -80 }, { 18, -84 }, { -8, -98 }, { 8, -98 }, { 0, -44 } } do
+		table.insert(arena.wander, L(p[1], fy + 3, p[2]).Position)
 	end
 	arena.beam = Props.model(m, "Beam")
 	info.arena = arena
 	info.sealed = true
 	info.boss = true
 	Props.LIGHT = 1
+	Special.placeChandelier(info, 0)
+	Special.drawBeam(info)
 	return info
 end
 
--- перерисовать луч по состоянию зеркал; возвращает, дошёл ли он до кристалла
-function Special.drawBeam(info): boolean
-	local arena = info.arena
-	local states = {}
-	for k, mr in arena.mirrors do
-		states[k] = mr.state
+-- люстра: down от 0 (вверху) до 1 (опущена к полу, можно поставить зеркальце)
+-- или &gt;1 — упала на пол
+function Special.placeChandelier(info, down: number)
+	local a = info.arena
+	local ch = a.chand
+	local lowY = a.floorY + 7.4
+	local upY = ch.hubUp.Position.Y
+	local y = upY + (lowY - upY) * math.min(down, 1)
+	if down &gt; 1 then
+		y = a.floorY + 2.6
 	end
-	local path, hit = Rules.trace(states)
-	arena.beam:ClearAllChildren()
-	for i = 1, #path - 1 do
-		local a = (arena.cell(path[i].i, path[i].j) * CFrame.new(0, arena.y, 0)).Position
-		local b = (arena.cell(path[i + 1].i, path[i + 1].j) * CFrame.new(0, arena.y, 0)).Position
-		local p = Props.rod(arena.beam, "Ray", a, b, 0.35, rgb(255, 236, 170), M.Neon, nc({ Transparency = 0.25 }))
-		if i % 2 == 1 then
-			local l = Instance.new("PointLight")
-			l.Range = 14
-			l.Brightness = 0.8
-			l.Color = rgb(255, 230, 170)
-			l.Parent = p
+	local cf = ch.hubUp + Vector3.new(0, y - upY, 0)
+	ch.model:PivotTo(cf)
+	local top = a.ceilingY - 0.4
+	local len = math.max(0.2, top - (y + 2))
+	ch.chain.Size = Vector3.new(len, 0.3, 0.3)
+	ch.chain.CFrame = CFrame.new(cf.Position.X, y + 2 + len / 2, cf.Position.Z) * CFrame.Angles(0, 0, math.pi / 2)
+	ch.chain.Transparency = if down &gt; 1 then 1 else 0
+	ch.pos = cf.Position
+end
+
+-- стрелки механизма у выхода
+function Special.setMechHands(info)
+	local mech = info.arena.mech
+	local r = 1.5
+	local ha = ((mech.h % 12) + mech.m / 60) / 12 * math.pi * 2
+	local ma = mech.m / 60 * math.pi * 2
+	mech.hourHand.CFrame = mech.cf * CFrame.Angles(0, 0, ha) * CFrame.new(0, r * 0.5 / 2 - 0.1, -0.3)
+	mech.minuteHand.CFrame = mech.cf * CFrame.Angles(0, 0, ma) * CFrame.new(0, r * 0.78 / 2 - 0.1, -0.34)
+end
+
+-- угол нормали зеркала (в осях зала) → поворот головы стойки
+local function mirrorYaw(a: number): number
+	return math.atan2(-math.cos(a), -math.sin(a))
+end
+
+function Special.turnMirror(info, k: number)
+	local mr = info.arena.mirrors[k]
+	mr.head:PivotTo(mr.cf * CFrame.Angles(0, mirrorYaw(mr.angle), 0))
+end
+
+-- перерисовать луч по углам зеркал; возвращает цепочку и дошёл ли до люстры
+function Special.drawBeam(info)
+	local a = info.arena
+	local A = Rules.ARENA
+	local angles = {}
+	for k, mr in a.mirrors do
+		angles[k] = mr.angle
+		if not mr.posed then
+			mr.posed = true
+			Special.turnMirror(info, k)
 		end
 	end
-	arena.solved = hit
-	arena.crystal.Material = if hit then M.Neon else M.Glass
-	arena.crystal.Color = if hit then rgb(255, 220, 140) else rgb(150, 190, 220)
-	return hit
+	local path, chain, hit = Rules.beam(angles)
+	local up = a.chand.up and not a.chand.busy
+	if hit and not up then
+		-- люстры на месте нет: луч уходит дальше в стену
+		hit = false
+		table.remove(path)
+	end
+	a.beam:ClearAllChildren()
+	local function pt(q)
+		return (a.origin * CFrame.new(q.x, A.y, q.z)).Position
+	end
+	for i = 1, #path - 1 do
+		local p = Props.rod(a.beam, "Ray", pt(path[i]), pt(path[i + 1]), 0.38 + (i % 2) * 0.05, rgb(255, 236, 170), M.Neon, nc({ Transparency = 0.25 }))
+		local l = Instance.new("PointLight")
+		l.Range = 12
+		l.Brightness = 0.7
+		l.Color = rgb(255, 230, 170)
+		l.Parent = p
+	end
+	local lit = hit and a.chand.lens ~= nil
+	if lit then
+		local from = pt(path[#path])
+		local to = a.zone.Position + Vector3.new(0, 0.1, 0)
+		local p = Props.rod(a.beam, "DownRay", from, to, 1.2, rgb(255, 240, 190), M.Neon, nc({ Transparency = 0.35 }))
+		local l = Instance.new("SpotLight")
+		l.Face = Enum.NormalId.Front
+		l.Range = 30
+		l.Angle = 50
+		l.Brightness = 4
+		l.Color = rgb(255, 236, 180)
+		l.Parent = p
+	end
+	a.spot.Transparency = if lit then 0.35 else 1
+	a.chain = chain
+	a.lit = lit
+	a.solved = lit
+	return chain, hit
 end
 
 -- ---------------------------------------------------------------------------
@@ -6752,6 +8385,7 @@ local app = {
 	steps = true,
 	ambience = true,
 	journal = {} :: { [string]: boolean },
+	ach = {} :: { [string]: boolean },
 	arrived = false,
 }
 
@@ -6780,6 +8414,11 @@ task.spawn(function()
 	if r and r.journal then
 		for id in r.journal do
 			app.journal[id] = true
+		end
+	end
+	if r and type(r.ach) == "table" then
+		for id in r.ach do
+			app.ach[id] = true
 		end
 	end
 end)
@@ -7302,6 +8941,8 @@ end
 
 local JOURNAL = { "darkness", "mimic", "coinkeeper", "colossus", "void" }
 local journalBox = panel(420, 420, 62)
+journalBox.Size = UDim2.new(0, 420, 0.82, 0)
+journalBox.Position = UDim2.new(0.5, -210, 0.09, 0)
 local function openJournal()
 	journalBox:ClearAllChildren()
 	Ui.corner(journalBox, 10)
@@ -7343,6 +8984,66 @@ local journalBtn = Ui.button(hud, "📖", function()
 	end
 end, { Size = UDim2.fromOffset(48, 44), Position = UDim2.new(0, 16, 0, 100), TextSize = 24, BackgroundTransparency = 0.5, ZIndex = 11 })
 local _ = journalBtn
+
+-- достижения: список с описаниями (открывается в лобби — кнопкой или у доски)
+local ACH = { "darkness", "darkness_hid", "coinkeeper", "coin_paid", "mimic_solved", "door50", "colossus_down", "door100", "finale" }
+local achBox = panel(440, 460, 62)
+-- по высоте экрана: на телефоне в альбомной ориентации места мало
+achBox.Size = UDim2.new(0, 440, 0.82, 0)
+achBox.Position = UDim2.new(0.5, -220, 0.09, 0)
+local function openAchievements()
+	achBox:ClearAllChildren()
+	Ui.corner(achBox, 10)
+	Ui.pad(achBox, 14)
+	achBox.BackgroundColor3 = Color3.fromRGB(30, 34, 40)
+	local got = 0
+	for _, id in ACH do
+		if app.ach[id] then
+			got += 1
+		end
+	end
+	Ui.label(achBox, T("Achievements") .. "  " .. got .. "/" .. #ACH, { Font = Ui.TITLE, TextSize = 26, TextColor3 = Ui.C.gold, Size = UDim2.new(1, -50, 0, 34), ZIndex = 63, TextXAlignment = Enum.TextXAlignment.Left })
+	Ui.button(achBox, "✕", function()
+		achBox.Visible = false
+	end, { Size = UDim2.fromOffset(40, 34), Position = UDim2.new(1, -40, 0, 0), ZIndex = 64 })
+	local scroll = Instance.new("ScrollingFrame")
+	scroll.BackgroundTransparency = 1
+	scroll.BorderSizePixel = 0
+	scroll.Size = UDim2.new(1, 0, 1, -44)
+	scroll.Position = UDim2.fromOffset(0, 44)
+	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	scroll.CanvasSize = UDim2.new()
+	scroll.ScrollBarThickness = 6
+	scroll.ZIndex = 63
+	scroll.Parent = achBox
+	Ui.list(scroll, 8)
+	for i, id in ACH do
+		local on = app.ach[id] == true
+		local row = Instance.new("Frame")
+		row.Size = UDim2.new(1, -8, 0, 62)
+		row.BackgroundColor3 = if on then Color3.fromRGB(70, 60, 34) else Color3.fromRGB(44, 46, 50)
+		row.LayoutOrder = i
+		row.ZIndex = 63
+		row.Parent = scroll
+		Ui.corner(row, 8)
+		Ui.label(row, if on then "🏆" else "🔒", { TextSize = 26, Size = UDim2.fromOffset(44, 62), ZIndex = 64 })
+		Ui.label(row, T("a_" .. id), { Font = Ui.TITLE, TextSize = 20, TextColor3 = if on then Ui.C.gold else Ui.C.dim, Size = UDim2.new(1, -52, 0, 26), Position = UDim2.fromOffset(48, 4), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 64 })
+		Ui.label(row, T("a_" .. id .. "_t"), { TextSize = 14, TextWrapped = true, Size = UDim2.new(1, -52, 0, 30), Position = UDim2.fromOffset(48, 30), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 64 })
+	end
+	achBox.Visible = true
+end
+local achBtn = Ui.button(hud, "🏆", function()
+	if achBox.Visible then
+		achBox.Visible = false
+	else
+		openAchievements()
+	end
+end, { Size = UDim2.fromOffset(48, 44), Position = UDim2.new(0, 16, 0, 150), TextSize = 24, BackgroundTransparency = 0.5, ZIndex = 11 })
+local function refreshAchBtn()
+	achBtn.Visible = not inRun()
+end
+refreshAchBtn()
+workspace:GetAttributeChangedSignal("Mode"):Connect(refreshAchBtn)
 
 -- ---------------------------------------------------------------------------
 -- смерть и наблюдение
@@ -7634,6 +9335,11 @@ Remotes.event("Game").OnClientEvent:Connect(function(msg)
 			end)
 		elseif msg.kind == "blood" then
 			flashRed(0.75)
+		elseif msg.kind == "shake" then
+			app.shake = 1
+			task.delay(0.9, function()
+				app.shake = 0
+			end)
 		elseif msg.kind == "melt" then
 			app.shake = 0.5
 			task.delay(4, function()
@@ -7642,6 +9348,11 @@ Remotes.event("Game").OnClientEvent:Connect(function(msg)
 		end
 	elseif msg.type == "glitch" then
 		task.spawn(playGlitch)
+	elseif msg.type == "achieve" then
+		app.ach[msg.id] = true
+		toast(T("AchNew", T("a_" .. msg.id)), Ui.C.gold, 4)
+	elseif msg.type == "openAch" then
+		openAchievements()
 	elseif msg.type == "journal" then
 		app.journal[msg.id] = true
 		if msg.new then

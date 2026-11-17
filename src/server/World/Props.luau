@@ -150,11 +150,15 @@ end
 -- Двери трёх размеров: служебная железная, обычная филёнчатая, парадная двустворчатая.
 -- cf — середина проёма на полу, LookVector — в следующий зал. Возвращает модель и створки
 Props.DOORS = { small = { w = 4, h = 7.5 }, normal = { w = 5, h = 8 }, grand = { w = 8, h = 11 } }
-function Props.door(parent, cf: CFrame, plate: string?, locked: boolean?, size: string?)
+-- style: wood — деревянная с филёнками, metal — стальная с заклёпками, service — служебная,
+-- tech — техническая с полосами и решёткой, code — стальная с кодовой панелью,
+-- puzzle — с четырьмя цветными гнёздами (зал с фигурками)
+function Props.door(parent, cf: CFrame, plate: string?, locked: boolean?, size: string?, style: string?)
 	local m = model(parent, "Door")
 	local kind = size or "normal"
 	local w, h = Props.DOORS[kind].w, Props.DOORS[kind].h
-	local metal = kind == "small"
+	style = style or (if kind == "small" then "service" else "wood")
+	local metal = kind == "small" or style == "metal" or style == "tech" or style == "service" or style == "code"
 	local trim = if metal then rgb(70, 74, 76) else Props.WOOD_DARK
 	local tmat = if metal then M.Metal else M.Wood
 	-- наличник заходит в проём на 0.1, чтобы его грани не совпадали с краями проёма
@@ -163,7 +167,7 @@ function Props.door(parent, cf: CFrame, plate: string?, locked: boolean?, size: 
 	end
 	P(m, "Head", Vector3.new(w + 1.2, 0.7, 1.5), cf * CFrame.new(0, h + 0.25, 0), trim, tmat)
 	P(m, "Cornice", Vector3.new(w + 1.8, 0.3, 1.7), cf * CFrame.new(0, h + 0.75, 0), trim, tmat)
-	local wood = if metal then rgb(96, 104, 106) elseif kind == "grand" then rgb(84, 52, 34) else Props.WOOD
+	local wood = if style == "tech" then rgb(120, 116, 96) elseif style == "metal" or style == "code" then rgb(78, 86, 92) elseif metal then rgb(96, 104, 106) elseif kind == "grand" then rgb(84, 52, 34) elseif style == "puzzle" then rgb(70, 44, 32) else Props.WOOD
 	local leaves = {}
 	local specs = if kind == "grand" then { { -1, (w - 0.3) / 2 - 0.04 }, { 1, (w - 0.3) / 2 - 0.04 } } else { { -1, w - 0.3 } }
 	for _, sp in specs do
@@ -173,9 +177,34 @@ function Props.door(parent, cf: CFrame, plate: string?, locked: boolean?, size: 
 		local cx = hinge - side * lw / 2
 		P(leaf, "Slab", Vector3.new(lw, h - 0.25, 0.3), cf * CFrame.new(cx, (h - 0.25) / 2 + 0.02, 0), wood, if metal then M.Metal else M.WoodPlanks)
 		for _, face in { -1, 1 } do
-			if metal then
+			if style == "tech" then
+				-- полосатый низ, окошко с решёткой, ручка-скоба
+				for k = 0, 3 do
+					P(leaf, "Stripe", Vector3.new(0.5, 1.2, 0.05), cf * CFrame.new(cx - lw / 2 + 0.6 + k * (lw - 1.2) / 3, 0.9, face * 0.175) * CFrame.Angles(0, 0, 0.6), if k % 2 == 0 then rgb(220, 180, 40) else rgb(30, 30, 30), M.SmoothPlastic, nc())
+				end
+				P(leaf, "Grate", Vector3.new(lw * 0.45, 1, 0.05), cf * CFrame.new(cx, h - 2, face * 0.175), rgb(20, 22, 24), M.DiamondPlate, nc())
+				P(leaf, "Grip", Vector3.new(0.2, 1.2, 0.2), cf * CFrame.new(cx - side * (lw / 2 - 0.45), 3.8, face * 0.3), rgb(40, 40, 42), M.Metal, nc())
+			elseif style == "metal" or style == "code" then
+				-- стальной лист: два пояса и ряды заклёпок, ручка-штанга
+				for _, y in { h * 0.3, h * 0.72 } do
+					P(leaf, "Band", Vector3.new(lw - 0.3, 0.35, 0.06), cf * CFrame.new(cx, y, face * 0.18), rgb(56, 62, 66), M.Metal, nc())
+					for k = 0, 4 do
+						S(leaf, "Rivet", 0.16, cf * CFrame.new(cx - lw / 2 + 0.4 + k * (lw - 0.8) / 4, y, face * 0.22), rgb(150, 150, 156), M.Metal, nc())
+					end
+				end
+				P(leaf, "Bar", Vector3.new(lw - 1.2, 0.2, 0.2), cf * CFrame.new(cx, 3.9, face * 0.32), rgb(170, 170, 176), M.Metal, nc())
+			elseif metal then
 				P(leaf, "Plate", Vector3.new(lw - 0.8, 1.4, 0.06), cf * CFrame.new(cx, h - 2, face * 0.18), rgb(60, 64, 66), M.DiamondPlate, nc())
 				P(leaf, "Bar", Vector3.new(lw - 1, 0.25, 0.25), cf * CFrame.new(cx, 4, face * 0.3), rgb(150, 150, 156), M.Metal, nc())
+			elseif style == "puzzle" then
+				-- четыре цветных гнезда по кругу: дверь откроется, когда фигурки встанут на места
+				local colors = { rgb(190, 50, 50), rgb(50, 90, 190), rgb(60, 160, 70), rgb(220, 190, 50) }
+				C(leaf, "Ring", 0.06, 2.2, cf * CFrame.new(cx, h * 0.55, face * 0.18) * CFrame.Angles(math.pi / 2, 0, 0), Props.BRASS, M.Metal, nc())
+				for k = 1, 4 do
+					local a = k / 4 * math.pi * 2
+					C(leaf, "Socket", 0.08, 0.5, cf * CFrame.new(cx + math.cos(a) * 0.75, h * 0.55 + math.sin(a) * 0.75, face * 0.2) * CFrame.Angles(math.pi / 2, 0, 0), colors[k], M.SmoothPlastic, nc())
+				end
+				S(leaf, "Knob", 0.45, cf * CFrame.new(cx - side * (lw / 2 - 0.5), 4.2, face * 0.44), Props.BRASS, M.Metal, nc())
 			else
 				for _, y in { h * 0.27, h * 0.7 } do
 					P(leaf, "Panel", Vector3.new(lw - 1.2, h * 0.3, 0.06), cf * CFrame.new(cx, y, face * 0.18), wood:Lerp(rgb(0, 0, 0), 0.2), M.Wood, nc())
@@ -184,6 +213,7 @@ function Props.door(parent, cf: CFrame, plate: string?, locked: boolean?, size: 
 				P(leaf, "Rose", Vector3.new(0.5, 0.9, 0.06), cf * CFrame.new(cx - side * (lw / 2 - 0.5), 4.1, face * 0.2), Props.BRASS, M.Metal, nc())
 			end
 		end
+		leaf:SetAttribute("KnobX", cx - side * (lw / 2 - 0.5))
 		leaf.WorldPivot = cf * CFrame.new(hinge, 0, 0)
 		leaf:SetAttribute("Dir", -side)
 		table.insert(leaves, leaf)
@@ -206,7 +236,25 @@ function Props.door(parent, cf: CFrame, plate: string?, locked: boolean?, size: 
 		t.Text = plate
 		t.Parent = gui
 	end
+	if style == "code" then
+		-- кодовая панель на наличнике
+		local pad = model(m, "CodeBox")
+		P(pad, "Box", Vector3.new(0.9, 1.4, 0.3), cf * CFrame.new(w / 2 + 0.25, 4.6, 0.9), rgb(40, 44, 46), M.Metal, nc())
+		for r = 0, 2 do
+			for q = 0, 2 do
+				P(pad, "Key", Vector3.new(0.18, 0.18, 0.06), cf * CFrame.new(w / 2 + 0.05 + q * 0.2, 4.95 - r * 0.24, 1.07), rgb(200, 200, 190), M.SmoothPlastic, nc())
+			end
+		end
+		P(pad, "Led", Vector3.new(0.5, 0.12, 0.06), cf * CFrame.new(w / 2 + 0.25, 5.15, 1.07), rgb(200, 40, 30), M.Neon, nc())
+	end
 	if locked then
+		-- латунная накладка с большой скважиной: сюда подходит ключ
+		local leaf = leaves[#leaves]
+		local kx = leaf:GetAttribute("KnobX") or 0
+		for _, face in { -1, 1 } do
+			P(leaf, "Escutcheon", Vector3.new(0.4, 0.8, 0.06), cf * CFrame.new(kx, 3.2, face * 0.2), Props.BRASS, M.Metal, nc())
+			P(leaf, "Keyhole", Vector3.new(0.14, 0.34, 0.06), cf * CFrame.new(kx, 3.15, face * 0.22), rgb(10, 10, 10), M.SmoothPlastic, nc())
+		end
 		local lock = model(m, "Padlock")
 		local lx = w / 2 - 0.9
 		P(lock, "Hasp", Vector3.new(0.9, 0.3, 0.1), cf * CFrame.new(lx, 5.3, 0.25), Props.IRON, M.Metal, nc())
@@ -803,6 +851,30 @@ function Props.pickup(parent, cf: CFrame, item: string)
 	elseif item == "lockpick" then
 		root = P(m, "Pick", Vector3.new(1.2, 0.08, 0.15), cf * CFrame.new(0, 0.05, 0), rgb(170, 170, 176), M.Metal)
 		P(m, "Grip", Vector3.new(0.4, 0.12, 0.3), cf * CFrame.new(-0.6, 0.07, 0), rgb(40, 40, 40), M.SmoothPlastic, nc())
+	elseif item == "pole" then
+		-- длинный шест с крюком: лежит на полу или прислонён
+		root = C(m, "Pole", 9, 0.3, cf * CFrame.new(0, 0.15, 0) * CFrame.Angles(0, 0, math.pi / 2), Props.WOOD, M.Wood)
+		P(m, "Hook", Vector3.new(0.2, 0.9, 0.2), cf * CFrame.new(4.6, 0.55, 0), Props.IRON, M.Metal, nc())
+		P(m, "HookTip", Vector3.new(0.6, 0.2, 0.26), cf * CFrame.new(4.35, 0.95, 0), Props.IRON, M.Metal, nc())
+	elseif item == "lens" then
+		root = C(m, "Lens", 0.2, 1.8, cf * CFrame.new(0, 0.12, 0), rgb(200, 220, 230), M.Glass, { Reflectance = 0.6 })
+		C(m, "Rim", 0.14, 2.06, cf * CFrame.new(0, 0.07, 0), Props.BRASS, M.Metal, nc())
+		local l = Instance.new("PointLight")
+		l.Range = 6
+		l.Brightness = 0.5
+		l.Color = rgb(200, 230, 255)
+		l.Parent = root
+	elseif item == "coldkey" then
+		root = P(m, "Key", Vector3.new(1.4, 0.14, 0.4), cf * CFrame.new(0, 0.08, 0), rgb(120, 170, 200), M.Metal)
+		C(m, "Tag", 0.08, 0.8, cf * CFrame.new(-0.95, 0.06, 0), rgb(200, 230, 255), M.SmoothPlastic, nc())
+		P(m, "Bit", Vector3.new(0.3, 0.12, 0.4), cf * CFrame.new(0.5, 0.08, 0.3), rgb(120, 170, 200), M.Metal, nc())
+		local l = Instance.new("PointLight")
+		l.Range = 6
+		l.Brightness = 0.7
+		l.Color = rgb(150, 210, 255)
+		l.Parent = root
+	elseif item == "clockkey" then
+		root = Props.clockKey(m, cf * CFrame.new(0, 0.3, 0))
 	else
 		-- стопка монет
 		root = C(m, "Coins", 0.3, 0.9, cf * CFrame.new(0, 0.15, 0), rgb(226, 186, 70), M.Metal)
@@ -811,6 +883,28 @@ function Props.pickup(parent, cf: CFrame, item: string)
 	root:SetAttribute("Item", item)
 	Props.prompt(root, "pick", 0, 7)
 	return m, root
+end
+
+-- ключ-часы: круглый чёрный корпус с золотым ободом, светлый циферблат, чёрные
+-- стрелки и деления; снизу бородка ключа. cf — центр, циферблат смотрит вверх
+function Props.clockKey(parent, cf: CFrame)
+	local body = C(parent, "ClockBody", 0.5, 1.6, cf, rgb(24, 22, 22), M.Metal)
+	C(parent, "Rim", 0.4, 1.8, cf * CFrame.new(0, -0.02, 0), rgb(214, 170, 70), M.Metal, nc())
+	C(parent, "Dial", 0.06, 1.3, cf * CFrame.new(0, 0.27, 0), rgb(244, 236, 214), M.SmoothPlastic, nc())
+	for k = 0, 11 do
+		local a = k / 12 * math.pi * 2
+		P(parent, "Mark", Vector3.new(0.05, 0.04, if k % 3 == 0 then 0.2 else 0.1), cf * CFrame.new(math.sin(a) * 0.52, 0.31, -math.cos(a) * 0.52) * CFrame.Angles(0, -a, 0), rgb(20, 20, 20), M.SmoothPlastic, nc())
+	end
+	P(parent, "HandH", Vector3.new(0.06, 0.04, 0.34), cf * CFrame.new(0.08, 0.33, -0.12) * CFrame.Angles(0, -0.6, 0), rgb(16, 16, 16), M.Metal, nc())
+	P(parent, "HandM", Vector3.new(0.04, 0.04, 0.5), cf * CFrame.new(-0.1, 0.34, -0.2) * CFrame.Angles(0, 0.5, 0), rgb(16, 16, 16), M.Metal, nc())
+	P(parent, "Stem", Vector3.new(0.2, 0.2, 1.1), cf * CFrame.new(0, 0, 1.3), rgb(214, 170, 70), M.Metal, nc())
+	P(parent, "Bit", Vector3.new(0.5, 0.16, 0.24), cf * CFrame.new(0.2, 0, 1.75), rgb(214, 170, 70), M.Metal, nc())
+	local l = Instance.new("PointLight")
+	l.Range = 8
+	l.Brightness = 0.8
+	l.Color = rgb(255, 220, 150)
+	l.Parent = body
+	return body
 end
 
 -- генератор для зала Слепого
@@ -1017,17 +1111,6 @@ function Props.statue(parent, cf: CFrame, kind: string, seed: number?)
 end
 
 -- ваза на тумбе
-function Props.vase(parent, cf: CFrame, seed: number)
-	local m = model(parent, "Vase")
-	local _, top = Props.plinth(m, cf, 1.8, 2.2)
-	local col = Color3.fromHSV(({ 0.58, 0.02, 0.1, 0.45, 0.75 })[seed % 5 + 1], 0.45, 0.6)
-	C(m, "FootRing", 0.3, 0.8, top * CFrame.new(0, 0.15, 0), col, M.SmoothPlastic, nc())
-	S(m, "Belly", 1.4, top * CFrame.new(0, 0.95, 0), col, M.SmoothPlastic, nc())
-	C(m, "Neck", 0.7, 0.55, top * CFrame.new(0, 1.85, 0), col, M.SmoothPlastic, nc())
-	C(m, "Rim", 0.12, 0.85, top * CFrame.new(0, 2.25, 0), col:Lerp(rgb(255, 255, 255), 0.3), M.SmoothPlastic, nc())
-	C(m, "Stripe", 0.1, 1.44, top * CFrame.new(0, 0.95, 0), rgb(236, 226, 200), M.SmoothPlastic, nc())
-	return m
-end
 
 -- доспех на стойке у стены
 function Props.armor(parent, cf: CFrame)
@@ -1212,6 +1295,284 @@ function Props.lampPost(parent, cf: CFrame)
 	l.Brightness = 1.4
 	l.Color = rgb(255, 206, 150)
 	l.Parent = glow
+	return m
+end
+
+
+-- ---------------------------------------------------------------------------
+-- новые залы: часы, музыка, археология, механизмы
+
+local DARKWOOD = rgb(58, 36, 24)
+
+-- циферблат: cf смотрит лицом вперёд (LookVector), r — радиус, h:m — время
+local function dialFace(m, cf: CFrame, r: number, h: number, mi: number, face: Color3?)
+	local flat = CFrame.Angles(math.pi / 2, 0, 0)
+	C(m, "DialRim", 0.12, r * 2 + 0.2, cf * CFrame.new(0, 0, -0.06) * flat, Props.BRASS, M.Metal, nc())
+	C(m, "Dial", 0.1, r * 2, cf * CFrame.new(0, 0, -0.1) * flat, face or rgb(240, 232, 210), M.SmoothPlastic, nc())
+	for k = 0, 11 do
+		local a = k / 12 * math.pi * 2
+		P(m, "Mark", Vector3.new(0.06, if k % 3 == 0 then r * 0.22 else r * 0.12, 0.04), cf * CFrame.Angles(0, 0, a) * CFrame.new(0, r * 0.8, -0.17), rgb(20, 20, 20), M.SmoothPlastic, nc())
+	end
+	local ha = ((h % 12) + mi / 60) / 12 * math.pi * 2
+	P(m, "HourHand", Vector3.new(r * 0.1, r * 0.5, 0.04), cf * CFrame.Angles(0, 0, ha) * CFrame.new(0, r * 0.25 - 0.05, -0.2), rgb(16, 16, 16), M.Metal, nc())
+	P(m, "MinuteHand", Vector3.new(r * 0.06, r * 0.78, 0.04), cf * CFrame.Angles(0, 0, mi / 60 * math.pi * 2) * CFrame.new(0, r * 0.39 - 0.05, -0.23), rgb(16, 16, 16), M.Metal, nc())
+end
+
+-- напольные часы у стены
+function Props.grandfatherClock(parent, cf: CFrame, seed: number)
+	local m = model(parent, "GrandfatherClock")
+	local wood = DARKWOOD:Lerp(rgb(110, 70, 40), (seed % 3) / 3)
+	local b = cf * CFrame.new(0, 0, -0.05 - 0.6)
+	P(m, "Plinth", Vector3.new(2.3, 0.6, 1.3), b * CFrame.new(0, 0.3, 0.05), wood, M.Wood)
+	P(m, "Trunk", Vector3.new(1.8, 4.6, 1.2), b * CFrame.new(0, 2.9, 0), wood, M.Wood)
+	P(m, "Hood", Vector3.new(2.2, 2.4, 1.24), b * CFrame.new(0, 6.4, 0.02), wood, M.Wood)
+	P(m, "Crown", Vector3.new(2.5, 0.4, 1.36), b * CFrame.new(0, 7.8, 0.06), wood:Lerp(rgb(0, 0, 0), 0.3), M.Wood, nc())
+	P(m, "Window", Vector3.new(1, 3, 0.05), b * CFrame.new(0, 3.1, -0.62), rgb(30, 26, 22), M.Glass, nc({ Transparency = 0.2 }))
+	P(m, "PendulumRod", Vector3.new(0.06, 2, 0.04), b * CFrame.new(0.1 * ((seed % 3) - 1), 3.6, -0.67), Props.BRASS, M.Metal, nc())
+	C(m, "Bob", 0.04, 0.6, b * CFrame.new(0.1 * ((seed % 3) - 1), 2.6, -0.67) * CFrame.Angles(math.pi / 2, 0, 0), Props.BRASS, M.Metal, nc())
+	dialFace(m, b * CFrame.new(0, 6.4, -0.6), 0.8, seed % 12, (seed * 7) % 60)
+	return m
+end
+
+-- часы на стене (cf — точка на стене, лицо в зал)
+function Props.wallClock(parent, cf: CFrame, r: number, seed: number)
+	local m = model(parent, "WallClock")
+	C(m, "Case", 0.24, r * 2 + 0.5, cf * CFrame.new(0, 0, -0.12) * CFrame.Angles(math.pi / 2, 0, 0), DARKWOOD, M.Wood, nc())
+	dialFace(m, cf * CFrame.new(0, 0, -0.2), r, seed % 12, (seed * 11) % 60)
+	return m
+end
+
+-- астрономические часы на тумбе посреди зала
+function Props.astroClock(parent, cf: CFrame, seed: number)
+	local m = model(parent, "AstroClock")
+	P(m, "Base", Vector3.new(3.4, 1, 3.4), cf * CFrame.new(0, 0.5, 0), rgb(80, 60, 40), M.Wood)
+	P(m, "Column", Vector3.new(2.2, 4, 2.2), cf * CFrame.new(0, 3, 0), rgb(96, 70, 46), M.Wood)
+	P(m, "Head", Vector3.new(3, 3, 3), cf * CFrame.new(0, 6.5, 0), rgb(70, 50, 34), M.Wood)
+	for k = 0, 3 do
+		local face = cf * CFrame.new(0, 6.5, 0) * CFrame.Angles(0, k * math.pi / 2, 0) * CFrame.new(0, 0, -1.5)
+		dialFace(m, face, 1.15, (seed + k * 3) % 12, (seed * 13 + k * 15) % 60, if k % 2 == 0 then rgb(30, 40, 80) else rgb(240, 232, 210))
+	end
+	S(m, "Dome", 2.6, cf * CFrame.new(0, 8.2, 0), Props.BRASS, M.Metal, nc())
+	S(m, "Star", 0.5, cf * CFrame.new(0, 9.7, 0), rgb(255, 214, 120), M.Neon, nc())
+	return m
+end
+
+-- виолончель или скрипка на подставке
+function Props.stringInstrument(parent, cf: CFrame, big: boolean)
+	local m = model(parent, "Instrument")
+	local k = if big then 1 else 0.55
+	local wood = rgb(140, 70, 30)
+	local body = cf * CFrame.new(0, 2.4 * k + 0.2, 0) * CFrame.Angles(-0.18, 0, 0)
+	local flat = CFrame.Angles(math.pi / 2, 0, 0)
+	C(m, "Lower", 0.6 * k, 2.2 * k, body * CFrame.new(0, -0.6 * k, 0) * flat, wood, M.Wood)
+	C(m, "Upper", 0.58 * k, 1.7 * k, body * CFrame.new(0, 0.9 * k, 0) * flat, wood, M.Wood)
+	P(m, "Waist", Vector3.new(1.3 * k, 0.8 * k, 0.56 * k), body * CFrame.new(0, 0.15 * k, 0), wood, M.Wood)
+	P(m, "Neck", Vector3.new(0.24 * k, 2.6 * k, 0.2 * k), body * CFrame.new(0, 2.8 * k, -0.18 * k), rgb(30, 22, 18), M.Wood, nc())
+	S(m, "Scroll", 0.4 * k, body * CFrame.new(0, 4.2 * k, -0.18 * k), wood, M.Wood, nc())
+	for s = -1, 1, 2 do
+		P(m, "Sound", Vector3.new(0.08, 0.6 * k, 0.04), body * CFrame.new(s * 0.4 * k, -0.2 * k, -0.33 * k), rgb(20, 14, 10), M.SmoothPlastic, nc())
+	end
+	P(m, "Strings", Vector3.new(0.16 * k, 4.2 * k, 0.03), body * CFrame.new(0, 1.2 * k, -0.34 * k), rgb(220, 220, 210), M.Metal, nc())
+	-- подставка-тренога
+	for a = 0, 2 do
+		local ang = a / 3 * math.pi * 2
+		rod(m, "Stand", (cf * CFrame.new(0, 1.2 * k, 0.2)).Position, (cf * CFrame.new(math.cos(ang) * 0.9, 0.02, math.sin(ang) * 0.9 + 0.2)).Position, 0.1, Props.IRON, M.Metal, nc())
+	end
+	return m
+end
+
+-- ударная установка
+function Props.drumKit(parent, cf: CFrame)
+	local m = model(parent, "Drums")
+	local red = rgb(150, 30, 34)
+	local side = CFrame.Angles(math.pi / 2, 0, 0)
+	C(m, "BassDrum", 1.4, 2.4, cf * CFrame.new(0, 1.2, 0) * side, red, M.SmoothPlastic)
+	C(m, "BassSkin", 1.44, 2.1, cf * CFrame.new(0, 1.2, 0) * side, rgb(236, 230, 214), M.Fabric, nc())
+	for i, p in { { -1.3, 2.9, -0.6, 1.2 }, { 1.3, 2.9, -0.6, 1.3 }, { 2.1, 1.4, 0.6, 1.6 } } do
+		C(m, "Tom", 0.9, p[4], cf * CFrame.new(p[1], p[2], p[3]), red, M.SmoothPlastic, nc())
+		C(m, "Skin", 0.94, p[4] - 0.12, cf * CFrame.new(p[1], p[2], p[3]), rgb(236, 230, 214), M.Fabric, nc())
+		rod(m, "Leg", (cf * CFrame.new(p[1], p[2] - 0.45, p[3])).Position, (cf * CFrame.new(p[1] * 1.1, 0, p[3] + 0.3)).Position, 0.08, Props.IRON, M.Metal, nc())
+		local _ = i
+	end
+	for _, x in { -2.4, 2.6 } do
+		rod(m, "CymbalStand", (cf * CFrame.new(x, 0, 0.4)).Position, (cf * CFrame.new(x, 4, 0.4)).Position, 0.08, Props.IRON, M.Metal, nc())
+		C(m, "Cymbal", 0.05, 1.8, cf * CFrame.new(x, 4.02, 0.4) * CFrame.Angles(0.15, 0, 0), Props.BRASS, M.Metal, nc())
+	end
+	C(m, "Stool", 0.4, 1.2, cf * CFrame.new(0, 1.8, 2.2), rgb(30, 30, 30), M.Fabric)
+	C(m, "StoolLeg", 1.6, 0.2, cf * CFrame.new(0, 0.8, 2.2), Props.IRON, M.Metal, nc())
+	return m
+end
+
+-- арфа
+function Props.harp(parent, cf: CFrame)
+	local m = model(parent, "Harp")
+	local gold = rgb(196, 156, 70)
+	P(m, "Base", Vector3.new(1.4, 0.4, 1), cf * CFrame.new(0, 0.2, 0), gold, M.Metal)
+	local p0 = (cf * CFrame.new(-1.6, 0.4, 0)).Position
+	local p1 = (cf * CFrame.new(-1.6, 6.4, 0)).Position
+	local p2 = (cf * CFrame.new(0.4, 5.6, 0)).Position
+	local p3 = (cf * CFrame.new(1.4, 5.0, 0)).Position
+	local p4 = (cf * CFrame.new(0.4, 0.4, 0)).Position
+	rod(m, "Pillar", p0, p1, 0.36, gold, M.Metal)
+	rod(m, "Neck", p1, p2, 0.3, gold, M.Metal, nc())
+	rod(m, "Neck", p2, p3, 0.3, gold, M.Metal, nc())
+	rod(m, "Soundboard", p4, p3, 0.6, rgb(150, 96, 50), M.Wood)
+	for k = 1, 9 do
+		local t = k / 10
+		local top = (cf * CFrame.new(-1.6 + t * 3, 6.3 - t * 1.3, 0)).Position
+		local bottom = p4:Lerp(p3, t * 0.92 + 0.04)
+		if top.Y > bottom.Y + 0.4 then
+			rod(m, "String", bottom, top, 0.04, rgb(230, 226, 214), M.Metal, nc())
+		end
+	end
+	return m
+end
+
+-- граммофон на столике
+function Props.gramophone(parent, cf: CFrame)
+	local m = model(parent, "Gramophone")
+	for _, x in { -0.8, 0.8 } do
+		for _, z in { -0.8, 0.8 } do
+			P(m, "Leg", Vector3.new(0.2, 2.6, 0.2), cf * CFrame.new(x, 1.3, z), DARKWOOD, M.Wood, nc())
+		end
+	end
+	P(m, "Top", Vector3.new(2.2, 0.2, 2.2), cf * CFrame.new(0, 2.7, 0), DARKWOOD, M.Wood)
+	P(m, "Box", Vector3.new(1.6, 0.8, 1.6), cf * CFrame.new(0, 3.2, 0), rgb(90, 50, 30), M.Wood)
+	C(m, "Record", 0.06, 1.4, cf * CFrame.new(0, 3.63, 0), rgb(16, 16, 16), M.SmoothPlastic, nc())
+	C(m, "Label", 0.08, 0.4, cf * CFrame.new(0, 3.64, 0), rgb(170, 40, 40), M.SmoothPlastic, nc())
+	rod(m, "Arm", (cf * CFrame.new(0.7, 3.7, 0.6)).Position, (cf * CFrame.new(0.5, 4.6, 0.7)).Position, 0.12, Props.BRASS, M.Metal, nc())
+	-- раструб: всё шире к краю
+	local start = cf * CFrame.new(0.5, 4.7, 0.7)
+	for k = 0, 5 do
+		local d = 0.3 + k * k * 0.12
+		C(m, "Horn", 0.34, d, start * CFrame.Angles(math.rad(-50), 0, 0) * CFrame.new(0, k * 0.32, 0), Props.BRASS, M.Metal, nc())
+	end
+	return m
+end
+
+-- раскоп: дощатая рамка, песок, кости, черепки, сетка из бечёвки, инструменты
+function Props.digPit(parent, cf: CFrame, w: number, l: number, seed: number)
+	local m = model(parent, "DigPit")
+	P(m, "Sand", Vector3.new(w - 0.4, 0.3, l - 0.4), cf * CFrame.new(0, 0.15, 0), rgb(196, 170, 120), M.Sand)
+	for _, s in { -1, 1 } do
+		P(m, "Board", Vector3.new(0.4, 0.6, l), cf * CFrame.new(s * (w / 2 - 0.2), 0.3, 0), rgb(110, 80, 50), M.WoodPlanks)
+		P(m, "Board", Vector3.new(w - 0.8, 0.56, 0.4), cf * CFrame.new(0, 0.28, s * (l / 2 - 0.2)), rgb(110, 80, 50), M.WoodPlanks)
+	end
+	for k = 1, 3 do
+		rod(m, "Grid", (cf * CFrame.new(-w / 2 + 0.2, 0.62, -l / 2 + k * l / 4)).Position, (cf * CFrame.new(w / 2 - 0.2, 0.62, -l / 2 + k * l / 4)).Position, 0.04, rgb(220, 210, 180), M.Fabric, nc())
+		rod(m, "Grid", (cf * CFrame.new(-w / 2 + k * w / 4, 0.64, -l / 2 + 0.2)).Position, (cf * CFrame.new(-w / 2 + k * w / 4, 0.64, l / 2 - 0.2)).Position, 0.04, rgb(220, 210, 180), M.Fabric, nc())
+	end
+	local bone = rgb(226, 216, 190)
+	local r = Random.new(seed)
+	S(m, "Skull", 0.9, cf * CFrame.new(-w * 0.2, 0.45, -l * 0.15), bone, M.SmoothPlastic, nc())
+	for _ = 1, 6 do
+		local a = cf * CFrame.new(r:NextNumber(-w * 0.35, w * 0.35), 0.36, r:NextNumber(-l * 0.35, l * 0.35)) * CFrame.Angles(0, r:NextNumber(0, 3), 0)
+		P(m, "Bone", Vector3.new(0.22, 0.2, r:NextNumber(0.8, 1.8)), a, bone, M.SmoothPlastic, nc())
+	end
+	for _ = 1, 5 do
+		local a = cf * CFrame.new(r:NextNumber(-w * 0.35, w * 0.35), 0.33, r:NextNumber(-l * 0.35, l * 0.35)) * CFrame.Angles(r:NextNumber(-0.4, 0.4), r:NextNumber(0, 3), 0)
+		P(m, "Shard", Vector3.new(r:NextNumber(0.4, 0.8), 0.08, r:NextNumber(0.3, 0.6)), a, rgb(170, 90, 50), M.SmoothPlastic, nc())
+	end
+	-- совок и ведро у края
+	P(m, "Trowel", Vector3.new(0.5, 0.05, 0.8), cf * CFrame.new(w * 0.3, 0.33, l * 0.3) * CFrame.Angles(0, 0.6, 0), rgb(160, 160, 166), M.Metal, nc())
+	C(m, "Bucket", 0.9, 0.9, cf * CFrame.new(w / 2 + 0.9, 0.45, l * 0.3), rgb(120, 120, 126), M.Metal)
+	return m
+end
+
+-- каменная табличка с письменами
+function Props.tablet(parent, cf: CFrame, seed: number)
+	local m = model(parent, "Tablet")
+	P(m, "Stand", Vector3.new(2.6, 0.6, 1.2), cf * CFrame.new(0, 0.3, 0), rgb(70, 60, 50), M.Wood)
+	local slab = cf * CFrame.new(0, 2.3, 0) * CFrame.Angles(-0.08, 0, 0)
+	P(m, "Slab", Vector3.new(2.2, 3.4, 0.4), slab, rgb(150, 140, 120), M.Slate)
+	local r = Random.new(seed)
+	for k = 0, 6 do
+		P(m, "Glyphs", Vector3.new(r:NextNumber(0.8, 1.8), 0.12, 0.04), slab * CFrame.new(r:NextNumber(-0.2, 0.2), 1.3 - k * 0.42, -0.21), rgb(70, 64, 56), M.SmoothPlastic, nc())
+	end
+	P(m, "Crack", Vector3.new(0.06, 1.6, 0.06), slab * CFrame.new(0.7, -0.4, -0.2) * CFrame.Angles(0, 0, 0.5), rgb(40, 36, 30), M.SmoothPlastic, nc())
+	return m
+end
+
+-- большая шестерня на стене (cf — точка на стене, лицо в зал)
+function Props.bigGear(parent, cf: CFrame, r: number, seed: number)
+	local m = model(parent, "BigGear")
+	local col = Props.BRASS:Lerp(Props.IRON, (seed % 3) / 3)
+	local c = cf * CFrame.new(0, 0, -0.3) * CFrame.Angles(0, 0, (seed % 7) * 0.2)
+	local flat = CFrame.Angles(math.pi / 2, 0, 0)
+	C(m, "Disc", 0.4, r * 2, c * flat, col, M.Metal, nc())
+	local n = math.floor(r * 5)
+	for k = 0, n - 1 do
+		local a = k / n * math.pi * 2
+		P(m, "Tooth", Vector3.new(r * 0.28, 0.6, 0.36), c * CFrame.Angles(0, 0, a) * CFrame.new(0, r + 0.25, 0), col, M.Metal, nc())
+	end
+	C(m, "Hub", 0.6, r * 0.5, c * CFrame.new(0, 0, -0.1) * flat, col:Lerp(rgb(0, 0, 0), 0.3), M.Metal, nc())
+	for k = 0, 3 do
+		P(m, "Spoke", Vector3.new(0.3, r * 1.5, 0.46), c * CFrame.Angles(0, 0, k * math.pi / 4) * CFrame.new(0, 0, -0.02 - k * 0.012), col:Lerp(rgb(0, 0, 0), 0.15), M.Metal, nc())
+	end
+	return m
+end
+
+-- планетарий: солнце посередине и планеты на латунных кронштейнах
+function Props.orrery(parent, cf: CFrame, seed: number)
+	local m = model(parent, "Orrery")
+	C(m, "Base", 0.6, 3.4, cf * CFrame.new(0, 0.3, 0), rgb(70, 50, 34), M.Wood)
+	C(m, "Pole", 3.6, 0.3, cf * CFrame.new(0, 2.4, 0), Props.BRASS, M.Metal)
+	S(m, "Sun", 1.3, cf * CFrame.new(0, 4.6, 0), rgb(255, 196, 90), M.Neon, nc())
+	local colors = { rgb(150, 150, 160), rgb(210, 170, 110), rgb(60, 110, 190), rgb(190, 80, 50), rgb(200, 170, 130) }
+	for k = 1, 5 do
+		local a = (seed * 0.7 + k * 1.3) % (math.pi * 2)
+		local rr = 0.9 + k * 0.6
+		local y = 4.6 + (k % 2) * 0.3 - 0.15
+		local tip = (cf * CFrame.new(math.cos(a) * rr, y, math.sin(a) * rr)).Position
+		rod(m, "Arm", (cf * CFrame.new(0, y, 0)).Position, tip, 0.08, Props.BRASS, M.Metal, nc())
+		S(m, "Planet", 0.3 + k * 0.08, CFrame.new(tip + Vector3.new(0, 0.3, 0)), colors[k], M.SmoothPlastic, nc())
+	end
+	return m
+end
+
+-- маятник под потолком над розой ветров
+function Props.pendulum(parent, cf: CFrame, top: number)
+	local m = model(parent, "Pendulum")
+	rod(m, "Wire", (cf * CFrame.new(0, top - 0.1, 0)).Position, (cf * CFrame.new(0.6, 2.2, 0)).Position, 0.08, Props.IRON, M.Metal, nc())
+	S(m, "Bob", 1.4, cf * CFrame.new(0.62, 1.6, 0), Props.BRASS, M.Metal, nc())
+	C(m, "Rose", 0.08, 7, cf * CFrame.new(0, 0.04, 0), rgb(120, 100, 70), M.Marble, nc())
+	for k = 0, 7 do
+		P(m, "RoseRay", Vector3.new(0.2, 0.02, if k % 2 == 0 then 3.2 else 2), cf * CFrame.Angles(0, k * math.pi / 4, 0) * CFrame.new(0, 0.09 + k * 0.004, -(if k % 2 == 0 then 1.6 else 1)), rgb(60, 50, 40), M.SmoothPlastic, nc())
+	end
+	return m
+end
+
+-- ваза «с гончарного круга»: тонкие кольца по профилю, а не шар и не коробка
+local VASE_PROFILES = {
+	{ 0.62, 0.9, 1.3, 1.62, 1.75, 1.68, 1.42, 1.06, 0.72, 0.56, 0.52, 0.66, 0.8 }, -- амфора с ручками
+	{ 0.8, 1.15, 1.5, 1.74, 1.84, 1.8, 1.66, 1.42, 1.16, 0.98, 0.94, 1.04 }, -- пузатый кувшин
+	{ 0.56, 0.64, 0.78, 0.92, 1.02, 1.08, 1.06, 0.96, 0.8, 0.66, 0.58, 0.56, 0.62, 0.78 }, -- высокая узкая
+	{ 0.9, 1.3, 1.6, 1.76, 1.78, 1.7, 1.5, 1.2, 0.96 }, -- низкая чаша
+}
+function Props.vase(parent, cf: CFrame, seed: number)
+	local m = model(parent, "Vase")
+	local _, top = Props.plinth(m, cf, 1.8, 2.2)
+	local kind = seed % #VASE_PROFILES + 1
+	local prof = VASE_PROFILES[kind]
+	local col = Color3.fromHSV(({ 0.58, 0.02, 0.07, 0.45, 0.75, 0.1 })[seed % 6 + 1], 0.5, 0.62)
+	local band = if seed % 2 == 0 then rgb(236, 226, 200) else rgb(30, 26, 24)
+	local h = 0.22
+	for i, d in prof do
+		local isBand = i == math.floor(#prof * 0.4) or i == math.floor(#prof * 0.4) + 1
+		C(m, "Ring", h, d, top * CFrame.new(0, (i - 0.5) * h, 0), if isBand then band else col, M.SmoothPlastic, nc())
+	end
+	-- горлышко тёмное изнутри
+	local last = prof[#prof]
+	C(m, "Mouth", 0.03, last * 0.8, top * CFrame.new(0, #prof * h + 0.005, 0), rgb(24, 20, 18), M.SmoothPlastic, nc())
+	if kind == 1 then
+		for _, s in { -1, 1 } do
+			local a = (top * CFrame.new(s * 0.32, (#prof - 2.5) * h, 0)).Position
+			local b = (top * CFrame.new(s * 0.95, (#prof - 3.5) * h, 0)).Position
+			local c2 = (top * CFrame.new(s * 0.8, (#prof - 6.5) * h, 0)).Position
+			rod(m, "Handle", a, b, 0.12, col, M.SmoothPlastic, nc())
+			rod(m, "Handle", b, c2, 0.12, col, M.SmoothPlastic, nc())
+		end
+	end
 	return m
 end
 

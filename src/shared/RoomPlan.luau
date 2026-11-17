@@ -30,18 +30,22 @@ Plan.TEMPLATES = {
 	rotunda = { w = 46, l = 46, h = 24, weight = 6, min = 10, exits = { "front", "frontL", "frontR", "side" }, branch = 3, door = "grand", hides = 3 },
 	oddities = { w = 30, l = 30, h = 14, weight = 7, exits = { "front", "frontL", "frontR" }, door = "normal", hides = 2 },
 	blank = { w = 30, l = 30, h = 14, weight = 2, min = 15, exits = { "front", "frontL", "frontR" }, door = "normal", hides = 1 },
+	clocks = { w = 30, l = 36, h = 16, weight = 6, min = 3, exits = { "front", "frontL", "frontR", "side" }, door = "normal", hides = 2 },
+	music = { w = 32, l = 34, h = 16, weight = 6, min = 3, exits = { "front", "frontL", "frontR", "side" }, door = "normal", hides = 2 },
+	archaeology = { w = 40, l = 44, h = 18, weight = 5, min = 8, exits = { "front", "frontL", "frontR", "side" }, branch = 2, door = "grand", hides = 2 },
+	mechanisms = { w = 34, l = 38, h = 18, weight = 5, min = 12, exits = { "front", "frontL", "frontR", "side" }, door = "small", hides = 2 },
 	-- особые: выбираются отдельно
 	figures = { w = 40, l = 40, h = 16, exits = { "front" }, door = "normal", hides = 0 },
 	voidhall = { w = 12, l = 180, h = 14, exits = { "front" }, door = "normal", hides = 2 },
 	start = { w = 30, l = 30, h = 16, exits = { "front" }, door = "grand", hides = 0 },
 	codehall = { w = 76, l = 44, h = 18, exits = { "front" }, door = "grand", hides = 2 },
 	passage = { w = 18, l = 44, h = 16, exits = { "front" }, door = "grand", hides = 1 },
-	arena = { w = 80, l = 104, h = 26, dy = -10, exits = { "front" }, door = "grand", hides = 0 },
+	arena = { w = 80, l = 104, h = 26, dy = -10, stairW = 56, exits = { "front" }, door = "grand", hides = 0 },
 	lifthall = { w = 30, l = 30, h = 16, exits = { "front" }, door = "small", hides = 0 },
 	final = { w = 50, l = 60, h = 20, exits = { "front" }, door = "normal", hides = 0 },
 }
 
-Plan.ORDER = { "corridor", "longhall", "shorthall", "gallery", "sculpture", "cases", "fossil", "armory", "ceramics", "archive", "storage", "tech", "stairsup", "stairsdown", "restroom", "cafe", "rotunda", "oddities", "blank" }
+Plan.ORDER = { "corridor", "longhall", "shorthall", "gallery", "sculpture", "cases", "fossil", "armory", "ceramics", "archive", "storage", "tech", "stairsup", "stairsdown", "restroom", "cafe", "rotunda", "oddities", "blank", "clocks", "music", "archaeology", "mechanisms" }
 
 Plan.DOORS = { small = { w = 4, h = 7.5 }, normal = { w = 5, h = 8 }, grand = { w = 8, h = 11 } }
 local RANK = { small = 1, normal = 2, grand = 3 }
@@ -221,6 +225,7 @@ function Plan.room(state, door: number)
 	local quiet = special or d.kind == "figures" or d.kind == "voidhall"
 	local t = Plan.TEMPLATES[d.kind]
 	d.w, d.l, d.h, d.dy = t.w, t.l, t.h, t.dy or 0
+	d.stairW = t.stairW
 	-- настоящий выход: из разрешённых, с местом для следующего большого зала
 	local mine = footprint(state, d.w, d.l)
 	local options = {}

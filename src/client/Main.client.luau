@@ -35,6 +35,7 @@ local app = {
 	steps = true,
 	ambience = true,
 	journal = {} :: { [string]: boolean },
+	ach = {} :: { [string]: boolean },
 	arrived = false,
 }
 
@@ -63,6 +64,11 @@ task.spawn(function()
 	if r and r.journal then
 		for id in r.journal do
 			app.journal[id] = true
+		end
+	end
+	if r and type(r.ach) == "table" then
+		for id in r.ach do
+			app.ach[id] = true
 		end
 	end
 end)
@@ -585,6 +591,8 @@ end
 
 local JOURNAL = { "darkness", "mimic", "coinkeeper", "colossus", "void" }
 local journalBox = panel(420, 420, 62)
+journalBox.Size = UDim2.new(0, 420, 0.82, 0)
+journalBox.Position = UDim2.new(0.5, -210, 0.09, 0)
 local function openJournal()
 	journalBox:ClearAllChildren()
 	Ui.corner(journalBox, 10)
@@ -626,6 +634,66 @@ local journalBtn = Ui.button(hud, "📖", function()
 	end
 end, { Size = UDim2.fromOffset(48, 44), Position = UDim2.new(0, 16, 0, 100), TextSize = 24, BackgroundTransparency = 0.5, ZIndex = 11 })
 local _ = journalBtn
+
+-- достижения: список с описаниями (открывается в лобби — кнопкой или у доски)
+local ACH = { "darkness", "darkness_hid", "coinkeeper", "coin_paid", "mimic_solved", "door50", "colossus_down", "door100", "finale" }
+local achBox = panel(440, 460, 62)
+-- по высоте экрана: на телефоне в альбомной ориентации места мало
+achBox.Size = UDim2.new(0, 440, 0.82, 0)
+achBox.Position = UDim2.new(0.5, -220, 0.09, 0)
+local function openAchievements()
+	achBox:ClearAllChildren()
+	Ui.corner(achBox, 10)
+	Ui.pad(achBox, 14)
+	achBox.BackgroundColor3 = Color3.fromRGB(30, 34, 40)
+	local got = 0
+	for _, id in ACH do
+		if app.ach[id] then
+			got += 1
+		end
+	end
+	Ui.label(achBox, T("Achievements") .. "  " .. got .. "/" .. #ACH, { Font = Ui.TITLE, TextSize = 26, TextColor3 = Ui.C.gold, Size = UDim2.new(1, -50, 0, 34), ZIndex = 63, TextXAlignment = Enum.TextXAlignment.Left })
+	Ui.button(achBox, "✕", function()
+		achBox.Visible = false
+	end, { Size = UDim2.fromOffset(40, 34), Position = UDim2.new(1, -40, 0, 0), ZIndex = 64 })
+	local scroll = Instance.new("ScrollingFrame")
+	scroll.BackgroundTransparency = 1
+	scroll.BorderSizePixel = 0
+	scroll.Size = UDim2.new(1, 0, 1, -44)
+	scroll.Position = UDim2.fromOffset(0, 44)
+	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	scroll.CanvasSize = UDim2.new()
+	scroll.ScrollBarThickness = 6
+	scroll.ZIndex = 63
+	scroll.Parent = achBox
+	Ui.list(scroll, 8)
+	for i, id in ACH do
+		local on = app.ach[id] == true
+		local row = Instance.new("Frame")
+		row.Size = UDim2.new(1, -8, 0, 62)
+		row.BackgroundColor3 = if on then Color3.fromRGB(70, 60, 34) else Color3.fromRGB(44, 46, 50)
+		row.LayoutOrder = i
+		row.ZIndex = 63
+		row.Parent = scroll
+		Ui.corner(row, 8)
+		Ui.label(row, if on then "🏆" else "🔒", { TextSize = 26, Size = UDim2.fromOffset(44, 62), ZIndex = 64 })
+		Ui.label(row, T("a_" .. id), { Font = Ui.TITLE, TextSize = 20, TextColor3 = if on then Ui.C.gold else Ui.C.dim, Size = UDim2.new(1, -52, 0, 26), Position = UDim2.fromOffset(48, 4), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 64 })
+		Ui.label(row, T("a_" .. id .. "_t"), { TextSize = 14, TextWrapped = true, Size = UDim2.new(1, -52, 0, 30), Position = UDim2.fromOffset(48, 30), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 64 })
+	end
+	achBox.Visible = true
+end
+local achBtn = Ui.button(hud, "🏆", function()
+	if achBox.Visible then
+		achBox.Visible = false
+	else
+		openAchievements()
+	end
+end, { Size = UDim2.fromOffset(48, 44), Position = UDim2.new(0, 16, 0, 150), TextSize = 24, BackgroundTransparency = 0.5, ZIndex = 11 })
+local function refreshAchBtn()
+	achBtn.Visible = not inRun()
+end
+refreshAchBtn()
+workspace:GetAttributeChangedSignal("Mode"):Connect(refreshAchBtn)
 
 -- ---------------------------------------------------------------------------
 -- смерть и наблюдение
@@ -917,6 +985,11 @@ Remotes.event("Game").OnClientEvent:Connect(function(msg)
 			end)
 		elseif msg.kind == "blood" then
 			flashRed(0.75)
+		elseif msg.kind == "shake" then
+			app.shake = 1
+			task.delay(0.9, function()
+				app.shake = 0
+			end)
 		elseif msg.kind == "melt" then
 			app.shake = 0.5
 			task.delay(4, function()
@@ -925,6 +998,11 @@ Remotes.event("Game").OnClientEvent:Connect(function(msg)
 		end
 	elseif msg.type == "glitch" then
 		task.spawn(playGlitch)
+	elseif msg.type == "achieve" then
+		app.ach[msg.id] = true
+		toast(T("AchNew", T("a_" .. msg.id)), Ui.C.gold, 4)
+	elseif msg.type == "openAch" then
+		openAchievements()
 	elseif msg.type == "journal" then
 		app.journal[msg.id] = true
 		if msg.new then

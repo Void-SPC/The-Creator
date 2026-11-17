@@ -75,6 +75,14 @@ local RUN = {
 	to_code = function()
 		skip(math.max(0, Rules.CODE_ROOM - G.run.front))
 	end,
+	to_boss = function()
+		skip(math.max(0, Rules.BOSS_ROOM - G.run.front))
+	end,
+	arena_kit = function(p)
+		for _, it in { "pole", "lens", "coldkey", "meat", "meat", "meat", "clockkey" } do
+			G.give(p, it)
+		end
+	end,
 	to_lift = function()
 		skip(math.max(0, Rules.LIFT_ROOM - G.run.front))
 	end,

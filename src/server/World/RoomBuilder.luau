@@ -155,7 +155,8 @@ local function shell(m, d, origin: CFrame, st, prevWall)
 		local rise = d.dy
 		local len = math.sqrt(16 * 16 + rise * rise)
 		local ang = math.atan2(rise, 16)
-		local ramp = P(m, "Ramp", Vector3.new(w - 2, 0.6, len), at(origin, 0, rise / 2 - 0.3, -20) * CFrame.Angles(ang, 0, 0), rgb(0, 0, 0), M.SmoothPlastic, { Transparency = 1, CastShadow = false })
+		local sw = d.stairW or w
+		local ramp = P(m, "Ramp", Vector3.new(sw - 2, 0.6, len), at(origin, 0, rise / 2 - 0.3, -20) * CFrame.Angles(ang, 0, 0), rgb(0, 0, 0), M.SmoothPlastic, { Transparency = 1, CastShadow = false })
 		local _ = ramp
 		local steps = 16
 		local bottom = math.min(0, rise)
@@ -169,13 +170,14 @@ local function shell(m, d, origin: CFrame, st, prevWall)
 				sh = topY - bottom
 			end
 			if sh > 0.05 then
-				P(m, "Step", Vector3.new(w - 1.6, sh, 1), at(origin, 0, bottom + sh / 2 - 0.001, z0 - 0.5), st.floor:Lerp(rgb(0, 0, 0), 0.15), st.floorMat, nc())
+				P(m, "Step", Vector3.new(sw - 1.6, sh, 1), at(origin, 0, bottom + sh / 2 - 0.001, z0 - 0.5), st.floor:Lerp(rgb(0, 0, 0), 0.15), st.floorMat, nc())
 			end
 		end
 		-- перила вдоль ступеней
 		for _, sx in { -1, 1 } do
-			local a = at(origin, sx * (w / 2 - F - 0.4), 3.2, -12).Position
-			local b = at(origin, sx * (w / 2 - F - 0.4), d.dy + 3.2, -28).Position
+			local hx = if d.stairW then sw / 2 - 1.2 else w / 2 - F - 0.4
+			local a = at(origin, sx * hx, 3.2, -12).Position
+			local b = at(origin, sx * hx, d.dy + 3.2, -28).Position
 			Props.rod(m, "Handrail", a, b, 0.25, Props.WOOD_DARK, M.Wood, nc())
 		end
 	end
@@ -717,6 +719,80 @@ L.blank = function(c)
 	ceil(c, 0, -15)
 end
 
+-- зал часов: напольные часы вдоль одной стены, настенные на другой,
+-- астрономические часы не по центру
+L.clocks = function(c)
+	local d, o = c.d, c.origin
+	for k, z in { -7, -11, -15, -19 } do
+		Props.grandfatherClock(c.m, slotL(d, o, z), d.door + k)
+	end
+	Props.wallClock(c.m, slotR(d, o, -8) * CFrame.new(0, 8, F - 0.6), 1.4, d.door)
+	Props.wallClock(c.m, slotR(d, o, -14) * CFrame.new(0, 6.5, F - 0.6), 0.9, d.door + 3)
+	Props.wallClock(c.m, slotR(d, o, -13) * CFrame.new(0, 10, F - 0.6), 0.7, d.door + 5)
+	wallCase(c, 1, -21)
+	Props.astroClock(c.m, spot(d, o, 5, -19, 0.3), d.door)
+	case(c, -6, -26, 1, "clock")
+	hide(c, slotBack(d, o, -10))
+	hide(c, slotBack(d, o, 10))
+	ceil(c, -4, -10)
+	ceil(c, 4, -26)
+end
+
+-- музыкальный зал: рояль у стены, арфа, ударные, виолончель и скрипки, граммофон
+L.music = function(c)
+	local d, o = c.d, c.origin
+	Props.piano(c.m, slotL(d, o, -12))
+	Props.harp(c.m, spot(d, o, -8, -22, 0.4))
+	Props.rug(c.m, spot(d, o, 7, -12), 7, 6, rgb(70, 30, 40))
+	Props.drumKit(c.m, spot(d, o, 7, -12, math.pi))
+	Props.stringInstrument(c.m, spot(d, o, 9, -21, -0.3), true)
+	Props.stringInstrument(c.m, spot(d, o, 5, -23, 0.2), false)
+	Props.stringInstrument(c.m, spot(d, o, 12, -18, -0.5), false)
+	Props.gramophone(c.m, spot(d, o, -3, -27, 0.5))
+	wallCase(c, 1, -8)
+	painting(c, -1, -22, 8, 3, 2.4)
+	hide(c, slotBack(d, o, -10))
+	hide(c, slotBack(d, o, 10))
+	ceil(c, -6, -10)
+	ceil(c, 6, -24)
+	chandelier(c, 0, -17, 3)
+end
+
+-- археология: раскоп с костями, таблички с письменами, амфоры, стеллаж с находками
+L.archaeology = function(c)
+	local d, o = c.d, c.origin
+	Props.digPit(c.m, spot(d, o, -6, -22), 10, 12, d.door)
+	for k, z in { -10, -18, -26 } do
+		Props.tablet(c.m, spot(d, o, 12, z, math.pi / 2), d.door + k)
+	end
+	Props.vase(c.m, spot(d, o, -14, -9), d.door * 4)
+	Props.vase(c.m, spot(d, o, -12, -33), d.door * 4 + 1)
+	Props.rack(c.m, slotL(d, o, -9), 6, d.door)
+	case(c, 4, -34, 1, "skull")
+	case(c, 13, -33, 2, "mask")
+	hide(c, slotBack(d, o, -14))
+	hide(c, slotBack(d, o, 14))
+	ceil(c, -6, -22)
+	ceil(c, 10, -12)
+	ceil(c, 10, -32)
+end
+
+-- древние механизмы: шестерни на стенах, планетарий, маятник, верстак с ящиками
+L.mechanisms = function(c)
+	local d, o = c.d, c.origin
+	Props.bigGear(c.m, slotL(d, o, -10) * CFrame.new(0, 7, F - 0.6), 3, d.door)
+	Props.bigGear(c.m, slotL(d, o, -19) * CFrame.new(0, 4.5, F - 0.6), 2, d.door + 1)
+	Props.bigGear(c.m, slotR(d, o, -14) * CFrame.new(0, 8, F - 0.6), 3.6, d.door + 2)
+	Props.orrery(c.m, spot(d, o, -6, -24), d.door)
+	Props.pendulum(c.m, spot(d, o, 7, -20), c.info.top)
+	search(c, "desk", slotR(d, o, -24))
+	Props.crate(c.m, spot(d, o, 12, -6))
+	hide(c, slotBack(d, o, -12))
+	hide(c, slotBack(d, o, 12))
+	ceil(c, -5, -12)
+	ceil(c, 5, -28)
+end
+
 -- переход к залу Колосса: парадный коридор со статуями
 L.passage = function(c)
 	local d, o = c.d, c.origin
@@ -759,6 +835,32 @@ L.voidhall = function(c)
 		local slot = if k % 2 == 1 then slotL else slotR
 		local _, shade = Props.sconce(c.m, slot(d, o, z) * CFrame.new(0, 8, F - 0.6))
 		table.insert(c.info.lights, shade)
+	end
+	-- арки поперёк коридора: пилястры у стен и балка над головой, под открытой тьмой
+	local stone = rgb(150, 142, 128)
+	for z = -10, -(d.l - 8), -13 do
+		local ok = true
+		for _, g in d.gaps do
+			if math.abs(z - g.z) < g.w / 2 + 2.5 then
+				ok = false
+			end
+		end
+		for _, bad in { -18, -52, -96, -134, -168, -66, -102 } do
+			if math.abs(z - bad) < 3 then
+				ok = false
+			end
+		end
+		if ok then
+			for _, sx in { -1, 1 } do
+				P(c.m, "Pilaster", Vector3.new(0.9, d.h - 0.1, 1.6), at(o, sx * (d.w / 2 - 1.2), (d.h - 0.1) / 2, z), stone, M.Limestone)
+				P(c.m, "PilasterCap", Vector3.new(1.3, 0.5, 2), at(o, sx * (d.w / 2 - 1.3), d.h - 2.6, z), stone:Lerp(rgb(0, 0, 0), 0.15), M.Limestone, nc())
+			end
+			P(c.m, "ArchBeam", Vector3.new(d.w - 2.6, 1.2, 1.4), at(o, 0, d.h - 1.3, z), stone, M.Limestone, nc())
+			P(c.m, "Keystone", Vector3.new(1.2, 1.6, 1.6), at(o, 0, d.h - 1.25, z), stone:Lerp(rgb(255, 255, 255), 0.1), M.Limestone, nc())
+			for _, sx in { -1, 1 } do
+				P(c.m, "Haunch", Vector3.new(1.4, 1, 1.3), at(o, sx * (d.w / 2 - 2.3), d.h - 2.1, z) * CFrame.Angles(0, 0, sx * 0.7), stone, M.Limestone, nc())
+			end
+		end
 	end
 	-- чёрная оболочка далеко вокруг: в проломах и над головой только тьма
 	local shell = Props.model(c.m, "VoidShell")
