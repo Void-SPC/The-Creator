@@ -774,8 +774,8 @@ local function sceneBoss(focus: CFrame)
 	hud.Visible = false
 	closePanels()
 	local from = camera.CFrame
-	local lookAt = (focus * CFrame.new(0, 12, 0)).Position
-	local to = CFrame.lookAt((focus * CFrame.new(10, 9, -34)).Position, lookAt)
+	local lookAt = (focus * CFrame.new(0, 5, 0)).Position
+	local to = CFrame.lookAt((focus * CFrame.new(9, 7, -24)).Position, lookAt)
 	camera.CameraType = Enum.CameraType.Scriptable
 	local t0 = os.clock()
 	local conn
@@ -783,9 +783,9 @@ local function sceneBoss(focus: CFrame)
 		local t = os.clock() - t0
 		if t < 1.6 then
 			camera.CFrame = from:Lerp(to, TweenService:GetValue(t / 1.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut))
-		elseif t < 5 then
-			local push = (t - 1.6) / 3.4
-			camera.CFrame = to * CFrame.new(0, 0, -push * 8) * CFrame.Angles((math.random() - 0.5) * 0.01 * push * 4, (math.random() - 0.5) * 0.01 * push * 4, 0)
+		elseif t < 6 then
+			local push = (t - 1.6) / 4.4
+			camera.CFrame = to * CFrame.new(0, 0, -push * 6) * CFrame.Angles((math.random() - 0.5) * 0.01 * push * 4, (math.random() - 0.5) * 0.01 * push * 4, 0)
 		else
 			conn:Disconnect()
 			app.scene = false

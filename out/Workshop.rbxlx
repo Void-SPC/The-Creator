@@ -209,7 +209,7 @@ Lang.en = {
 	j_coinkeeper = "The Coinkeeper",
 	j_coinkeeper_t = "A golden coin with a moustache that blocks the door and wants gold, and if you pay with yourself it takes most of your health, or all of it when you have almost none left, and it is afraid of the Darkness and runs into its hole when the lights flicker",
 	j_colossus = "The Colossus",
-	j_colossus_t = "A huge blind marble beast that hears footsteps and sometimes stops to sniff the air, and then it smells whoever stands near, so move crouching, and it walks to any meat lying on the floor, and the light gathered by the mirrors and the chandelier blinds it, and a falling chandelier breaks it",
+	j_colossus_t = "A blind beast built of stone blocks like a skeleton in a hall of fossils, it rises from a heap of blocks, it hears footsteps and sometimes stops to sniff the air, and then it smells whoever stands near, so move crouching, and it walks to any meat lying on the floor, and the light gathered by the mirrors and the chandelier blinds it, and a falling chandelier breaks it",
 	j_void = "The Breach",
 	j_void_t = "A corridor that is far too long, with no ceiling and with holes in the walls, and behind the holes there is nothing, and that nothing pulls you in, and whoever walks slowly past a hole does not walk past it",
 }
@@ -338,7 +338,7 @@ Lang.ru = {
 	j_coinkeeper = "Монетчик",
 	j_coinkeeper_t = "Золотая монета с усами, которая загораживает дверь и требует золото, а если расплатиться собой, забирает почти всё здоровье, или всё, когда его почти не осталось, и ещё он боится Тьмы и убегает в свою норку, когда мигает свет",
 	j_colossus = "Колосс",
-	j_colossus_t = "Огромный слепой мраморный зверь, который слышит шаги и иногда останавливается принюхаться, и тогда чует того, кто стоит рядом, так что двигайся пригнувшись, а ещё он идёт к любому мясу на полу, свет, собранный зеркалами и люстрой, ослепляет его, а упавшая люстра разбивает",
+	j_colossus_t = "Слепой зверь из каменных блоков, похожий на скелет из зала окаменелостей, он поднимается из груды блоков, слышит шаги и иногда останавливается принюхаться, и тогда чует того, кто стоит рядом, так что двигайся пригнувшись, а ещё он идёт к любому мясу на полу, свет, собранный зеркалами и люстрой, ослепляет его, а упавшая люстра разбивает",
 	j_void = "Пролом",
 	j_void_t = "Слишком длинный коридор без потолка и с дырами в стенах, за которыми ничего нет, и это ничто тянет к себе, и кто идёт мимо дыры медленно, тот мимо не проходит",
 }
@@ -998,7 +998,7 @@ function Rules.noise(speed: number, sneaking: boolean): number
 	return 34
 end
 
-Rules.COLOSSUS = { wander = 8, hunt = 16, sniffEvery = 11, sniffTime = 2.6, sniffRange = 30, meat = 18 }
+Rules.COLOSSUS = { wander = 8, hunt = 14, sniffEvery = 11, sniffTime = 2.6, sniffRange = 30, meat = 18 }
 
 -- кодовый замок: четыре цифры 1–6 (сколько предметов на витрине каждого цвета)
 Rules.COLORS = { "red", "blue", "green", "yellow" }
@@ -2024,14 +2024,23 @@ end
 
 local boss = nil
 
+-- Колосс — каменный скелет зверя размером с динозавра из зала окаменелостей: позвонки,
+-- рёбра, череп с зубами, ноги из костей-блоков, длинный хвост. Чертёж ниже — в
+-- «больших» единицах, всё умножается на K. Невидимый каркас R15 только двигает его
+local K = 0.645
+local RIG = 2
+E.COLOSSUS_HEIGHT = 3 * RIG -- корень над полом
+
+local function sc(cf: CFrame): CFrame
+	return CFrame.new(cf.Position * K) * cf.Rotation
+end
+
 function E.spawnColossus(info)
 	E.removeColossus()
-	local model, hum = rig(nil, "Colossus", 3.1)
+	local model, hum = rig(nil, "Colossus", RIG)
 	if not model then
 		return nil
 	end
-	-- человеческий каркас только двигает существо и остаётся невидимым; видно каменного
-	-- зверя из мраморных блоков: длинное тело, четыре ноги, шея, голова без глаз, хвост
 	for _, dsc in model:GetDescendants() do
 		if dsc:IsA("BasePart") then
 			dsc.Transparency = 1
@@ -2041,12 +2050,13 @@ function E.spawnColossus(info)
 		end
 	end
 	local hrp = model:FindFirstChild("HumanoidRootPart") :: BasePart
-	local stone, dark = rgb(206, 202, 194), rgb(120, 116, 110)
-	local motors = { legs = {} }
-	local function piece(name, size, offset: CFrame, color, jointAt: CFrame?)
+	local stone, dark, bone = rgb(206, 202, 194), rgb(128, 122, 114), rgb(226, 218, 200)
+	local motors = { legs = {}, all = {} }
+	local function piece(name, size: Vector3, offset: CFrame, color, jointAt: CFrame?)
+		offset = sc(offset)
 		local p = Instance.new("Part")
 		p.Name = name
-		p.Size = size
+		p.Size = size * K
 		p.Color = color or stone
 		p.Material = M.Marble
 		p.CanCollide = false
@@ -2059,52 +2069,134 @@ function E.spawnColossus(info)
 		mt.Part0 = hrp
 		mt.Part1 = p
 		-- сустав: точка вращения в координатах корня и та же точка в координатах детали
-		local joint = jointAt or offset
+		local joint = if jointAt then sc(jointAt) else offset
 		mt.C0 = joint
 		mt.C1 = offset:Inverse() * joint
 		mt.Parent = p
 		p.Parent = model
+		table.insert(motors.all, mt)
 		return p, mt
 	end
-	piece("Body", Vector3.new(7, 6, 15), CFrame.new(0, 1, 1))
-	piece("Chest", Vector3.new(8, 7, 5), CFrame.new(0, 1.4, -5.5))
-	for k = 0, 3 do
-		piece("Spine", Vector3.new(2.2 - k * 0.2, 2.6 - k * 0.3, 2.4), CFrame.new(0, 4.8 - k * 0.2, -5 + k * 3.6) * CFrame.Angles(0.3, 0, 0), dark)
+	-- позвоночник и грудная клетка
+	for k = 0, 9 do
+		piece("Vertebra", Vector3.new(1.9, 1.7, 1.5), CFrame.new(0, 4.4 + math.sin(k * 0.4) * 0.3, -7 + k * 1.65) * CFrame.Angles(0.15, 0, 0), if k % 2 == 0 then stone else dark)
+		piece("Spike", Vector3.new(0.6, 1.4, 0.8), CFrame.new(0, 5.8 + math.sin(k * 0.4) * 0.3, -7 + k * 1.65) * CFrame.Angles(-0.3, 0, 0), dark)
 	end
-	piece("Crack", Vector3.new(0.25, 4.5, 6), CFrame.new(3.52, 1.4, 0) * CFrame.Angles(0.5, 0, 0), rgb(60, 58, 56))
-	piece("Crack", Vector3.new(0.25, 3.5, 5), CFrame.new(-3.52, 0.8, 3) * CFrame.Angles(-0.4, 0, 0), rgb(60, 58, 56))
-	-- шея и голова двигаются вместе, когда он принюхивается
-	local neckJoint = CFrame.new(0, 3, -7.5)
-	local _, neckM = piece("Neck", Vector3.new(3.6, 3.6, 6.5), CFrame.new(0, 4.6, -10) * CFrame.Angles(0.45, 0, 0), stone, neckJoint)
-	local _, headM = piece("Head", Vector3.new(4.6, 3.8, 6.8), CFrame.new(0, 6.6, -14.4), stone, neckJoint)
-	local _, jawM = piece("Jaw", Vector3.new(4, 1.1, 5.6), CFrame.new(0, 4.3, -14.6), dark, neckJoint)
-	local _, crestM = piece("Crest", Vector3.new(1, 2.4, 4.4), CFrame.new(0, 9, -13.2) * CFrame.Angles(-0.3, 0, 0), dark, neckJoint)
-	local _, n1 = piece("Nostril", Vector3.new(0.5, 0.9, 0.2), CFrame.new(-0.9, 6.3, -17.82), rgb(30, 28, 26), neckJoint)
-	local _, n2 = piece("Nostril", Vector3.new(0.5, 0.9, 0.2), CFrame.new(0.9, 6.3, -17.82), rgb(30, 28, 26), neckJoint)
-	local _, brow = piece("BlindBrow", Vector3.new(4.8, 1, 3), CFrame.new(0, 7.6, -15.6), dark, neckJoint)
-	motors.head = { neckM, headM, jawM, crestM, n1, n2, brow }
-	for _, mt in motors.head do
-		mt:SetAttribute("Rest", mt.C0)
-	end
-	-- ноги: бедро качается при ходьбе
-	for _, sx in { -1, 1 } do
-		for _, z in { -5, 6.5 } do
-			local hip = CFrame.new(sx * 3.6, 0, z)
-			local _, lm = piece("Leg", Vector3.new(2.6, 9.2, 3), CFrame.new(sx * 3.6, -4.6, z), stone, hip)
-			local _, fm = piece("Foot", Vector3.new(3.4, 1, 4.2), CFrame.new(sx * 3.6, -8.8, z - 0.5), dark, hip)
-			table.insert(motors.legs, { lm, fm, phase = if (sx &lt; 0) == (z &lt; 0) then 0 else math.pi, rest = hip })
+	for k = 0, 6 do
+		local z = -5.2 + k * 1.6
+		local big = 1 - math.abs(k - 2.5) / 6
+		for _, sx in { -1, 1 } do
+			piece("Rib", Vector3.new(0.55, 4.2 * big + 0.8, 0.7), CFrame.new(sx * 2.4 * big, 2.6, z) * CFrame.Angles(0, 0, sx * 0.4), bone)
+			piece("Rib", Vector3.new(0.55, 2.6 * big + 0.6, 0.7), CFrame.new(sx * 2.7 * big, -0.2, z) * CFrame.Angles(0, 0, -sx * 0.35), bone)
 		end
 	end
-	for k = 0, 4 do
-		piece("Tail", Vector3.new(3 - k * 0.5, 2.6 - k * 0.4, 3.4), CFrame.new(0, 1 - k * 1.1, 9.5 + k * 3) * CFrame.Angles(-0.35, 0, 0), if k % 2 == 0 then stone else dark)
+	piece("Sternum", Vector3.new(1.4, 0.8, 9.6), CFrame.new(0, -1.5, -0.4), dark)
+	piece("Shoulders", Vector3.new(6.4, 2, 2.6), CFrame.new(0, 3.2, -5.6), stone)
+	piece("Pelvis", Vector3.new(5.6, 2.6, 3.4), CFrame.new(0, 3, 6.8), stone)
+	piece("Crack", Vector3.new(0.25, 2.4, 2.6), CFrame.new(2.85, 3.3, 6.8) * CFrame.Angles(0.5, 0, 0), rgb(60, 58, 56))
+	-- шея и череп двигаются вместе, когда он принюхивается
+	local neckJoint = CFrame.new(0, 4.6, -7.4)
+	local head = {}
+	local function hp(name, size, offset, color)
+		local _, mt = piece(name, size, offset, color, neckJoint)
+		table.insert(head, mt)
 	end
-	model:PivotTo(info.arena.spawn * CFrame.new(0, 3 * 3.1, 0))
+	hp("Neck", Vector3.new(2, 2, 2.2), CFrame.new(0, 5.4, -8.8) * CFrame.Angles(0.5, 0, 0), dark)
+	hp("Neck", Vector3.new(1.8, 1.8, 2.2), CFrame.new(0, 6.5, -10.5) * CFrame.Angles(0.4, 0, 0), stone)
+	hp("Neck", Vector3.new(1.7, 1.7, 2), CFrame.new(0, 7.3, -12.2) * CFrame.Angles(0.25, 0, 0), dark)
+	hp("Skull", Vector3.new(3.6, 2.8, 5.4), CFrame.new(0, 8, -15.6), stone)
+	hp("Snout", Vector3.new(2.6, 2, 2.6), CFrame.new(0, 7.6, -19.2), stone)
+	hp("Jaw", Vector3.new(3, 0.9, 6.4), CFrame.new(0, 6.1, -16.6) * CFrame.Angles(-0.08, 0, 0), dark)
+	hp("Crest", Vector3.new(0.9, 2, 4), CFrame.new(0, 10, -14.6) * CFrame.Angles(-0.3, 0, 0), dark)
+	hp("BlindBrow", Vector3.new(3.8, 0.9, 1.6), CFrame.new(0, 9.2, -17), dark)
+	hp("EyeSocket", Vector3.new(0.9, 0.9, 0.6), CFrame.new(-1.45, 8.4, -17.6), rgb(30, 28, 26))
+	hp("EyeSocket", Vector3.new(0.9, 0.9, 0.6), CFrame.new(1.45, 8.4, -17.6), rgb(30, 28, 26))
+	for k = 0, 5 do
+		for _, sx in { -1, 1 } do
+			hp("Tooth", Vector3.new(0.35, 0.8, 0.35), CFrame.new(sx * 1.05, 6.6, -14.4 - k * 1.05), bone)
+		end
+	end
+	motors.head = head
+	for _, mt in head do
+		mt:SetAttribute("Rest", mt.C0)
+	end
+	-- ноги: бедро, колено, голень и ступня из каменных костей
+	for _, sx in { -1, 1 } do
+		for _, z in { -5.4, 6.6 } do
+			local hip = CFrame.new(sx * 3.4, 1.6, z)
+			local _, a = piece("Thigh", Vector3.new(2.2, 5, 2.4), CFrame.new(sx * 3.5, -0.8, z) * CFrame.Angles(if z &lt; 0 then -0.15 else 0.2, 0, 0), stone, hip)
+			local _, b = piece("Knee", Vector3.new(1.8, 1.6, 1.8), CFrame.new(sx * 3.5, -3.6, z + (if z &lt; 0 then 0.4 else -0.5)), dark, hip)
+			local _, c = piece("Shin", Vector3.new(1.6, 4.6, 1.8), CFrame.new(sx * 3.5, -6.2, z), bone, hip)
+			local _, f = piece("Foot", Vector3.new(3, 0.8, 3.8), CFrame.new(sx * 3.5, -8.9, z - 0.7), dark, hip)
+			table.insert(motors.legs, { a, b, c, f, phase = if (sx &lt; 0) == (z &lt; 0) then 0 else math.pi, rest = sc(hip) })
+		end
+	end
+	-- хвост: всё мельче к концу и ниже
+	for k = 0, 7 do
+		piece("Tail", Vector3.new(1.9 - k * 0.18, 1.7 - k * 0.15, 2.2), CFrame.new(0, 3.6 - k * 0.55, 9.2 + k * 2.1) * CFrame.Angles(-0.25, 0, 0), if k % 2 == 0 then stone else dark)
+	end
+	for _, mt in motors.all do
+		mt:SetAttribute("Home", mt.C0)
+	end
+	model:PivotTo(info.arena.spawn * CFrame.new(0, E.COLOSSUS_HEIGHT, 0))
 	local root = model:FindFirstChild("HumanoidRootPart") :: BasePart
 	root.Anchored = true
 	model.Parent = info.model
 	CollectionService:AddTag(model, "Colossus")
 	boss = { model = model, hum = hum, root = root, info = info, motors = motors, state = "statue", target = nil, sniffAt = 0, until_ = 0, wanderAt = 0, path = nil, pathAt = 0, wp = 1 }
+	-- пока зал не открыт, он лежит грудой каменных блоков у постамента
+	local rnd = Random.new(info.desc.door * 31 + 7)
+	for _, mt in motors.all do
+		local home = mt:GetAttribute("Home")
+		local pile = CFrame.new(rnd:NextNumber(-5, 5), -E.COLOSSUS_HEIGHT + rnd:NextNumber(0.4, 1.6), rnd:NextNumber(-6, 6)) * CFrame.Angles(rnd:NextNumber(-1.5, 1.5), rnd:NextNumber(0, 6), rnd:NextNumber(-1.5, 1.5))
+		-- деталь окажется в точке pile (C0 * C1⁻¹ = pile)
+		mt:SetAttribute("Pile", pile * mt.C1)
+		mt.C0 = pile * mt.C1
+		local _ = home
+	end
 	return model
+end
+
+-- сцена: блоки один за другим поднимаются из груды и встают на места
+function E.assembleColossus()
+	local b = boss
+	if not b or b.state ~= "statue" then
+		return
+	end
+	b.assembling = true
+	local list = table.clone(b.motors.all)
+	-- снизу вверх: сначала ноги, потом тело, в конце голова
+	table.sort(list, function(x, y)
+		return (x:GetAttribute("Home") :: CFrame).Position.Y &lt; (y:GetAttribute("Home") :: CFrame).Position.Y
+	end)
+	local t0 = os.clock()
+	local span, each = 3.2, 0.9
+	local lastSound = 0
+	while b.model.Parent and b.assembling do
+		local t = os.clock() - t0
+		local done = true
+		for i, mt in list do
+			local start = (i - 1) / #list * span
+			local a = math.clamp((t - start) / each, 0, 1)
+			if a &lt; 1 then
+				done = false
+			end
+			local from, to = mt:GetAttribute("Pile") :: CFrame, mt:GetAttribute("Home") :: CFrame
+			local e = 1 - (1 - a) ^ 3
+			-- взлетает дугой и встаёт на место
+			mt.C0 = from:Lerp(to, e) * CFrame.new(0, math.sin(a * math.pi) * 2, 0)
+		end
+		if t - lastSound &gt; 0.35 and t &lt; span then
+			lastSound = t
+			sound(b.root, SOUND.stone, 0.7, 0.6 + math.random() * 0.5)
+		end
+		if done then
+			break
+		end
+		task.wait()
+	end
+	b.assembling = false
+	sound(b.root, SOUND.scream, 1.6, 0.45)
 end
 
 function E.removeColossus()
@@ -2120,6 +2212,14 @@ function E.wakeColossus()
 	local b = boss
 	if not b or b.state ~= "statue" then
 		return
+	end
+	-- на всякий случай все блоки точно на местах
+	b.assembling = false
+	for _, mt in b.motors.all or {} do
+		local home = mt:GetAttribute("Home")
+		if typeof(home) == "CFrame" then
+			mt.C0 = home
+		end
 	end
 	b.root.Anchored = false
 	pcall(function()
@@ -2175,7 +2275,7 @@ local function bossGo(goal: Vector3)
 	if not b.path or now - b.pathAt &gt; 1.5 or (b.goal and (b.goal - goal).Magnitude &gt; 8) then
 		b.pathAt = now
 		b.goal = goal
-		local path = PathfindingService:CreatePath({ AgentRadius = 5, AgentHeight = 16, AgentCanJump = false })
+		local path = PathfindingService:CreatePath({ AgentRadius = 3.5, AgentHeight = 11, AgentCanJump = false })
 		local ok = pcall(function()
 			path:ComputeAsync(b.root.Position, goal)
 		end)
@@ -2207,7 +2307,7 @@ end
 -- ноги шагают, пока он идёт; голова живёт своей позой
 local function animateBeast()
 	local b = boss
-	if not b or not b.motors or not b.root.Parent or b.state == "defeat" then
+	if not b or not b.motors or not b.root.Parent or b.state == "defeat" or b.state == "statue" then
 		return
 	end
 	local t = os.clock()
@@ -2218,8 +2318,9 @@ local function animateBeast()
 	for _, leg in b.motors.legs do
 		local a = math.sin(t * (3 + speed * 0.25) + leg.phase) * amp + tremble
 		local c0 = leg.rest * CFrame.Angles(a, 0, 0)
-		leg[1].C0 = c0
-		leg[2].C0 = c0
+		for j = 1, 4 do
+			leg[j].C0 = c0
+		end
 	end
 	local yaw, pitch, roll = 0, 0, 0
 	local ps = b.pose
@@ -2275,8 +2376,9 @@ local function defeat(b)
 			for _, leg in b.motors.legs do
 				local side = if leg.rest.Position.X &lt; 0 then -1 else 1
 				local c0 = leg.rest * CFrame.Angles(0.2 * k, 0, side * 0.9 * k)
-				leg[1].C0 = c0
-				leg[2].C0 = c0
+				for j = 1, 4 do
+					leg[j].C0 = c0
+				end
 			end
 			for _, mt in b.motors.head do
 				local rest = mt:GetAttribute("Rest")
@@ -2284,7 +2386,7 @@ local function defeat(b)
 					mt.C0 = rest * CFrame.Angles(0.75 * k, math.sin(k * 9) * 0.1 * (1 - k), 0)
 				end
 			end
-			b.root.CFrame = base * CFrame.new(0, -3.4 * k, 0) * CFrame.Angles(0, 0, 0.12 * k)
+			b.root.CFrame = base * CFrame.new(0, -2.2 * k, 0) * CFrame.Angles(0, 0, 0.12 * k)
 			task.wait()
 		end
 		if not model.Parent then
@@ -2385,7 +2487,7 @@ local function stepColossus()
 				E.noise(r.Position, radius)
 			end
 			local low = r.Position.Y &lt; arena.floorY + 7
-			if low and flat(r.Position - b.root.Position).Magnitude &lt; 8.5 and b.state ~= "eat" and b.state ~= "stun" then
+			if low and flat(r.Position - b.root.Position).Magnitude &lt; 6.5 and b.state ~= "eat" and b.state ~= "stun" then
 				G.kill(p, "colossus")
 				sound(b.root, SOUND.stone, 1.6, 0.5)
 				if b.state == "hunt" then
@@ -4051,7 +4153,9 @@ function openDoor(n: number, force: boolean?)
 			G.discover(p, "colossus")
 			G.achieve(p, "door50")
 		end
-		task.delay(5.5, Entities.wakeColossus)
+		-- груда блоков у постамента поднимается и собирается в зверя
+		task.delay(1.2, Entities.assembleColossus)
+		task.delay(6.2, Entities.wakeColossus)
 	elseif entered.desc.kind == "voidhall" then
 		for _, p in G.alivePlayers() do
 			G.discover(p, "void")
@@ -9124,8 +9228,8 @@ local function sceneBoss(focus: CFrame)
 	hud.Visible = false
 	closePanels()
 	local from = camera.CFrame
-	local lookAt = (focus * CFrame.new(0, 12, 0)).Position
-	local to = CFrame.lookAt((focus * CFrame.new(10, 9, -34)).Position, lookAt)
+	local lookAt = (focus * CFrame.new(0, 5, 0)).Position
+	local to = CFrame.lookAt((focus * CFrame.new(9, 7, -24)).Position, lookAt)
 	camera.CameraType = Enum.CameraType.Scriptable
 	local t0 = os.clock()
 	local conn
@@ -9133,9 +9237,9 @@ local function sceneBoss(focus: CFrame)
 		local t = os.clock() - t0
 		if t &lt; 1.6 then
 			camera.CFrame = from:Lerp(to, TweenService:GetValue(t / 1.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut))
-		elseif t &lt; 5 then
-			local push = (t - 1.6) / 3.4
-			camera.CFrame = to * CFrame.new(0, 0, -push * 8) * CFrame.Angles((math.random() - 0.5) * 0.01 * push * 4, (math.random() - 0.5) * 0.01 * push * 4, 0)
+		elseif t &lt; 6 then
+			local push = (t - 1.6) / 4.4
+			camera.CFrame = to * CFrame.new(0, 0, -push * 6) * CFrame.Angles((math.random() - 0.5) * 0.01 * push * 4, (math.random() - 0.5) * 0.01 * push * 4, 0)
 		else
 			conn:Disconnect()
 			app.scene = false

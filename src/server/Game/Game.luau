@@ -1510,7 +1510,9 @@ function openDoor(n: number, force: boolean?)
 			G.discover(p, "colossus")
 			G.achieve(p, "door50")
 		end
-		task.delay(5.5, Entities.wakeColossus)
+		-- груда блоков у постамента поднимается и собирается в зверя
+		task.delay(1.2, Entities.assembleColossus)
+		task.delay(6.2, Entities.wakeColossus)
 	elseif entered.desc.kind == "voidhall" then
 		for _, p in G.alivePlayers() do
 			G.discover(p, "void")

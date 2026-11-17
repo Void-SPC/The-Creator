@@ -182,7 +182,7 @@ function Rules.noise(speed: number, sneaking: boolean): number
 	return 34
 end
 
-Rules.COLOSSUS = { wander = 8, hunt = 16, sniffEvery = 11, sniffTime = 2.6, sniffRange = 30, meat = 18 }
+Rules.COLOSSUS = { wander = 8, hunt = 14, sniffEvery = 11, sniffTime = 2.6, sniffRange = 30, meat = 18 }
 
 -- кодовый замок: четыре цифры 1–6 (сколько предметов на витрине каждого цвета)
 Rules.COLORS = { "red", "blue", "green", "yellow" }

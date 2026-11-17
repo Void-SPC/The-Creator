@@ -128,7 +128,7 @@ Lang.en = {
 	j_coinkeeper = "The Coinkeeper",
 	j_coinkeeper_t = "A golden coin with a moustache that blocks the door and wants gold, and if you pay with yourself it takes most of your health, or all of it when you have almost none left, and it is afraid of the Darkness and runs into its hole when the lights flicker",
 	j_colossus = "The Colossus",
-	j_colossus_t = "A huge blind marble beast that hears footsteps and sometimes stops to sniff the air, and then it smells whoever stands near, so move crouching, and it walks to any meat lying on the floor, and the light gathered by the mirrors and the chandelier blinds it, and a falling chandelier breaks it",
+	j_colossus_t = "A blind beast built of stone blocks like a skeleton in a hall of fossils, it rises from a heap of blocks, it hears footsteps and sometimes stops to sniff the air, and then it smells whoever stands near, so move crouching, and it walks to any meat lying on the floor, and the light gathered by the mirrors and the chandelier blinds it, and a falling chandelier breaks it",
 	j_void = "The Breach",
 	j_void_t = "A corridor that is far too long, with no ceiling and with holes in the walls, and behind the holes there is nothing, and that nothing pulls you in, and whoever walks slowly past a hole does not walk past it",
 }
@@ -257,7 +257,7 @@ Lang.ru = {
 	j_coinkeeper = "Монетчик",
 	j_coinkeeper_t = "Золотая монета с усами, которая загораживает дверь и требует золото, а если расплатиться собой, забирает почти всё здоровье, или всё, когда его почти не осталось, и ещё он боится Тьмы и убегает в свою норку, когда мигает свет",
 	j_colossus = "Колосс",
-	j_colossus_t = "Огромный слепой мраморный зверь, который слышит шаги и иногда останавливается принюхаться, и тогда чует того, кто стоит рядом, так что двигайся пригнувшись, а ещё он идёт к любому мясу на полу, свет, собранный зеркалами и люстрой, ослепляет его, а упавшая люстра разбивает",
+	j_colossus_t = "Слепой зверь из каменных блоков, похожий на скелет из зала окаменелостей, он поднимается из груды блоков, слышит шаги и иногда останавливается принюхаться, и тогда чует того, кто стоит рядом, так что двигайся пригнувшись, а ещё он идёт к любому мясу на полу, свет, собранный зеркалами и люстрой, ослепляет его, а упавшая люстра разбивает",
 	j_void = "Пролом",
 	j_void_t = "Слишком длинный коридор без потолка и с дырами в стенах, за которыми ничего нет, и это ничто тянет к себе, и кто идёт мимо дыры медленно, тот мимо не проходит",
 }
