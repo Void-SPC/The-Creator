@@ -11,6 +11,7 @@ local CollectionService = game:GetService("CollectionService")
 local TweenService = game:GetService("TweenService")
 local StarterGui = game:GetService("StarterGui")
 local Lighting = game:GetService("Lighting")
+local GuiService = game:GetService("GuiService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Workshop"):WaitForChild("Shared")
 local Remotes = require(Shared.Roblox.Remotes)
@@ -56,7 +57,8 @@ end
 
 pcall(function()
 	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, false)
-	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true)
+	-- свой инвентарь внизу экрана вместо стандартного
+	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
 end)
 task.spawn(request, "Lang", app.lang)
 task.spawn(function()
@@ -210,10 +212,13 @@ Ui.corner(flBack, 2)
 local flFill = Ui.frame(flBack, { BackgroundColor3 = Color3.fromRGB(230, 210, 120), Size = UDim2.fromScale(1, 1), ZIndex = 12 })
 Ui.corner(flFill, 2)
 
-local sneakBtn = Ui.button(hud, "🧍", nil, { Size = UDim2.fromOffset(64, 64), Position = UDim2.new(1, -84, 1, -210), TextSize = 34, BackgroundTransparency = 0.45, ZIndex = 11 })
+-- присесть / встать: стрелка вниз — присесть, вверх — встать
+local sneakBtn = Ui.iconButton(hud, 64, nil, { Position = UDim2.new(1, -84, 1, -210), BackgroundTransparency = 0.35, ZIndex = 11 })
+local sneakIcon = Ui.chevron(sneakBtn, false)
 local function setSneak(on: boolean)
 	app.sneaking = on
-	sneakBtn.Text = if on then "🧎" else "🧍"
+	sneakIcon:Destroy()
+	sneakIcon = Ui.chevron(sneakBtn, on)
 	sneakBtn.BackgroundColor3 = if on then Ui.C.line else Ui.C.panel
 	task.spawn(request, "Sneak", on)
 end
@@ -251,7 +256,9 @@ local function refreshHud()
 	local fl = (player:GetAttribute("Flash") or Rules.FLASH_MAX) / Rules.FLASH_MAX
 	flFill.Size = UDim2.fromScale(math.clamp(fl, 0, 1), 1)
 	local tool = char and char:FindFirstChildOfClass("Tool")
-	flBack.Visible = tool ~= nil and tool:GetAttribute("Item") == "flashlight"
+	-- заряд фонарика показан в его ячейке инвентаря
+	flBack.Visible = false
+	local _t = tool
 	leaveBtn.Text = T("Leave")
 end
 player:GetAttributeChangedSignal("Coins"):Connect(refreshHud)
@@ -358,36 +365,141 @@ voidSound.Volume = 0
 voidSound.Parent = gui
 voidSound:Play()
 
--- высота и громкость шагов для материала пола
-local STEP = {
-	[Enum.Material.Marble] = { 1.2, 0.8 },
-	[Enum.Material.Slate] = { 1.05, 0.7 },
-	[Enum.Material.WoodPlanks] = { 0.9, 0.65 },
-	[Enum.Material.Wood] = { 0.9, 0.65 },
-	[Enum.Material.Carpet] = { 0.7, 0.2 },
-	[Enum.Material.Fabric] = { 0.7, 0.2 },
-	[Enum.Material.Concrete] = { 0.95, 0.6 },
-	[Enum.Material.CeramicTiles] = { 1.3, 0.75 },
-	[Enum.Material.DiamondPlate] = { 1.5, 0.9 },
-	[Enum.Material.Metal] = { 1.5, 0.9 },
-	[Enum.Material.Sand] = { 0.6, 0.3 },
-	[Enum.Material.Grass] = { 0.65, 0.3 },
-	[Enum.Material.Cobblestone] = { 1, 0.6 },
+-- Шаги: на каждый шаг — свой короткий звук, набор слоёв зависит от поверхности
+-- (паркет стучит глуше, мрамор звонко и с эхом зала, металл звенит, ковёр глушит,
+-- трава и песок шуршат). Стандартный звук бега у своего персонажа выключен
+local SND = {
+	step = "rbxasset://sounds/action_footsteps_plastic.mp3",
+	knock = "rbxasset://sounds/collide.wav",
+	click = "rbxasset://sounds/clickfast.wav",
+	rustle = "rbxasset://sounds/swoosh.wav",
+	land = "rbxasset://sounds/action_jump_land.mp3",
 }
-local function stepSound()
+-- слой: звук, высота, громкость, эквалайзер (низ, середина, верх), эхо
+local STEP_SETS = {
+	wood = { { SND.step, 0.78, 0.6, { 3, 2, -8 } }, { SND.knock, 0.5, 0.1, { 4, 0, -10 } } },
+	stone = { { SND.step, 1.22, 0.62, { -4, 1, 3 }, true }, { SND.click, 0.55, 0.05, { -6, 0, 2 }, true } },
+	tile = { { SND.step, 1.38, 0.55, { -6, 0, 4 }, true } },
+	concrete = { { SND.step, 0.98, 0.6, { 0, 1, -2 } }, { SND.land, 1.6, 0.12, { 0, 0, -4 } } },
+	metal = { { SND.step, 1.08, 0.55, { -2, 3, 2 } }, { SND.click, 0.38, 0.14, { -4, 4, 0 }, true } },
+	soft = { { SND.step, 0.6, 0.28, { 2, -4, -18 } } },
+	grass = { { SND.rustle, 2.6, 0.22, { -6, 0, 2 } }, { SND.step, 0.52, 0.25, { 2, -2, -14 } } },
+	sand = { { SND.rustle, 1.7, 0.2, { 0, -2, -4 } }, { SND.step, 0.48, 0.2, { 2, -4, -16 } } },
+}
+local M_ = Enum.Material
+local MAT_SET = {
+	[M_.WoodPlanks] = "wood", [M_.Wood] = "wood",
+	[M_.Marble] = "stone", [M_.Slate] = "stone", [M_.Granite] = "stone", [M_.Limestone] = "stone", [M_.Sandstone] = "stone", [M_.Basalt] = "stone",
+	[M_.CeramicTiles] = "tile", [M_.Glass] = "tile", [M_.Ice] = "tile", [M_.SmoothPlastic] = "tile", [M_.Plastic] = "tile",
+	[M_.Concrete] = "concrete", [M_.Pavement] = "concrete", [M_.Cobblestone] = "concrete", [M_.Brick] = "concrete", [M_.Plaster] = "concrete", [M_.Asphalt] = "concrete",
+	[M_.Metal] = "metal", [M_.DiamondPlate] = "metal", [M_.CorrodedMetal] = "metal", [M_.Foil] = "metal",
+	[M_.Carpet] = "soft", [M_.Fabric] = "soft",
+	[M_.Grass] = "grass", [M_.LeafyGrass] = "grass", [M_.Ground] = "grass", [M_.Mud] = "grass",
+	[M_.Sand] = "sand", [M_.Snow] = "sand",
+}
+local stepFolder = Instance.new("Folder")
+stepFolder.Name = "Steps"
+stepFolder.Parent = gui
+local stepPool = {}
+for name, layers in STEP_SETS do
+	stepPool[name] = {}
+	for li, layer in layers do
+		local pair = {}
+		for k = 1, 2 do
+			local snd = Instance.new("Sound")
+			snd.SoundId = layer[1]
+			snd.Volume = layer[3]
+			local eq = Instance.new("EqualizerSoundEffect")
+			eq.LowGain, eq.MidGain, eq.HighGain = layer[4][1], layer[4][2], layer[4][3]
+			eq.Parent = snd
+			if layer[5] then
+				local rv = Instance.new("ReverbSoundEffect")
+				rv.DecayTime = 1.2
+				rv.WetLevel = -14
+				rv.DryLevel = 0
+				rv.Parent = snd
+			end
+			snd.Parent = stepFolder
+			pair[k] = snd
+		end
+		stepPool[name][li] = { layer = layer, pair = pair, turn = 1 }
+	end
+end
+local stride = { dist = 0, foot = 1 }
+local function footfall(set: string, quiet: boolean)
+	for _, l in stepPool[set] or stepPool.concrete do
+		local snd = l.pair[l.turn]
+		l.turn = 3 - l.turn
+		snd.PlaybackSpeed = l.layer[2] * (0.94 + math.random() * 0.12)
+		snd.Volume = l.layer[3] * (if quiet then 0.35 else 1) * (0.85 + math.random() * 0.3)
+		snd:Play()
+	end
+end
+local function stepSound(dt: number)
 	local char = player.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart")
+	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
-	local snd = root and root:FindFirstChild("Running")
-	if not snd or not hum or not snd:IsA("Sound") then
+	if not root or not hum then
 		return
 	end
-	local prof = STEP[hum.FloorMaterial] or { 1, 0.6 }
+	local run = root:FindFirstChild("Running")
+	if run and run:IsA("Sound") then
+		run.Volume = 0
+	end
 	local v = root.AssemblyLinearVelocity
 	local speed = Vector3.new(v.X, 0, v.Z).Magnitude
-	-- медленный шаг — редкие и тихие шаги
-	snd.PlaybackSpeed = 1.85 * prof[1] * math.clamp(speed / 15, 0.45, 1.1)
-	snd.Volume = if app.steps then prof[2] * (if app.sneaking then 0.3 else 1) else 0
+	if hum.FloorMaterial == Enum.Material.Air or speed < 1 or not app.steps or hiddenEye then
+		stride.dist = math.min(stride.dist, 1.5)
+		return
+	end
+	stride.dist += speed * dt
+	local len = if app.sneaking then 2.6 else 3.9
+	if stride.dist >= len then
+		stride.dist = 0
+		footfall(MAT_SET[hum.FloorMaterial] or "concrete", app.sneaking)
+	end
+end
+
+-- Нельзя забираться на экспонаты, мебель и постаменты: если персонаж встал на
+-- что-то, что не пол зала, он возвращается туда, где стоял на полу
+local climb = { safe = nil :: CFrame?, y = 0 }
+local climbRay = RaycastParams.new()
+climbRay.FilterType = Enum.RaycastFilterType.Exclude
+local WALK_NAMES = { Floor = true, Step = true, Ramp = true, StairLanding = true, Gallery = true, Porch = true, Stair = true, StairRamp = true, Path = true, Ground = true, Threshold = true }
+local function walkable(part: Instance): boolean
+	if part:IsA("Terrain") or WALK_NAMES[part.Name] then
+		return true
+	end
+	local par = part.Parent
+	if par and par:IsA("Model") then
+		local n = par.Name
+		return string.sub(n, 1, 5) == "Room_" or n == "Annex" or n == "Lobby"
+	end
+	return false
+end
+local function antiClimb()
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not root or not hum or app.scene or app.dead or hiddenEye or root.Anchored then
+		climb.safe = nil
+		return
+	end
+	if hum.FloorMaterial == Enum.Material.Air then
+		return
+	end
+	climbRay.FilterDescendantsInstances = { char }
+	local hit = workspace:Raycast(root.Position, Vector3.new(0, -9, 0), climbRay)
+	if not hit then
+		return
+	end
+	if walkable(hit.Instance) then
+		climb.safe = root.CFrame
+		climb.y = hit.Position.Y
+	elseif climb.safe and hit.Position.Y - climb.y > 0.4 then
+		root.CFrame = CFrame.new(climb.safe.Position) * root.CFrame.Rotation
+		root.AssemblyLinearVelocity = Vector3.zero
+	end
 end
 
 local function voidStep(t: number, dt: number)
@@ -637,14 +749,14 @@ local function openJournal()
 	end
 	journalBox.Visible = true
 end
-local journalBtn = Ui.button(hud, "📖", function()
+local journalBtn = Ui.iconButton(gui, 46, function()
 	if journalBox.Visible then
 		journalBox.Visible = false
 	else
 		openJournal()
 	end
-end, { Size = UDim2.fromOffset(48, 44), Position = UDim2.new(0, 16, 0, 100), TextSize = 24, BackgroundTransparency = 0.5, ZIndex = 11 })
-local _ = journalBtn
+end, { Position = UDim2.new(0, 16, 0, 100), BackgroundTransparency = 0.35, ZIndex = 11 })
+Ui.bookIcon(journalBtn)
 
 -- достижения: список с описаниями (открывается в лобби — кнопкой или у доски)
 local ACH = { "darkness", "darkness_hid", "coinkeeper", "coin_paid", "mimic_solved", "door50", "colossus_down", "door100", "finale" }
@@ -687,21 +799,28 @@ local function openAchievements()
 		row.ZIndex = 63
 		row.Parent = scroll
 		Ui.corner(row, 8)
-		Ui.label(row, if on then "🏆" else "🔒", { TextSize = 26, Size = UDim2.fromOffset(44, 62), ZIndex = 64 })
+		local mark = Ui.frame(row, { BackgroundTransparency = 1, Size = UDim2.fromOffset(44, 62), ZIndex = 64 })
+		if on then
+			Ui.trophyIcon(mark)
+		else
+			Ui.chevron(mark, true, Ui.C.dim)
+		end
 		Ui.label(row, T("a_" .. id), { Font = Ui.TITLE, TextSize = 20, TextColor3 = if on then Ui.C.gold else Ui.C.dim, Size = UDim2.new(1, -52, 0, 26), Position = UDim2.fromOffset(48, 4), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 64 })
 		Ui.label(row, T("a_" .. id .. "_t"), { TextSize = 14, TextWrapped = true, Size = UDim2.new(1, -52, 0, 30), Position = UDim2.fromOffset(48, 30), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 64 })
 	end
 	achBox.Visible = true
 end
-local achBtn = Ui.button(hud, "🏆", function()
+local achBtn = Ui.iconButton(gui, 46, function()
 	if achBox.Visible then
 		achBox.Visible = false
 	else
 		openAchievements()
 	end
-end, { Size = UDim2.fromOffset(48, 44), Position = UDim2.new(0, 16, 0, 150), TextSize = 24, BackgroundTransparency = 0.5, ZIndex = 11 })
+end, { Position = UDim2.new(0, 16, 0, 154), BackgroundTransparency = 0.35, ZIndex = 11 })
+Ui.trophyIcon(achBtn)
 local function refreshAchBtn()
 	achBtn.Visible = not inRun()
+	journalBtn.Visible = not app.dead and not app.scene
 end
 refreshAchBtn()
 workspace:GetAttributeChangedSignal("Mode"):Connect(refreshAchBtn)
@@ -924,12 +1043,28 @@ local function buildSettings()
 		Lighting.GlobalShadows = v
 	end)
 end
-Ui.button(gui, "⚙", function()
+-- настройки — рядом со стандартными кнопками Roblox (значок, меню, чат)
+local setBtn = Ui.iconButton(gui, 40, function()
 	setBox.Visible = not setBox.Visible
 	if setBox.Visible then
 		buildSettings()
 	end
-end, { Size = UDim2.fromOffset(40, 36), Position = UDim2.new(1, -52, 0, 50), TextSize = 20, BackgroundTransparency = 0.5, ZIndex = 79 })
+end, { BackgroundTransparency = 0.25, ZIndex = 79 })
+Ui.gearIcon(setBtn)
+local adminSlot = nil
+local function placeTopbar()
+	local inset = GuiService.TopbarInset
+	local x = if inset.Width > 0 then inset.Min.X + 6 else 240
+	local h = if inset.Height > 0 then inset.Height else 44
+	local y = inset.Min.Y + (h - 40) / 2
+	setBtn.Position = UDim2.fromOffset(x, y)
+	setBox.Position = UDim2.fromOffset(x, y + 48)
+	if adminSlot then
+		adminSlot.Position = UDim2.fromOffset(x + 48, y)
+	end
+end
+placeTopbar()
+GuiService:GetPropertyChangedSignal("TopbarInset"):Connect(placeTopbar)
 
 task.spawn(function()
 	local ok, res = pcall(function()
@@ -964,13 +1099,253 @@ task.spawn(function()
 			end, { LayoutOrder = i, ZIndex = 87, Size = UDim2.new(1, -4, 0, 40), TextSize = 14 })
 		end
 	end
-	Ui.button(gui, T("Admin"), function()
+	adminSlot = Ui.button(gui, string.upper(T("Admin")), function()
 		ap.Visible = not ap.Visible
 		setBox.Visible = false
 		if ap.Visible then
 			fill()
 		end
-	end, { Size = UDim2.fromOffset(64, 36), Position = UDim2.new(1, -124, 0, 50), TextSize = 13, BackgroundTransparency = 0.5, ZIndex = 79, TextColor3 = Ui.C.gold })
+	end, { Size = UDim2.fromOffset(70, 40), TextSize = 12, BackgroundTransparency = 0.25, ZIndex = 79, TextColor3 = Ui.C.gold })
+	placeTopbar()
+	ap.Position = UDim2.new(0, adminSlot.Position.X.Offset, 0, adminSlot.Position.Y.Offset + 48)
+end)
+
+-- ---------------------------------------------------------------------------
+-- инвентарь: ячейки внизу экрана, в каждой — объёмная моделька предмета.
+-- Нажми ячейку (или 1–9), чтобы взять предмет в руку; ещё раз — убрать
+
+local ITEM_ORDER = { flashlight = 1, battery = 2, plant = 3, lockpick = 4, key = 5, hammer = 6, meat = 7, pole = 8, lens = 9, coldkey = 10, clockkey = 11 }
+local invBar = Ui.frame(gui, { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -12), Size = UDim2.fromOffset(0, 70), AutomaticSize = Enum.AutomaticSize.X, ZIndex = 12 })
+Ui.list(invBar, 8, true)
+local invName = Ui.label(gui, "", { Font = Ui.BOLD, TextSize = 15, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -88), Size = UDim2.fromOffset(300, 22), ZIndex = 12 })
+invName.TextStrokeTransparency = 0.5
+local invTools: { Tool } = {}
+
+local function myTools(): { Tool }
+	local list = {}
+	local bp = player:FindFirstChildOfClass("Backpack")
+	for _, holder in { bp, player.Character } do
+		if holder then
+			for _, t in holder:GetChildren() do
+				if t:IsA("Tool") then
+					table.insert(list, t)
+				end
+			end
+		end
+	end
+	table.sort(list, function(a, b)
+		return (ITEM_ORDER[a:GetAttribute("Item") or ""] or 99) < (ITEM_ORDER[b:GetAttribute("Item") or ""] or 99)
+	end)
+	return list
+end
+
+-- моделька предмета в окошке ячейки
+local function itemView(tool: Tool, parent: GuiObject)
+	local vp = Instance.new("ViewportFrame")
+	vp.BackgroundTransparency = 1
+	vp.Size = UDim2.new(1, -8, 1, -8)
+	vp.Position = UDim2.fromOffset(4, 4)
+	vp.Ambient = Color3.fromRGB(150, 140, 130)
+	vp.LightColor = Color3.fromRGB(255, 236, 210)
+	vp.LightDirection = Vector3.new(-1, -1.4, -0.6)
+	vp.ZIndex = parent.ZIndex + 1
+	local m = Instance.new("Model")
+	local handle = tool:FindFirstChild("Handle") :: BasePart?
+	if not handle then
+		return vp
+	end
+	local base = handle.CFrame
+	for _, d in tool:GetDescendants() do
+		if d:IsA("BasePart") then
+			local c = Instance.new("Part")
+			c.Size = d.Size
+			c.Color = d.Color
+			c.Material = d.Material
+			c.Transparency = d.Transparency
+			c.Anchored = true
+			if d:IsA("Part") then
+				c.Shape = d.Shape
+			end
+			c.CFrame = base:ToObjectSpace(d.CFrame)
+			c.Parent = m
+		end
+	end
+	m.Parent = vp
+	local cf, size = m:GetBoundingBox()
+	local cam = Instance.new("Camera")
+	cam.FieldOfView = 35
+	local r = math.max(size.X, size.Y, size.Z)
+	cam.CFrame = CFrame.lookAt(cf.Position + Vector3.new(r * 1.1, r * 0.9, r * 1.5), cf.Position)
+	cam.Parent = vp
+	vp.CurrentCamera = cam
+	vp.Parent = parent
+	return vp
+end
+
+local function equipToggle(tool: Tool)
+	local char = player.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not hum or app.dead or hiddenEye then
+		return
+	end
+	if tool.Parent == char then
+		hum:UnequipTools()
+	else
+		hum:EquipTool(tool)
+	end
+end
+
+local function rebuildInv()
+	for _, c in invBar:GetChildren() do
+		if c:IsA("GuiObject") then
+			c:Destroy()
+		end
+	end
+	invTools = myTools()
+	local held = nil
+	for i, tool in invTools do
+		local on = tool.Parent == player.Character
+		local slot = Ui.button(invBar, "", function()
+			equipToggle(tool)
+		end, { Size = UDim2.fromOffset(62, 62), BackgroundTransparency = if on then 0.05 else 0.3, LayoutOrder = i, ZIndex = 12 })
+		local st = slot:FindFirstChildOfClass("UIStroke")
+		if st then
+			st.Color = if on then Ui.C.gold else Ui.C.line
+			st.Thickness = if on then 2.4 else 1.2
+			st.Transparency = 0
+		end
+		itemView(tool, slot)
+		Ui.label(slot, tostring(i), { Font = Ui.BOLD, TextSize = 11, TextColor3 = Ui.C.dim, Size = UDim2.fromOffset(14, 14), Position = UDim2.fromOffset(4, 2), ZIndex = 15, TextXAlignment = Enum.TextXAlignment.Left })
+		local count = string.match(tool.Name, "×(%d+)$")
+		if count then
+			local badge = Ui.label(slot, count, { Font = Ui.BOLD, TextSize = 13, TextColor3 = Ui.C.text, Size = UDim2.fromOffset(22, 16), Position = UDim2.new(1, -24, 1, -18), ZIndex = 15, TextXAlignment = Enum.TextXAlignment.Right })
+			badge.TextStrokeTransparency = 0.4
+		end
+		if tool:GetAttribute("Item") == "flashlight" then
+			local fl = (player:GetAttribute("Flash") or Rules.FLASH_MAX) / Rules.FLASH_MAX
+			local back = Ui.frame(slot, { BackgroundColor3 = Color3.fromRGB(20, 18, 16), Size = UDim2.new(1, -12, 0, 4), Position = UDim2.new(0, 6, 1, -7), ZIndex = 15 })
+			Ui.frame(back, { BackgroundColor3 = Color3.fromRGB(230, 210, 120), Size = UDim2.fromScale(math.clamp(fl, 0, 1), 1), ZIndex = 16 })
+		end
+		if on then
+			held = tool
+		end
+	end
+	invName.Text = if held then (string.gsub(held.Name, " ×%d+$", "")) else ""
+	invBar.Visible = not app.dead and not app.scene and not app.tbc
+end
+
+local invQueued = false
+local function queueInv()
+	if invQueued then
+		return
+	end
+	invQueued = true
+	task.defer(function()
+		invQueued = false
+		rebuildInv()
+	end)
+end
+local function watchHolder(h: Instance?)
+	if not h then
+		return
+	end
+	h.ChildAdded:Connect(function(c)
+		if c:IsA("Tool") then
+			c:GetPropertyChangedSignal("Name"):Connect(queueInv)
+			queueInv()
+		end
+	end)
+	h.ChildRemoved:Connect(queueInv)
+	for _, c in h:GetChildren() do
+		if c:IsA("Tool") then
+			c:GetPropertyChangedSignal("Name"):Connect(queueInv)
+		end
+	end
+	queueInv()
+end
+player.ChildAdded:Connect(function(c)
+	if c:IsA("Backpack") then
+		watchHolder(c)
+	end
+end)
+watchHolder(player:FindFirstChildOfClass("Backpack"))
+player.CharacterAdded:Connect(watchHolder)
+watchHolder(player.Character)
+player:GetAttributeChangedSignal("Flash"):Connect(queueInv)
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then
+		return
+	end
+	local n = input.KeyCode.Value - Enum.KeyCode.One.Value + 1
+	if n >= 1 and n <= 9 and invTools[n] then
+		equipToggle(invTools[n])
+	end
+end)
+
+-- ---------------------------------------------------------------------------
+-- атмосфера: затемнение по краям экрана, пыль в воздухе, покачивание головы при ходьбе
+
+local vignette = Ui.frame(fullGui, { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 2 })
+for _, e in { { 0, 0, 1, 0.22, 90 }, { 0, 0.78, 1, 0.22, -90 }, { 0, 0, 0.18, 1, 0 }, { 0.82, 0, 0.18, 1, 180 } } do
+	local f = Ui.frame(vignette, { BackgroundColor3 = Color3.new(0, 0, 0), Position = UDim2.fromScale(e[1], e[2]), Size = UDim2.fromScale(e[3], e[4]), ZIndex = 2 })
+	local g = Instance.new("UIGradient")
+	g.Rotation = e[5]
+	g.Transparency = NumberSequence.new(0.25, 1)
+	g.Parent = f
+end
+
+local dustPart = Instance.new("Part")
+dustPart.Name = "Dust"
+dustPart.Anchored = true
+dustPart.CanCollide = false
+dustPart.CanQuery = false
+dustPart.CanTouch = false
+dustPart.Transparency = 1
+dustPart.Size = Vector3.new(36, 14, 36)
+local dust = Instance.new("ParticleEmitter")
+dust.Texture = "rbxasset://textures/particles/smoke_main.dds"
+dust.Shape = Enum.ParticleEmitterShape.Box
+dust.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+dust.Rate = 14
+dust.Lifetime = NumberRange.new(6, 10)
+dust.Speed = NumberRange.new(0.05, 0.3)
+dust.SpreadAngle = Vector2.new(180, 180)
+dust.Size = NumberSequence.new(0.06)
+dust.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.3, 0.55), NumberSequenceKeypoint.new(1, 1) })
+dust.Color = ColorSequence.new(Color3.fromRGB(240, 226, 200))
+dust.LightInfluence = 1
+dust.RotSpeed = NumberRange.new(-20, 20)
+dust.Parent = dustPart
+dustPart.Parent = workspace
+
+local bob = { t = 0, amp = 0 }
+RunService:BindToRenderStep("MuseumBob", Enum.RenderPriority.Camera.Value + 1, function(dt)
+	local run = inRun()
+	vignette.Visible = run and not app.tbc
+	dust.Enabled = run
+	if run then
+		dustPart.CFrame = CFrame.new(camera.CFrame.Position)
+	end
+	if app.scene or app.tbc or hiddenEye or app.dead or not run then
+		return
+	end
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not root or not hum then
+		return
+	end
+	local v = root.AssemblyLinearVelocity
+	local speed = Vector3.new(v.X, 0, v.Z).Magnitude
+	local moving = speed > 1 and hum.FloorMaterial ~= Enum.Material.Air
+	if moving then
+		bob.t += dt * (if app.sneaking then 6 else 9.5) * math.clamp(speed / 15, 0.5, 1.2)
+	end
+	local want = if moving then (if app.sneaking then 0.05 else 0.12) else 0
+	bob.amp += (want - bob.amp) * math.min(1, dt * 6)
+	local a = bob.amp
+	local breathe = math.sin(os.clock() * 1.5) * 0.015
+	camera.CFrame *= CFrame.new(math.cos(bob.t) * a * 0.55, math.abs(math.sin(bob.t)) * a - a * 0.5 + breathe, 0) * CFrame.Angles(0, 0, math.cos(bob.t) * a * 0.05)
 end)
 
 -- ---------------------------------------------------------------------------
@@ -1070,6 +1445,8 @@ end)
 
 local function onMode()
 	applyLighting()
+	queueInv()
+	refreshAchBtn()
 	hud.Visible = inRun() and not app.dead and not app.scene and not app.tbc
 	setCamera()
 	if inRun() and not app.arrived and player.Character then
@@ -1120,7 +1497,8 @@ RunService.RenderStepped:Connect(function(dt)
 	local t = os.clock()
 	darkStep(t)
 	voidStep(t, dt)
-	stepSound()
+	stepSound(dt)
+	antiClimb()
 	if app.scene then
 		return
 	end

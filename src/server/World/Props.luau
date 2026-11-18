@@ -165,6 +165,9 @@ function Props.door(parent, cf: CFrame, plate: string?, locked: boolean?, size: 
 	for _, s in { -1, 1 } do
 		P(m, "Casing", Vector3.new(0.7, h - 0.1, 1.5), cf * CFrame.new(s * (w / 2 + 0.25), (h - 0.1) / 2, 0), trim, tmat)
 	end
+	for _, sd in { -1, 1 } do
+		P(m, "Moulding", Vector3.new(0.2, h - 0.18, 1.62), cf * CFrame.new(sd * (w / 2 + 0.62), (h - 0.18) / 2 + 0.02, 0), trim:Lerp(rgb(0, 0, 0), 0.25), tmat, nc())
+	end
 	P(m, "Head", Vector3.new(w + 1.2, 0.7, 1.5), cf * CFrame.new(0, h + 0.25, 0), trim, tmat)
 	P(m, "Cornice", Vector3.new(w + 1.8, 0.3, 1.7), cf * CFrame.new(0, h + 0.75, 0), trim, tmat)
 	local wood = if style == "tech" then rgb(120, 116, 96) elseif style == "metal" or style == "code" then rgb(78, 86, 92) elseif metal then rgb(96, 104, 106) elseif kind == "grand" then rgb(84, 52, 34) elseif style == "puzzle" then rgb(70, 44, 32) else Props.WOOD
@@ -206,12 +209,26 @@ function Props.door(parent, cf: CFrame, plate: string?, locked: boolean?, size: 
 				end
 				S(leaf, "Knob", 0.45, cf * CFrame.new(cx - side * (lw / 2 - 0.5), 4.2, face * 0.44), Props.BRASS, M.Metal, nc())
 			else
-				for _, y in { h * 0.27, h * 0.7 } do
-					P(leaf, "Panel", Vector3.new(lw - 1.2, h * 0.3, 0.06), cf * CFrame.new(cx, y, face * 0.18), wood:Lerp(rgb(0, 0, 0), 0.2), M.Wood, nc())
+				-- шесть филёнок с внутренними вставками
+				local pw = (lw - 1.0) / 2
+				for ri, y in { h * 0.2, h * 0.5, h * 0.8 } do
+					local ph = if ri == 2 then h * 0.2 else h * 0.24
+					for _, col in { -1, 1 } do
+						local x = cx + col * (pw / 2 + 0.12)
+						P(leaf, "Panel", Vector3.new(pw, ph, 0.06), cf * CFrame.new(x, y, face * 0.18), wood:Lerp(rgb(0, 0, 0), 0.2), M.Wood, nc())
+						P(leaf, "PanelInset", Vector3.new(pw - 0.34, ph - 0.34, 0.05), cf * CFrame.new(x, y, face * 0.2), wood:Lerp(rgb(255, 230, 200), 0.06), M.Wood, nc())
+					end
 				end
-				S(leaf, "Knob", 0.45, cf * CFrame.new(cx - side * (lw / 2 - 0.5), 4.2, face * 0.44), Props.BRASS, M.Metal, nc())
-				P(leaf, "Rose", Vector3.new(0.5, 0.9, 0.06), cf * CFrame.new(cx - side * (lw / 2 - 0.5), 4.1, face * 0.2), Props.BRASS, M.Metal, nc())
+				-- латунная накладка внизу и ручка-рычаг
+				P(leaf, "KickPlate", Vector3.new(lw - 0.4, 0.5, 0.035), cf * CFrame.new(cx, 0.32, face * 0.168), Props.BRASS:Lerp(rgb(0, 0, 0), 0.25), M.Metal, nc())
+				local hx = cx - side * (lw / 2 - 0.45)
+				P(leaf, "Rose", Vector3.new(0.34, 0.9, 0.06), cf * CFrame.new(hx, 3.9, face * 0.19), Props.BRASS, M.Metal, nc())
+				C(leaf, "LeverNeck", 0.22, 0.14, cf * CFrame.new(hx, 4.15, face * 0.3) * CFrame.Angles(math.pi / 2, 0, 0), Props.BRASS, M.Metal, nc())
+				P(leaf, "Lever", Vector3.new(0.6, 0.12, 0.12), cf * CFrame.new(hx + side * 0.24, 4.15, face * 0.42), Props.BRASS, M.Metal, nc())
 			end
+		end
+		for _, y in { 0.9, h / 2, h - 1.1 } do
+			P(leaf, "Hinge", Vector3.new(0.18, 0.6, 0.38), cf * CFrame.new(hinge + side * 0.0, y, 0), Props.BRASS:Lerp(rgb(0, 0, 0), 0.3), M.Metal, nc())
 		end
 		leaf:SetAttribute("KnobX", cx - side * (lw / 2 - 0.5))
 		leaf.WorldPivot = cf * CFrame.new(hinge, 0, 0)
@@ -1267,23 +1284,117 @@ end
 
 -- ваза на тумбе
 
--- доспех на стойке у стены
+-- Полный латный доспех из множества соединённых частей: башмаки, поножи, наколенники,
+-- набедренники, набедренные пластины, юбка из полос, кираса с ребром, горжет, наплечники
+-- из пластин, налокотники, наручи, латные перчатки, шлем с забралом и плюмаж,
+-- сюрко с гербом. cf — между ступнями на полу, лицом к LookVector.
+-- seated = true — сидит верхом: бёдра вперёд, голени вниз
+function Props.knightSuit(parent, cf: CFrame, steel: Color3?, accent: Color3?, seated: boolean?)
+	local m = model(parent, "Knight")
+	steel = steel or rgb(158, 162, 168)
+	accent = accent or rgb(130, 22, 30)
+	local dark = steel:Lerp(rgb(0, 0, 0), 0.35)
+	local leather = rgb(70, 46, 30)
+	local function p(name, size, ocf, col, mat)
+		return P(m, name, size, cf * ocf, col or steel, mat or M.Metal, nc())
+	end
+	local function c(name, len, d, ocf, col)
+		return C(m, name, len, d, cf * ocf, col or steel, M.Metal, nc())
+	end
+	local function s(name, d, ocf, col)
+		return S(m, name, d, cf * ocf, col or steel, M.Metal, nc())
+	end
+	-- ноги
+	for _, x0 in { -0.42, 0.42 } do
+		-- верхом ноги расставлены по бокам коня
+		local x = if seated then x0 * 2.95 else x0
+		if seated then
+			c("Cuisse", 1.5, 0.62, CFrame.new(x, 3.62, -0.55) * CFrame.Angles(math.pi / 2, 0, 0))
+			s("Poleyn", 0.66, CFrame.new(x, 3.62, -1.32))
+			p("PoleynWing", Vector3.new(0.5, 0.42, 0.12), CFrame.new(x, 3.6, -1.62), dark)
+			c("Greave", 1.6, 0.54, CFrame.new(x, 2.78, -1.38))
+			p("Sabaton", Vector3.new(0.58, 0.34, 1.08), CFrame.new(x, 1.86, -1.52))
+			p("SabatonToe", Vector3.new(0.46, 0.26, 0.42), CFrame.new(x, 1.83, -2.2), dark)
+		else
+			p("Sabaton", Vector3.new(0.58, 0.34, 1.08), CFrame.new(x, 0.47, -0.14))
+			for k = 0, 2 do
+				p("Lame", Vector3.new(0.6, 0.1, 0.28), CFrame.new(x, 0.66, -0.42 - k * 0.2) * CFrame.Angles(0.2, 0, 0), dark)
+			end
+			p("SabatonToe", Vector3.new(0.46, 0.26, 0.42), CFrame.new(x, 0.44, -0.82), dark)
+			c("Greave", 1.66, 0.54, CFrame.new(x, 1.47, 0))
+			s("Poleyn", 0.66, CFrame.new(x, 2.32, 0))
+			p("PoleynWing", Vector3.new(0.5, 0.42, 0.12), CFrame.new(x, 2.3, -0.31), dark)
+			c("Cuisse", 1.44, 0.62, CFrame.new(x, 3.04, 0))
+		end
+		p("Tasset", Vector3.new(0.78, 0.92, 0.14), CFrame.new(x0 * 1.08, 3.62, -0.5) * CFrame.Angles(-0.12, 0, x0 * 0.25))
+	end
+	-- юбка из полос и кираса
+	for k = 0, 2 do
+		p("Fauld", Vector3.new(1.62 - k * 0.04, 0.26, 1.04 - k * 0.02), CFrame.new(0, 3.98 + k * 0.24, 0), if k % 2 == 0 then steel else dark)
+	end
+	p("Breastplate", Vector3.new(1.7, 1.6, 1.06), CFrame.new(0, 5.02, 0))
+	p("Plackart", Vector3.new(1.42, 0.6, 0.1), CFrame.new(0, 4.56, -0.56), dark)
+	p("Ridge", Vector3.new(0.12, 1.36, 0.1), CFrame.new(0, 5.06, -0.58) * CFrame.Angles(0.06, 0, 0))
+	-- сюрко с гербом поверх кирасы
+	local tabard = p("Tabard", Vector3.new(1.3, 2.1, 0.06), CFrame.new(0, 4.4, -0.62), accent, M.Fabric)
+	local gui = Props.surface(tabard, Enum.NormalId.Front, 40)
+	for _, r in { { 0.5, 0.36, 0.14, 0.4 }, { 0.5, 0.3, 0.5, 0.08 } } do
+		local f = Instance.new("Frame")
+		f.BorderSizePixel = 0
+		f.BackgroundColor3 = rgb(230, 196, 90)
+		f.AnchorPoint = Vector2.new(0.5, 0.5)
+		f.Position = UDim2.fromScale(r[1], r[2])
+		f.Size = UDim2.fromScale(r[3], r[4])
+		f.Parent = gui
+	end
+	p("Belt", Vector3.new(1.76, 0.18, 1.1), CFrame.new(0, 4.24, 0), leather, M.Fabric)
+	c("Gorget", 0.36, 0.92, CFrame.new(0, 5.96, 0))
+	c("GorgetRim", 0.12, 1.02, CFrame.new(0, 5.82, 0), dark)
+	-- руки: наплечники, плечо, налокотник, наруч, перчатка
+	for _, sx in { -1, 1 } do
+		s("Pauldron", 0.98, CFrame.new(sx * 1.02, 5.58, 0))
+		for k = 0, 2 do
+			p("PauldronLame", Vector3.new(0.82 - k * 0.06, 0.18, 1.02), CFrame.new(sx * (1.14 + k * 0.04), 5.24 - k * 0.17, 0) * CFrame.Angles(0, 0, sx * 0.32), if k % 2 == 0 then dark else steel)
+		end
+		c("Rerebrace", 0.95, 0.42, CFrame.new(sx * 1.12, 4.76, 0))
+		s("Couter", 0.52, CFrame.new(sx * 1.12, 4.26, 0))
+		p("CouterWing", Vector3.new(0.12, 0.42, 0.42), CFrame.new(sx * 1.4, 4.26, 0.05), dark)
+		c("Vambrace", 0.9, 0.38, CFrame.new(sx * 1.12, 3.78, 0))
+		p("Gauntlet", Vector3.new(0.44, 0.5, 0.5), CFrame.new(sx * 1.12, 3.1, -0.04))
+		p("Cuff", Vector3.new(0.5, 0.18, 0.56), CFrame.new(sx * 1.12, 3.32, -0.04), dark)
+	end
+	-- шлем: купол, забрало со смотровой щелью и отверстиями, гребень, плюмаж
+	c("Neck", 0.3, 0.5, CFrame.new(0, 6.15, 0), dark)
+	s("Skull", 1.06, CFrame.new(0, 6.62, 0.02))
+	p("Bevor", Vector3.new(0.86, 0.5, 0.5), CFrame.new(0, 6.3, -0.24))
+	p("Visor", Vector3.new(0.82, 0.56, 0.16), CFrame.new(0, 6.68, -0.47) * CFrame.Angles(-0.1, 0, 0))
+	p("Sight", Vector3.new(0.6, 0.07, 0.05), CFrame.new(0, 6.78, -0.56) * CFrame.Angles(-0.1, 0, 0), rgb(12, 12, 14), M.SmoothPlastic)
+	for k = -1, 1 do
+		p("Breath", Vector3.new(0.06, 0.06, 0.05), CFrame.new(k * 0.18, 6.5, -0.56), rgb(12, 12, 14), M.SmoothPlastic)
+	end
+	p("Comb", Vector3.new(0.1, 0.24, 0.9), CFrame.new(0, 7.15, 0.02), dark)
+	for k = 0, 2 do
+		c("Plume", 0.6, 0.22 - k * 0.04, CFrame.new(0, 7.35 + k * 0.1, 0.25 + k * 0.22) * CFrame.Angles(0.9 + k * 0.3, 0, 0), accent)
+	end
+	return m
+end
+
+-- доспех на стойке у стены (cf — слот у стены, лицо в зал)
 function Props.armor(parent, cf: CFrame)
 	local m = model(parent, "Armor")
 	local base = cf * CFrame.new(0, 0, -0.05 - 1.2)
-	local steel = rgb(140, 146, 152)
-	C(m, "Base", 0.3, 2.2, base * CFrame.new(0, 0.15, 0), Props.WOOD_DARK, M.Wood)
-	P(m, "Torso", Vector3.new(1.8, 2, 1), base * CFrame.new(0, 4, 0), steel, M.Metal)
-	for _, x in { -0.45, 0.45 } do
-		P(m, "Leg", Vector3.new(0.6, 2.7, 0.6), base * CFrame.new(x, 1.65, 0), steel, M.Metal, nc())
-		S(m, "Pauldron", 0.9, base * CFrame.new(x * 2.6, 4.8, 0), steel, M.Metal, nc())
-		P(m, "Arm", Vector3.new(0.45, 1.9, 0.45), base * CFrame.new(x * 2.6, 3.6, 0), steel, M.Metal, nc())
-	end
-	S(m, "Helmet", 1.1, base * CFrame.new(0, 5.7, 0), steel, M.Metal, nc())
-	P(m, "Visor", Vector3.new(0.7, 0.14, 0.1), base * CFrame.new(0, 5.75, -0.52), rgb(10, 10, 10), M.SmoothPlastic, nc())
-	C(m, "Plume", 0.9, 0.2, base * CFrame.new(0, 6.5, 0.1), rgb(150, 30, 34), M.Fabric, nc())
-	C(m, "Spear", 7.5, 0.14, base * CFrame.new(1.5, 3.75, -0.2), Props.WOOD, M.Wood, nc())
-	P(m, "SpearTip", Vector3.new(0.3, 0.8, 0.1), base * CFrame.new(1.5, 7.9, -0.2), steel, M.Metal, nc())
+	C(m, "Base", 0.3, 2.4, base * CFrame.new(0, 0.15, 0), Props.WOOD_DARK, M.Wood)
+	C(m, "BaseTrim", 0.08, 2.5, base * CFrame.new(0, 0.29, 0), Props.BRASS, M.Metal, nc())
+	C(m, "Post", 4.6, 0.2, base * CFrame.new(0, 2.6, 0.45), Props.IRON, M.Metal, nc())
+	local seed = math.floor(cf.Position.X * 3 + cf.Position.Z * 5)
+	local accents = { rgb(130, 22, 30), rgb(26, 50, 120), rgb(30, 90, 50), rgb(90, 20, 90) }
+	Props.knightSuit(m, base * CFrame.new(0, 0.3, 0), nil, accents[seed % 4 + 1])
+	-- алебарда у правой руки
+	local hx = 1.5
+	C(m, "Haft", 7.6, 0.14, base * CFrame.new(hx, 4.1, -0.1), Props.WOOD, M.Wood, nc())
+	P(m, "AxeBlade", Vector3.new(0.08, 0.9, 0.7), base * CFrame.new(hx, 7.2, -0.42), rgb(170, 174, 180), M.Metal, nc())
+	P(m, "Spike", Vector3.new(0.08, 0.9, 0.14), base * CFrame.new(hx, 8.1, -0.1), rgb(170, 174, 180), M.Metal, nc())
+	P(m, "Hook", Vector3.new(0.08, 0.2, 0.42), base * CFrame.new(hx, 7.2, 0.22), rgb(170, 174, 180), M.Metal, nc())
 	return m
 end
 

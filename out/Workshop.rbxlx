@@ -868,7 +868,7 @@ end
 
 Rules.SELF_SHARE = 0.7 -- «расплатиться собой»: 70 % текущего здоровья
 Rules.COIN_FROM = 30
-Rules.COINS_PER_DOOR = 2
+Rules.COINS_PER_DOOR = 0 -- золото только в ящиках: его должно не хватать
 
 -- ставка: в первой локации от 20 до 100, в каждой следующей на 100 больше, максимум 500
 function Rules.coinPrice(door: number): number
@@ -904,7 +904,7 @@ function Rules.darkChance(since: number): number
 	if since &lt; Rules.DARK_GAP then
 		return 0
 	end
-	return math.min(0.4, (since - Rules.DARK_GAP + 1) * 0.06)
+	return math.min(0.4, (since - Rules.DARK_GAP + 1) * 0.075)
 end
 
 -- тебЯ ----------------------------------------------------------------------
@@ -977,15 +977,15 @@ end
 -- что лежит в ящике: r в [0, 1)
 function Rules.loot(r: number, door: number): (string, number)
 	-- у каждого ящика своя находка, поэтому пустых больше
-	if r &lt; 0.25 then
-		return "coins", 3 + math.floor(r * 40) + math.floor(door / 10)
-	elseif r &lt; 0.33 then
+	if r &lt; 0.16 then
+		return "coins", 2 + math.floor(r * 30) + math.floor(door / 20)
+	elseif r &lt; 0.22 then
 		return "battery", 1
-	elseif r &lt; 0.355 then
+	elseif r &lt; 0.24 then
 		return "lockpick", 1
-	elseif r &lt; 0.365 then
+	elseif r &lt; 0.25 then
 		return "plant", 1
-	elseif r &lt; 0.372 then
+	elseif r &lt; 0.256 then
 		return "hammer", 1
 	end
 	return "nothing", 0
@@ -995,7 +995,7 @@ function Rules.lockedChance(door: number): number
 	if door &lt; 3 then
 		return 0
 	end
-	return math.min(0.25, 0.1 + door / 500)
+	return math.min(0.3, 0.14 + door / 400)
 end
 
 -- шум и Колосс ---------------------------------------------------------------
@@ -3032,7 +3032,8 @@ function setFlash(p: Player, on: boolean)
 	if not s then
 		return
 	end
-	s.flashOn = on and s.flash &gt; 0 and s.alive and equipped(p, "flashlight")
+	-- на улице фонарик тоже работает (там игрок не «в забеге»)
+	s.flashOn = on and s.flash &gt; 0 and (s.alive or G.mode == "lobby") and equipped(p, "flashlight")
 	local tool = s.tools.flashlight
 	local beam = tool and tool:FindFirstChild("Handle") and tool.Handle:FindFirstChild("Beam")
 	if beam then
@@ -3631,7 +3632,7 @@ function G.bossDead(info, pos: Vector3?)
 	local a = info.arena
 	for _, p in G.alivePlayers() do
 		G.achieve(p, "colossus_down")
-		give(p, "coins", 40)
+		give(p, "coins", 15)
 	end
 	G.sendAll({ type = "fx", kind = "calm" })
 	local at = pos or a.zone.Position
@@ -4344,6 +4345,8 @@ local function loadCharacter(p: Player, cf: CFrame, inRun: boolean)
 		syncTools(p)
 		setFlash(p, false)
 	else
+		-- на улице только фонарик
+		syncTools(p)
 		players[p].alive = false
 		p:SetAttribute("Alive", nil)
 	end
@@ -4424,6 +4427,10 @@ function G.startHere()
 		lobby.model:Destroy()
 		lobby = nil
 	end
+	-- рельеф улицы музею не нужен
+	pcall(function()
+		workspace.Terrain:Clear()
+	end)
 	startRun()
 	for p in players do
 		if p.Parent then
@@ -5120,56 +5127,101 @@ function X.romanColumn(parent, cf: CFrame, h: number)
 	return m
 end
 
+-- макет Колизея: кольцо из плоских стенных секций, на внешней стороне нарисованы
+-- три яруса арок, сверху аттик; внутри ряды сидений и песок арены
 function X.colosseum(parent, cf: CFrame, r: number)
 	local m = model(parent, "Colosseum")
-	local stone = rgb(196, 176, 140)
-	local _, top = Props.plinth(m, cf, r * 2 + 1, 1.6, rgb(120, 110, 96))
-	local n = 20
-	for tier = 0, 2 do
-		local y = 0.1 + tier * 1.3
-		for k = 0, n - 1 do
-			if not (tier == 2 and k % 5 == 0) then
-				local a = k / n * math.pi * 2
-				P(m, "Pier", Vector3.new(0.4, 1.1, 0.5), top * CFrame.new(math.cos(a) * r, y + 0.55, math.sin(a) * r) * CFrame.Angles(0, -a, 0), stone, M.Sandstone, nc())
-				local a2 = (k + 0.5) / n * math.pi * 2
-				P(m, "Lintel", Vector3.new(0.5, 0.2, r * 2 * math.pi / n + 0.1), top * CFrame.new(math.cos(a2) * r, y + 1.2, math.sin(a2) * r) * CFrame.Angles(0, -a2, 0), stone:Lerp(rgb(0, 0, 0), 0.1), M.Sandstone, nc())
-			end
+	local stone = rgb(204, 184, 146)
+	local shade = rgb(120, 100, 76)
+	local _, top = Props.plinth(m, cf, r * 2 + 1.2, 1.4, rgb(110, 102, 90))
+	local n = 24
+	local h = 3.2
+	local segLen = 2 * r * math.sin(math.pi / n) + 0.04
+	for k = 0, n - 1 do
+		local a = (k + 0.5) / n * math.pi * 2
+		local broken = k &gt;= 3 and k &lt;= 7
+		local hh = if broken then h * (0.55 + (k % 2) * 0.12) else h
+		local seg = P(m, "Wall", Vector3.new(segLen, hh, 0.32), top * CFrame.Angles(0, -a, 0) * CFrame.new(0, hh / 2, -r), stone, M.Sandstone, nc())
+		local f = canvas(seg, Enum.NormalId.Front, stone)
+		local tiers = if broken then 2 else 3
+		for t = 0, tiers - 1 do
+			local y = 1 - (t + 0.5) / 3 * h / hh
+			-- арка: тёмный проём с полукруглым верхом и полуколонны по бокам
+			shape(f, shade, 0.5, y + 0.02 * h / hh, 0.5, 0.18 * h / hh)
+			shape(f, shade, 0.5, y - 0.07 * h / hh, 0.5, 0.18 * h / hh, 1)
+			shape(f, stone:Lerp(rgb(255, 255, 255), 0.15), 0.06, y, 0.1, 0.3 * h / hh)
+			shape(f, stone:Lerp(rgb(0, 0, 0), 0.12), 0.5, y + 0.15 * h / hh, 1, 0.03 * h / hh)
 		end
 	end
-	C(m, "Arena", 0.1, r * 1.3, top * CFrame.new(0, 0.06, 0), rgb(214, 190, 140), M.Sand, nc())
-	for k = 0, 2 do
-		C(m, "Seats", 0.3, r * 1.3 + 0.5 + k * 0.5, top * CFrame.new(0, 0.2 + k * 0.3, 0), stone:Lerp(rgb(255, 255, 255), 0.1), M.Sandstone, nc())
+	-- верхний карниз и внутренние ряды трибун
+	for k = 0, 3 do
+		C(m, "Tier", 0.5, r * 2 - 0.9 - k * 1.1, top * CFrame.new(0, 0.25 + k * 0.5, 0), stone:Lerp(rgb(255, 255, 255), 0.08 * (k % 2)), M.Sandstone, nc())
 	end
+	C(m, "Arena", 0.14, r * 2 - 5.4, top * CFrame.new(0, 2.07, 0), rgb(214, 188, 136), M.Sand, nc())
+	P(m, "ArenaWall", Vector3.new(r * 0.9, 0.3, 0.2), top * CFrame.new(0, 2.25, -r * 0.55), stone, M.Sandstone, nc())
 	return m
 end
 
 function X.legionary(parent, cf: CFrame)
 	local m = model(parent, "Legionary")
-	local red, steel = rgb(150, 26, 30), rgb(170, 172, 178)
-	C(m, "Stand", 0.3, 2, cf * CFrame.new(0, 0.15, 0), rgb(50, 40, 32), M.Wood)
-	for _, x in { -0.4, 0.4 } do
-		P(m, "Leg", Vector3.new(0.5, 2.6, 0.5), cf * CFrame.new(x, 1.6, 0), rgb(150, 110, 80), M.SmoothPlastic, nc())
-		P(m, "Sandal", Vector3.new(0.6, 0.3, 0.9), cf * CFrame.new(x, 0.46, -0.1), rgb(80, 50, 30), M.SmoothPlastic, nc())
+	local red, steel, skin, leather = rgb(150, 26, 30), rgb(176, 178, 184), rgb(196, 160, 126), rgb(96, 62, 36)
+	local function p(name, size, ocf, col, mat)
+		return P(m, name, size, cf * ocf, col, mat or M.SmoothPlastic, nc())
 	end
-	P(m, "Tunic", Vector3.new(1.8, 1.2, 1), cf * CFrame.new(0, 3.2, 0), red, M.Fabric)
-	for k = 0, 3 do
-		P(m, "Lorica", Vector3.new(1.9, 0.36, 1.1), cf * CFrame.new(0, 3.9 + k * 0.38, 0), steel:Lerp(rgb(0, 0, 0), k % 2 * 0.15), M.Metal, nc())
+	C(m, "Stand", 0.3, 2.2, cf * CFrame.new(0, 0.15, 0), rgb(50, 40, 32), M.Wood)
+	for _, x in { -0.38, 0.38 } do
+		p("Sandal", Vector3.new(0.5, 0.24, 0.92), CFrame.new(x, 0.43, -0.12), leather)
+		p("Shin", Vector3.new(0.42, 1.5, 0.46), CFrame.new(x, 1.3, 0), skin)
+		p("Straps", Vector3.new(0.46, 0.7, 0.5), CFrame.new(x, 0.85, 0), leather)
+		p("Greave", Vector3.new(0.44, 0.9, 0.2), CFrame.new(x, 1.58, -0.2), steel, M.Metal)
+		p("Thigh", Vector3.new(0.5, 1.2, 0.54), CFrame.new(x, 2.55, 0), skin)
 	end
-	for _, x in { -1.2, 1.2 } do
-		P(m, "Pauldron", Vector3.new(0.9, 0.4, 1.1), cf * CFrame.new(x, 5.4, 0), steel, M.Metal, nc())
-		P(m, "Arm", Vector3.new(0.45, 1.8, 0.45), cf * CFrame.new(x * 1.05, 4.4, 0), rgb(150, 110, 80), M.SmoothPlastic, nc())
+	-- туника, пояс с подвесками, сегментный доспех
+	p("Tunic", Vector3.new(1.7, 1.2, 1.0), CFrame.new(0, 3.2, 0), red, M.Fabric)
+	p("Cingulum", Vector3.new(1.76, 0.22, 1.06), CFrame.new(0, 3.72, 0), leather)
+	for k = -2, 2 do
+		p("Pteruges", Vector3.new(0.14, 0.9, 0.06), CFrame.new(k * 0.14, 3.2, -0.55), leather)
 	end
-	S(m, "Head", 1, cf * CFrame.new(0, 6.1, 0), rgb(150, 110, 80), M.SmoothPlastic, nc())
-	S(m, "Helmet", 1.15, cf * CFrame.new(0, 6.3, 0.05), steel, M.Metal, nc())
-	P(m, "Crest", Vector3.new(0.2, 0.6, 1.4), cf * CFrame.new(0, 7, 0.05), red, M.Fabric, nc())
-	-- скутум: высокий изогнутый щит
-	local scutum = P(m, "Scutum", Vector3.new(2.2, 3.4, 0.2), cf * CFrame.new(-1.4, 3.6, -0.7) * CFrame.Angles(0, 0.3, 0), red, M.SmoothPlastic, nc())
+	for k = 0, 4 do
+		p("Lorica", Vector3.new(1.84 - k * 0.02, 0.32, 1.1 - k * 0.01), CFrame.new(0, 3.98 + k * 0.32, 0), steel:Lerp(rgb(0, 0, 0), k % 2 * 0.15), M.Metal)
+	end
+	p("Chest", Vector3.new(1.7, 0.5, 1.04), CFrame.new(0, 5.55, 0), steel, M.Metal)
+	for _, sx in { -1, 1 } do
+		for k = 0, 2 do
+			p("Shoulder", Vector3.new(0.86, 0.18, 1.08), CFrame.new(sx * (1.0 + k * 0.05), 5.62 - k * 0.17, 0) * CFrame.Angles(0, 0, sx * 0.35), steel:Lerp(rgb(0, 0, 0), k % 2 * 0.15), M.Metal)
+		end
+		p("UpperArm", Vector3.new(0.44, 0.9, 0.46), CFrame.new(sx * 1.08, 4.9, 0), red, M.Fabric)
+		p("Forearm", Vector3.new(0.38, 1.0, 0.4), CFrame.new(sx * 1.1, 3.98, -0.06), skin)
+		p("Hand", Vector3.new(0.35, 0.38, 0.42), CFrame.new(sx * 1.1, 3.35, -0.1), skin)
+	end
+	-- шея, голова, шлем с нащёчниками, назатыльником и гребнем
+	C(m, "Neck", 0.4, 0.5, cf * CFrame.new(0, 5.95, 0), skin, M.SmoothPlastic, nc())
+	p("Head", Vector3.new(0.82, 0.95, 0.9), CFrame.new(0, 6.52, 0), skin)
+	p("Brow", Vector3.new(0.84, 0.12, 0.2), CFrame.new(0, 6.7, -0.42), skin:Lerp(rgb(0, 0, 0), 0.2))
+	p("Nose", Vector3.new(0.14, 0.26, 0.14), CFrame.new(0, 6.5, -0.5), skin)
+	S(m, "Helmet", 1.06, cf * CFrame.new(0, 6.88, 0.04), steel, M.Metal, nc())
+	p("HelmetRim", Vector3.new(1.0, 0.12, 1.06), CFrame.new(0, 6.84, 0.02), GOLD, M.Metal)
+	p("Visor", Vector3.new(0.96, 0.08, 0.3), CFrame.new(0, 6.85, -0.52), steel, M.Metal)
+	for _, sx in { -1, 1 } do
+		p("Cheek", Vector3.new(0.08, 0.6, 0.5), CFrame.new(sx * 0.46, 6.4, -0.1), steel, M.Metal)
+	end
+	p("NeckGuard", Vector3.new(1.0, 0.1, 0.5), CFrame.new(0, 6.42, 0.6) * CFrame.Angles(-0.4, 0, 0), steel, M.Metal)
+	p("CrestBase", Vector3.new(0.14, 0.2, 0.9), CFrame.new(0, 7.42, 0.04), GOLD, M.Metal)
+	p("Crest", Vector3.new(0.2, 0.55, 1.2), CFrame.new(0, 7.75, 0.04), red, M.Fabric)
+	-- скутум в левой руке, пилум в правой
+	local scutum = P(m, "Scutum", Vector3.new(2.1, 3.3, 0.2), cf * CFrame.new(-1.5, 3.65, -0.55) * CFrame.Angles(0, 0.35, 0), red, M.SmoothPlastic, nc())
 	local f = canvas(scutum, Enum.NormalId.Front, red)
-	shape(f, GOLD, 0.5, 0.5, 0.3, 0.3 * 2.2 / 3.4, 1)
-	shape(f, GOLD, 0.5, 0.5, 0.06, 0.9)
-	shape(f, GOLD, 0.5, 0.5, 0.9, 0.04)
-	C(m, "Pilum", 6.4, 0.12, cf * CFrame.new(1.5, 3.4, 0), rgb(110, 80, 50), M.Wood, nc())
-	P(m, "PilumTip", Vector3.new(0.12, 1.4, 0.12), cf * CFrame.new(1.5, 7.3, 0), steel, M.Metal, nc())
+	shape(f, GOLD, 0.5, 0.5, 0.32, 0.32 * 2.1 / 3.3, 1)
+	shape(f, rgb(170, 170, 176), 0.5, 0.5, 0.18, 0.18 * 2.1 / 3.3, 1)
+	shape(f, GOLD, 0.5, 0.5, 0.05, 0.92)
+	shape(f, GOLD, 0.5, 0.5, 0.92, 0.035)
+	for _, y in { 0.04, 0.96 } do
+		shape(f, GOLD, 0.5, y, 1, 0.03)
+	end
+	P(m, "ScutumRim", Vector3.new(2.14, 3.34, 0.12), cf * CFrame.new(-1.5, 3.65, -0.52) * CFrame.Angles(0, 0.35, 0), rgb(120, 110, 90), M.Metal, nc())
+	C(m, "Pilum", 6.6, 0.12, cf * CFrame.new(1.1, 4.1, -0.1), rgb(110, 80, 50), M.Wood, nc())
+	P(m, "PilumShank", Vector3.new(0.07, 1.6, 0.07), cf * CFrame.new(1.1, 8.2, -0.1), rgb(150, 150, 156), M.Metal, nc())
+	P(m, "PilumTip", Vector3.new(0.16, 0.36, 0.16), cf * CFrame.new(1.1, 9.1, -0.1) * CFrame.Angles(0, math.rad(45), 0), rgb(190, 190, 196), M.Metal, nc())
 	return m
 end
 
@@ -5255,41 +5307,89 @@ function X.throne(parent, cf: CFrame)
 	return m
 end
 
--- конь в попоне с рыцарем в доспехах
+-- конь в попоне и рыцарь верхом с копьём
 function X.knightHorse(parent, cf: CFrame, seed: number)
 	local m = model(parent, "KnightHorse")
-	local horse, cloth = rgb(60, 44, 34), if seed % 2 == 0 then rgb(30, 50, 120) else rgb(130, 20, 30)
+	local coat = if seed % 2 == 0 then rgb(66, 46, 34) else rgb(200, 196, 190)
+	local mane = rgb(30, 22, 18)
+	local cloth = if seed % 2 == 0 then rgb(28, 48, 120) else rgb(130, 20, 30)
 	local steel = rgb(160, 164, 170)
-	P(m, "Plinth", Vector3.new(4.4, 0.6, 8.4), cf * CFrame.new(0, 0.3, 0), rgb(110, 104, 96), M.Marble)
-	local b = cf * CFrame.new(0, 0.6, 0)
-	for _, sx in { -0.8, 0.8 } do
-		for _, z in { -2.4, 2.4 } do
-			P(m, "HorseLeg", Vector3.new(0.6, 3.6, 0.6), b * CFrame.new(sx, 1.8, z), horse, M.SmoothPlastic, nc())
-			P(m, "Hoof", Vector3.new(0.7, 0.35, 0.8), b * CFrame.new(sx, 0.18, z - 0.05), rgb(30, 26, 24), M.SmoothPlastic, nc())
+	P(m, "Plinth", Vector3.new(5, 0.6, 9.4), cf * CFrame.new(0, 0.3, 0), rgb(110, 104, 96), M.Marble)
+	P(m, "PlinthTrim", Vector3.new(5.2, 0.15, 9.6), cf * CFrame.new(0, 0.6, 0), GOLD, M.Metal, nc())
+	local b = cf * CFrame.new(0, 0.68, 0)
+	local function hp(name, size, ocf, col, mat)
+		return P(m, name, size, b * ocf, col or coat, mat or M.SmoothPlastic, nc())
+	end
+	-- ноги: плечо/бедро, предплечье/голень, путовый сустав, копыто
+	for _, leg in { { -0.75, -2.3, 0 }, { 0.75, -2.3, 0.25 }, { -0.75, 2.2, 0.2 }, { 0.75, 2.2, -0.15 } } do
+		local x, z, bend = leg[1], leg[2], leg[3]
+		local front = z &lt; 0
+		hp("UpperLeg", Vector3.new(0.75, 1.9, if front then 0.85 else 1.1), CFrame.new(x, 3.35, z + (if front then 0 else 0.15)) * CFrame.Angles(bend * 0.4, 0, 0))
+		hp("LowerLeg", Vector3.new(0.48, 1.7, 0.5), CFrame.new(x, 1.55, z + bend * 0.3))
+		hp("Fetlock", Vector3.new(0.52, 0.32, 0.56), CFrame.new(x, 0.62, z + bend * 0.3), coat:Lerp(rgb(0, 0, 0), 0.2))
+		hp("Hoof", Vector3.new(0.56, 0.36, 0.66), CFrame.new(x, 0.18, z + bend * 0.3 - 0.05), rgb(36, 30, 26))
+	end
+	-- туловище: грудь, бочка, круп
+	C(m, "Barrel", 4.2, 2.3, b * CFrame.new(0, 4.35, 0) * CFrame.Angles(math.pi / 2, 0, 0), coat, M.SmoothPlastic, nc())
+	S(m, "Chest", 2.45, b * CFrame.new(0, 4.4, -2.1), coat, M.SmoothPlastic, nc())
+	S(m, "Rump", 2.6, b * CFrame.new(0, 4.5, 2.05), coat, M.SmoothPlastic, nc())
+	-- шея, голова, морда, уши, грива
+	hp("Neck", Vector3.new(1.05, 2.6, 1.4), CFrame.new(0, 5.6, -2.95) * CFrame.Angles(-0.55, 0, 0))
+	hp("Head", Vector3.new(0.95, 1.1, 1.5), CFrame.new(0, 6.75, -3.95) * CFrame.Angles(0.45, 0, 0))
+	hp("Muzzle", Vector3.new(0.8, 0.8, 1.1), CFrame.new(0, 6.1, -4.6) * CFrame.Angles(0.75, 0, 0), coat:Lerp(rgb(0, 0, 0), 0.25))
+	for _, x in { -0.3, 0.3 } do
+		hp("Ear", Vector3.new(0.18, 0.5, 0.2), CFrame.new(x, 7.45, -3.65) * CFrame.Angles(-0.2, 0, x * 0.4))
+		hp("Eye", Vector3.new(0.06, 0.16, 0.16), CFrame.new(x * 1.62, 6.95, -4.05), rgb(15, 12, 10))
+	end
+	hp("Mane", Vector3.new(0.22, 2.4, 0.5), CFrame.new(0, 6.05, -2.55) * CFrame.Angles(-0.55, 0, 0), mane)
+	hp("Forelock", Vector3.new(0.3, 0.5, 0.3), CFrame.new(0, 7.3, -3.95), mane)
+	hp("TailRoot", Vector3.new(0.4, 0.8, 0.5), CFrame.new(0, 4.9, 3.35) * CFrame.Angles(0.6, 0, 0), mane)
+	hp("Tail", Vector3.new(0.5, 2.6, 0.45), CFrame.new(0, 3.55, 3.75) * CFrame.Angles(0.15, 0, 0), mane)
+	-- сбруя: шанфрон (налобник), уздечка, поводья
+	hp("Chanfron", Vector3.new(1.0, 0.5, 1.5), CFrame.new(0, 7.05, -4.0) * CFrame.Angles(0.45, 0, 0), steel, M.Metal)
+	hp("Spike", Vector3.new(0.1, 0.5, 0.1), CFrame.new(0, 7.4, -4.2) * CFrame.Angles(-0.3, 0, 0), GOLD, M.Metal)
+	hp("Bridle", Vector3.new(0.98, 0.1, 0.1), CFrame.new(0, 6.15, -4.35) * CFrame.Angles(0.75, 0, 0), rgb(40, 26, 18))
+	rod(m, "Rein", (b * CFrame.new(-0.45, 6.1, -4.4)).Position, (b * CFrame.new(-0.3, 6.1, -1.5)).Position, 0.06, rgb(40, 26, 18), M.Fabric, nc())
+	rod(m, "Rein", (b * CFrame.new(0.45, 6.1, -4.4)).Position, (b * CFrame.new(0.3, 6.1, -1.5)).Position, 0.06, rgb(40, 26, 18), M.Fabric, nc())
+	-- попона: спина, бока до колен, нагрудник, с гербом и бахромой
+	hp("CaparisonTop", Vector3.new(2.5, 0.12, 4.6), CFrame.new(0, 5.52, 0), cloth, M.Fabric)
+	for _, sx in { -1, 1 } do
+		local side = hp("Caparison", Vector3.new(0.08, 2.6, 4.7), CFrame.new(sx * 1.23, 4.2, 0), cloth, M.Fabric)
+		local f = canvas(side, if sx &lt; 0 then Enum.NormalId.Left else Enum.NormalId.Right, cloth)
+		shape(f, GOLD, 0.5, 0.42, 0.22, 0.22 * 4.7 / 2.6, 1)
+		shape(f, cloth, 0.5, 0.42, 0.15, 0.15 * 4.7 / 2.6, 1)
+		shape(f, GOLD, 0.5, 0.42, 0.07, 0.3)
+		shape(f, GOLD, 0.5, 0.95, 1, 0.07)
+		for k = 0, 11 do
+			shape(f, GOLD, (k + 0.5) / 12, 1, 0.03, 0.06)
 		end
 	end
-	P(m, "HorseBody", Vector3.new(2.2, 2.2, 5.8), b * CFrame.new(0, 4.4, 0), horse, M.SmoothPlastic)
-	P(m, "Neck", Vector3.new(1.3, 2.6, 1.4), b * CFrame.new(0, 5.8, -2.9) * CFrame.Angles(-0.5, 0, 0), horse, M.SmoothPlastic, nc())
-	P(m, "HorseHead", Vector3.new(1.1, 1.1, 2.4), b * CFrame.new(0, 6.6, -4.1) * CFrame.Angles(0.5, 0, 0), horse, M.SmoothPlastic, nc())
-	P(m, "Chanfron", Vector3.new(1.15, 0.5, 2.2), b * CFrame.new(0, 7.0, -4.2) * CFrame.Angles(0.5, 0, 0), steel, M.Metal, nc())
-	P(m, "Tail", Vector3.new(0.4, 2.4, 0.4), b * CFrame.new(0, 3.8, 3.1) * CFrame.Angles(0.3, 0, 0), rgb(30, 22, 18), M.SmoothPlastic, nc())
-	-- попона с гербом свисает по бокам
-	for _, sx in { -1, 1 } do
-		local cap = P(m, "Caparison", Vector3.new(0.08, 2.6, 6.2), b * CFrame.new(sx * 1.16, 3.7, 0), cloth, M.Fabric, nc())
-		local f = canvas(cap, if sx &lt; 0 then Enum.NormalId.Left else Enum.NormalId.Right, cloth)
-		shape(f, GOLD, 0.5, 0.45, 0.3, 0.3 * 6.2 / 2.6 * 0.4, 1)
-		shape(f, GOLD, 0.5, 0.95, 1, 0.06)
-	end
-	P(m, "Saddle", Vector3.new(2.3, 0.5, 1.8), b * CFrame.new(0, 5.7, 0.2), rgb(80, 50, 30), M.SmoothPlastic, nc())
+	local front = hp("Peytral", Vector3.new(2.3, 1.6, 0.08), CFrame.new(0, 4.4, -3.3) * CFrame.Angles(0.15, 0, 0), cloth, M.Fabric)
+	local ff = canvas(front, Enum.NormalId.Front, cloth)
+	shape(ff, GOLD, 0.5, 0.9, 1, 0.1)
+	shape(ff, GOLD, 0.5, 0.4, 0.2, 0.36, 1)
+	-- седло, луки седла, стремена
+	hp("Saddle", Vector3.new(1.7, 0.38, 1.9), CFrame.new(0, 5.75, -0.1), rgb(80, 50, 30))
+	hp("Pommel", Vector3.new(1.2, 0.6, 0.25), CFrame.new(0, 6.1, -0.98), rgb(80, 50, 30))
+	hp("Cantle", Vector3.new(1.4, 0.9, 0.25), CFrame.new(0, 6.25, 0.82), rgb(80, 50, 30))
 	-- всадник
-	for _, sx in { -0.9, 0.9 } do
-		P(m, "RiderLeg", Vector3.new(0.5, 2.2, 0.6), b * CFrame.new(sx * 1.25, 5, 0.1), steel, M.Metal, nc())
+	Props.knightSuit(m, b * CFrame.new(0, 2.1, 0.55), steel, cloth, true)
+	for _, sx in { -1, 1 } do
+		hp("Stirrup", Vector3.new(0.65, 0.12, 0.6), CFrame.new(sx * 1.24, 3.84, -0.97), steel, M.Metal)
+		rod(m, "Leather", (b * CFrame.new(sx * 1.1, 5.7, -0.4)).Position, (b * CFrame.new(sx * 1.24, 3.9, -0.97)).Position, 0.06, rgb(40, 26, 18), M.Fabric, nc())
 	end
-	P(m, "RiderBody", Vector3.new(1.7, 2.2, 1), b * CFrame.new(0, 7.1, 0.2), steel, M.Metal)
-	P(m, "Surcoat", Vector3.new(1.75, 1.6, 1.05), b * CFrame.new(0, 6.7, 0.2), cloth, M.Fabric, nc())
-	S(m, "RiderHelm", 1.1, b * CFrame.new(0, 8.7, 0.2), steel, M.Metal, nc())
-	P(m, "Visor", Vector3.new(0.7, 0.12, 0.1), b * CFrame.new(0, 8.75, -0.32), rgb(10, 10, 10), M.SmoothPlastic, nc())
-	C(m, "Lance", 9, 0.25, b * CFrame.new(1.2, 7.4, -2.6) * CFrame.Angles(math.rad(-80), 0, 0), rgb(200, 190, 170), M.Wood, nc())
+	-- копьё под рукой, вымпел
+	local lanceA = (b * CFrame.new(1.12, 5.4, 2.4)).Position
+	local lanceB = (b * CFrame.new(1.25, 7.8, -6.2)).Position
+	rod(m, "Lance", lanceA, lanceB, 0.22, rgb(220, 210, 186), M.Wood, nc())
+	C(m, "Vamplate", 0.4, 0.9, CFrame.lookAt(lanceA:Lerp(lanceB, 0.26), lanceB) * CFrame.Angles(math.pi / 2, 0, 0), steel, M.Metal, nc())
+	local pen = P(m, "Pennant", Vector3.new(0.05, 0.7, 1.4), CFrame.lookAt(lanceA:Lerp(lanceB, 0.9), lanceB) * CFrame.new(0, -0.4, 0.4), cloth, M.Fabric, nc())
+	local _ = pen
+	-- щит на левой руке
+	local sh = P(m, "HorseShield", Vector3.new(0.14, 1.9, 1.5), b * CFrame.new(-1.38, 5.6, 0.45) * CFrame.Angles(0, 0.15, 0), cloth, M.SmoothPlastic, nc())
+	local sf = canvas(sh, Enum.NormalId.Left, cloth)
+	shape(sf, GOLD, 0.5, 0.45, 0.6, 0.12)
+	shape(sf, GOLD, 0.5, 0.45, 0.14, 0.7)
 	return m
 end
 
@@ -5372,7 +5472,9 @@ function X.folkCostume(parent, cf: CFrame, seed: number)
 	P(m, "Apron", Vector3.new(1.1, 2.4, 0.06), cf * CFrame.new(0, 1.9, -1.0), rgb(240, 236, 226), M.Fabric, nc())
 	P(m, "Blouse", Vector3.new(1.5, 1.6, 0.9), cf * CFrame.new(0, 4.2, 0), rgb(245, 242, 234), M.Fabric)
 	P(m, "Vest", Vector3.new(1.55, 1, 0.95), cf * CFrame.new(0, 4.3, 0), rgb(40, 40, 50), M.Fabric, nc())
+	C(m, "Neck", 0.5, 0.4, cf * CFrame.new(0, 5.1, 0), rgb(200, 190, 176), M.SmoothPlastic, nc())
 	S(m, "Head", 0.9, cf * CFrame.new(0, 5.5, 0), rgb(200, 190, 176), M.SmoothPlastic, nc())
+	P(m, "Hair", Vector3.new(0.5, 1.2, 0.3), cf * CFrame.new(0, 5.0, 0.4), rgb(170, 130, 70), M.Fabric, nc())
 	C(m, "Wreath", 0.2, 1.1, cf * CFrame.new(0, 5.9, 0), rgb(60, 120, 60), M.Grass, nc())
 	return m
 end
@@ -5441,11 +5543,19 @@ function X.onionChurch(parent, cf: CFrame)
 	local domes = { { 0, 0, 2.2, 6.4, rgb(230, 190, 60) }, { -2, -2, 1.2, 4.2, rgb(40, 120, 70) }, { 2, -2, 1.2, 4.6, rgb(200, 50, 50) }, { -2, 2, 1.2, 4.4, rgb(40, 80, 160) }, { 2, 2, 1.2, 4, rgb(230, 120, 40) } }
 	for _, d in domes do
 		local x, z, r, h, col = d[1], d[2], d[3], d[4], d[5]
-		C(m, "Drum", h - 1.2, r * 0.8, top * CFrame.new(x, (h - 1.2) / 2, z), rgb(236, 226, 206), M.Plaster, nc())
-		S(m, "Onion", r * 1.1, top * CFrame.new(x, h, z), col, M.SmoothPlastic, nc())
-		C(m, "OnionTip", r * 0.7, r * 0.3, top * CFrame.new(x, h + r * 0.75, z), col, M.SmoothPlastic, nc())
-		P(m, "Cross", Vector3.new(0.1, 0.9, 0.1), top * CFrame.new(x, h + r * 1.4, z), GOLD, M.Metal, nc())
-		P(m, "CrossBar", Vector3.new(0.5, 0.1, 0.13), top * CFrame.new(x, h + r * 1.5, z), GOLD, M.Metal, nc())
+		-- барабан, на нём луковица (шар с вытянутой маковкой), крест над ней
+		local T = h - 1.2
+		local D = r * 1.1
+		C(m, "Drum", T, r * 0.8, top * CFrame.new(x, T / 2, z), rgb(236, 226, 206), M.Plaster, nc())
+		C(m, "DrumCap", 0.2, r * 0.9, top * CFrame.new(x, T, z), GOLD, M.Metal, nc())
+		local cy = T + D * 0.42
+		S(m, "Onion", D, top * CFrame.new(x, cy, z), col, M.SmoothPlastic, nc())
+		for k = 0, 2 do
+			C(m, "OnionTip", D * 0.2, D * (0.62 - k * 0.2), top * CFrame.new(x, cy + D * (0.42 + k * 0.17), z), col, M.SmoothPlastic, nc())
+		end
+		local tipY = cy + D * 0.85
+		P(m, "Cross", Vector3.new(0.1, 0.9, 0.1), top * CFrame.new(x, tipY + 0.4, z), GOLD, M.Metal, nc())
+		P(m, "CrossBar", Vector3.new(0.5, 0.1, 0.13), top * CFrame.new(x, tipY + 0.55, z), GOLD, M.Metal, nc())
 	end
 	return m
 end
@@ -5557,7 +5667,10 @@ function X.guard(parent, cf: CFrame)
 	for _, x in { -1.15, 1.15 } do
 		P(m, "Arm", Vector3.new(0.5, 2.2, 0.55), cf * CFrame.new(x, 4.3, 0), rgb(190, 20, 30), M.Fabric, nc())
 	end
+	C(m, "Neck", 0.5, 0.45, cf * CFrame.new(0, 5.6, 0), rgb(220, 190, 160), M.SmoothPlastic, nc())
+	P(m, "Collar", Vector3.new(1.1, 0.3, 0.8), cf * CFrame.new(0, 5.42, 0), rgb(190, 20, 30), M.Fabric, nc())
 	S(m, "Head", 0.95, cf * CFrame.new(0, 6, 0), rgb(220, 190, 160), M.SmoothPlastic, nc())
+	P(m, "ChinStrap", Vector3.new(0.8, 0.1, 0.1), cf * CFrame.new(0, 5.66, -0.42), GOLD, M.Metal, nc())
 	C(m, "Bearskin", 1.8, 1.2, cf * CFrame.new(0, 7.2, 0.05), rgb(20, 18, 18), M.Fabric, nc())
 	C(m, "Musket", 4.4, 0.16, cf * CFrame.new(1.45, 4.8, -0.2), rgb(80, 56, 36), M.Wood, nc())
 	return m
@@ -5867,6 +5980,9 @@ function Props.door(parent, cf: CFrame, plate: string?, locked: boolean?, size: 
 	for _, s in { -1, 1 } do
 		P(m, "Casing", Vector3.new(0.7, h - 0.1, 1.5), cf * CFrame.new(s * (w / 2 + 0.25), (h - 0.1) / 2, 0), trim, tmat)
 	end
+	for _, sd in { -1, 1 } do
+		P(m, "Moulding", Vector3.new(0.2, h - 0.18, 1.62), cf * CFrame.new(sd * (w / 2 + 0.62), (h - 0.18) / 2 + 0.02, 0), trim:Lerp(rgb(0, 0, 0), 0.25), tmat, nc())
+	end
 	P(m, "Head", Vector3.new(w + 1.2, 0.7, 1.5), cf * CFrame.new(0, h + 0.25, 0), trim, tmat)
 	P(m, "Cornice", Vector3.new(w + 1.8, 0.3, 1.7), cf * CFrame.new(0, h + 0.75, 0), trim, tmat)
 	local wood = if style == "tech" then rgb(120, 116, 96) elseif style == "metal" or style == "code" then rgb(78, 86, 92) elseif metal then rgb(96, 104, 106) elseif kind == "grand" then rgb(84, 52, 34) elseif style == "puzzle" then rgb(70, 44, 32) else Props.WOOD
@@ -5908,12 +6024,26 @@ function Props.door(parent, cf: CFrame, plate: string?, locked: boolean?, size: 
 				end
 				S(leaf, "Knob", 0.45, cf * CFrame.new(cx - side * (lw / 2 - 0.5), 4.2, face * 0.44), Props.BRASS, M.Metal, nc())
 			else
-				for _, y in { h * 0.27, h * 0.7 } do
-					P(leaf, "Panel", Vector3.new(lw - 1.2, h * 0.3, 0.06), cf * CFrame.new(cx, y, face * 0.18), wood:Lerp(rgb(0, 0, 0), 0.2), M.Wood, nc())
+				-- шесть филёнок с внутренними вставками
+				local pw = (lw - 1.0) / 2
+				for ri, y in { h * 0.2, h * 0.5, h * 0.8 } do
+					local ph = if ri == 2 then h * 0.2 else h * 0.24
+					for _, col in { -1, 1 } do
+						local x = cx + col * (pw / 2 + 0.12)
+						P(leaf, "Panel", Vector3.new(pw, ph, 0.06), cf * CFrame.new(x, y, face * 0.18), wood:Lerp(rgb(0, 0, 0), 0.2), M.Wood, nc())
+						P(leaf, "PanelInset", Vector3.new(pw - 0.34, ph - 0.34, 0.05), cf * CFrame.new(x, y, face * 0.2), wood:Lerp(rgb(255, 230, 200), 0.06), M.Wood, nc())
+					end
 				end
-				S(leaf, "Knob", 0.45, cf * CFrame.new(cx - side * (lw / 2 - 0.5), 4.2, face * 0.44), Props.BRASS, M.Metal, nc())
-				P(leaf, "Rose", Vector3.new(0.5, 0.9, 0.06), cf * CFrame.new(cx - side * (lw / 2 - 0.5), 4.1, face * 0.2), Props.BRASS, M.Metal, nc())
+				-- латунная накладка внизу и ручка-рычаг
+				P(leaf, "KickPlate", Vector3.new(lw - 0.4, 0.5, 0.035), cf * CFrame.new(cx, 0.32, face * 0.168), Props.BRASS:Lerp(rgb(0, 0, 0), 0.25), M.Metal, nc())
+				local hx = cx - side * (lw / 2 - 0.45)
+				P(leaf, "Rose", Vector3.new(0.34, 0.9, 0.06), cf * CFrame.new(hx, 3.9, face * 0.19), Props.BRASS, M.Metal, nc())
+				C(leaf, "LeverNeck", 0.22, 0.14, cf * CFrame.new(hx, 4.15, face * 0.3) * CFrame.Angles(math.pi / 2, 0, 0), Props.BRASS, M.Metal, nc())
+				P(leaf, "Lever", Vector3.new(0.6, 0.12, 0.12), cf * CFrame.new(hx + side * 0.24, 4.15, face * 0.42), Props.BRASS, M.Metal, nc())
 			end
+		end
+		for _, y in { 0.9, h / 2, h - 1.1 } do
+			P(leaf, "Hinge", Vector3.new(0.18, 0.6, 0.38), cf * CFrame.new(hinge + side * 0.0, y, 0), Props.BRASS:Lerp(rgb(0, 0, 0), 0.3), M.Metal, nc())
 		end
 		leaf:SetAttribute("KnobX", cx - side * (lw / 2 - 0.5))
 		leaf.WorldPivot = cf * CFrame.new(hinge, 0, 0)
@@ -6969,23 +7099,117 @@ end
 
 -- ваза на тумбе
 
--- доспех на стойке у стены
+-- Полный латный доспех из множества соединённых частей: башмаки, поножи, наколенники,
+-- набедренники, набедренные пластины, юбка из полос, кираса с ребром, горжет, наплечники
+-- из пластин, налокотники, наручи, латные перчатки, шлем с забралом и плюмаж,
+-- сюрко с гербом. cf — между ступнями на полу, лицом к LookVector.
+-- seated = true — сидит верхом: бёдра вперёд, голени вниз
+function Props.knightSuit(parent, cf: CFrame, steel: Color3?, accent: Color3?, seated: boolean?)
+	local m = model(parent, "Knight")
+	steel = steel or rgb(158, 162, 168)
+	accent = accent or rgb(130, 22, 30)
+	local dark = steel:Lerp(rgb(0, 0, 0), 0.35)
+	local leather = rgb(70, 46, 30)
+	local function p(name, size, ocf, col, mat)
+		return P(m, name, size, cf * ocf, col or steel, mat or M.Metal, nc())
+	end
+	local function c(name, len, d, ocf, col)
+		return C(m, name, len, d, cf * ocf, col or steel, M.Metal, nc())
+	end
+	local function s(name, d, ocf, col)
+		return S(m, name, d, cf * ocf, col or steel, M.Metal, nc())
+	end
+	-- ноги
+	for _, x0 in { -0.42, 0.42 } do
+		-- верхом ноги расставлены по бокам коня
+		local x = if seated then x0 * 2.95 else x0
+		if seated then
+			c("Cuisse", 1.5, 0.62, CFrame.new(x, 3.62, -0.55) * CFrame.Angles(math.pi / 2, 0, 0))
+			s("Poleyn", 0.66, CFrame.new(x, 3.62, -1.32))
+			p("PoleynWing", Vector3.new(0.5, 0.42, 0.12), CFrame.new(x, 3.6, -1.62), dark)
+			c("Greave", 1.6, 0.54, CFrame.new(x, 2.78, -1.38))
+			p("Sabaton", Vector3.new(0.58, 0.34, 1.08), CFrame.new(x, 1.86, -1.52))
+			p("SabatonToe", Vector3.new(0.46, 0.26, 0.42), CFrame.new(x, 1.83, -2.2), dark)
+		else
+			p("Sabaton", Vector3.new(0.58, 0.34, 1.08), CFrame.new(x, 0.47, -0.14))
+			for k = 0, 2 do
+				p("Lame", Vector3.new(0.6, 0.1, 0.28), CFrame.new(x, 0.66, -0.42 - k * 0.2) * CFrame.Angles(0.2, 0, 0), dark)
+			end
+			p("SabatonToe", Vector3.new(0.46, 0.26, 0.42), CFrame.new(x, 0.44, -0.82), dark)
+			c("Greave", 1.66, 0.54, CFrame.new(x, 1.47, 0))
+			s("Poleyn", 0.66, CFrame.new(x, 2.32, 0))
+			p("PoleynWing", Vector3.new(0.5, 0.42, 0.12), CFrame.new(x, 2.3, -0.31), dark)
+			c("Cuisse", 1.44, 0.62, CFrame.new(x, 3.04, 0))
+		end
+		p("Tasset", Vector3.new(0.78, 0.92, 0.14), CFrame.new(x0 * 1.08, 3.62, -0.5) * CFrame.Angles(-0.12, 0, x0 * 0.25))
+	end
+	-- юбка из полос и кираса
+	for k = 0, 2 do
+		p("Fauld", Vector3.new(1.62 - k * 0.04, 0.26, 1.04 - k * 0.02), CFrame.new(0, 3.98 + k * 0.24, 0), if k % 2 == 0 then steel else dark)
+	end
+	p("Breastplate", Vector3.new(1.7, 1.6, 1.06), CFrame.new(0, 5.02, 0))
+	p("Plackart", Vector3.new(1.42, 0.6, 0.1), CFrame.new(0, 4.56, -0.56), dark)
+	p("Ridge", Vector3.new(0.12, 1.36, 0.1), CFrame.new(0, 5.06, -0.58) * CFrame.Angles(0.06, 0, 0))
+	-- сюрко с гербом поверх кирасы
+	local tabard = p("Tabard", Vector3.new(1.3, 2.1, 0.06), CFrame.new(0, 4.4, -0.62), accent, M.Fabric)
+	local gui = Props.surface(tabard, Enum.NormalId.Front, 40)
+	for _, r in { { 0.5, 0.36, 0.14, 0.4 }, { 0.5, 0.3, 0.5, 0.08 } } do
+		local f = Instance.new("Frame")
+		f.BorderSizePixel = 0
+		f.BackgroundColor3 = rgb(230, 196, 90)
+		f.AnchorPoint = Vector2.new(0.5, 0.5)
+		f.Position = UDim2.fromScale(r[1], r[2])
+		f.Size = UDim2.fromScale(r[3], r[4])
+		f.Parent = gui
+	end
+	p("Belt", Vector3.new(1.76, 0.18, 1.1), CFrame.new(0, 4.24, 0), leather, M.Fabric)
+	c("Gorget", 0.36, 0.92, CFrame.new(0, 5.96, 0))
+	c("GorgetRim", 0.12, 1.02, CFrame.new(0, 5.82, 0), dark)
+	-- руки: наплечники, плечо, налокотник, наруч, перчатка
+	for _, sx in { -1, 1 } do
+		s("Pauldron", 0.98, CFrame.new(sx * 1.02, 5.58, 0))
+		for k = 0, 2 do
+			p("PauldronLame", Vector3.new(0.82 - k * 0.06, 0.18, 1.02), CFrame.new(sx * (1.14 + k * 0.04), 5.24 - k * 0.17, 0) * CFrame.Angles(0, 0, sx * 0.32), if k % 2 == 0 then dark else steel)
+		end
+		c("Rerebrace", 0.95, 0.42, CFrame.new(sx * 1.12, 4.76, 0))
+		s("Couter", 0.52, CFrame.new(sx * 1.12, 4.26, 0))
+		p("CouterWing", Vector3.new(0.12, 0.42, 0.42), CFrame.new(sx * 1.4, 4.26, 0.05), dark)
+		c("Vambrace", 0.9, 0.38, CFrame.new(sx * 1.12, 3.78, 0))
+		p("Gauntlet", Vector3.new(0.44, 0.5, 0.5), CFrame.new(sx * 1.12, 3.1, -0.04))
+		p("Cuff", Vector3.new(0.5, 0.18, 0.56), CFrame.new(sx * 1.12, 3.32, -0.04), dark)
+	end
+	-- шлем: купол, забрало со смотровой щелью и отверстиями, гребень, плюмаж
+	c("Neck", 0.3, 0.5, CFrame.new(0, 6.15, 0), dark)
+	s("Skull", 1.06, CFrame.new(0, 6.62, 0.02))
+	p("Bevor", Vector3.new(0.86, 0.5, 0.5), CFrame.new(0, 6.3, -0.24))
+	p("Visor", Vector3.new(0.82, 0.56, 0.16), CFrame.new(0, 6.68, -0.47) * CFrame.Angles(-0.1, 0, 0))
+	p("Sight", Vector3.new(0.6, 0.07, 0.05), CFrame.new(0, 6.78, -0.56) * CFrame.Angles(-0.1, 0, 0), rgb(12, 12, 14), M.SmoothPlastic)
+	for k = -1, 1 do
+		p("Breath", Vector3.new(0.06, 0.06, 0.05), CFrame.new(k * 0.18, 6.5, -0.56), rgb(12, 12, 14), M.SmoothPlastic)
+	end
+	p("Comb", Vector3.new(0.1, 0.24, 0.9), CFrame.new(0, 7.15, 0.02), dark)
+	for k = 0, 2 do
+		c("Plume", 0.6, 0.22 - k * 0.04, CFrame.new(0, 7.35 + k * 0.1, 0.25 + k * 0.22) * CFrame.Angles(0.9 + k * 0.3, 0, 0), accent)
+	end
+	return m
+end
+
+-- доспех на стойке у стены (cf — слот у стены, лицо в зал)
 function Props.armor(parent, cf: CFrame)
 	local m = model(parent, "Armor")
 	local base = cf * CFrame.new(0, 0, -0.05 - 1.2)
-	local steel = rgb(140, 146, 152)
-	C(m, "Base", 0.3, 2.2, base * CFrame.new(0, 0.15, 0), Props.WOOD_DARK, M.Wood)
-	P(m, "Torso", Vector3.new(1.8, 2, 1), base * CFrame.new(0, 4, 0), steel, M.Metal)
-	for _, x in { -0.45, 0.45 } do
-		P(m, "Leg", Vector3.new(0.6, 2.7, 0.6), base * CFrame.new(x, 1.65, 0), steel, M.Metal, nc())
-		S(m, "Pauldron", 0.9, base * CFrame.new(x * 2.6, 4.8, 0), steel, M.Metal, nc())
-		P(m, "Arm", Vector3.new(0.45, 1.9, 0.45), base * CFrame.new(x * 2.6, 3.6, 0), steel, M.Metal, nc())
-	end
-	S(m, "Helmet", 1.1, base * CFrame.new(0, 5.7, 0), steel, M.Metal, nc())
-	P(m, "Visor", Vector3.new(0.7, 0.14, 0.1), base * CFrame.new(0, 5.75, -0.52), rgb(10, 10, 10), M.SmoothPlastic, nc())
-	C(m, "Plume", 0.9, 0.2, base * CFrame.new(0, 6.5, 0.1), rgb(150, 30, 34), M.Fabric, nc())
-	C(m, "Spear", 7.5, 0.14, base * CFrame.new(1.5, 3.75, -0.2), Props.WOOD, M.Wood, nc())
-	P(m, "SpearTip", Vector3.new(0.3, 0.8, 0.1), base * CFrame.new(1.5, 7.9, -0.2), steel, M.Metal, nc())
+	C(m, "Base", 0.3, 2.4, base * CFrame.new(0, 0.15, 0), Props.WOOD_DARK, M.Wood)
+	C(m, "BaseTrim", 0.08, 2.5, base * CFrame.new(0, 0.29, 0), Props.BRASS, M.Metal, nc())
+	C(m, "Post", 4.6, 0.2, base * CFrame.new(0, 2.6, 0.45), Props.IRON, M.Metal, nc())
+	local seed = math.floor(cf.Position.X * 3 + cf.Position.Z * 5)
+	local accents = { rgb(130, 22, 30), rgb(26, 50, 120), rgb(30, 90, 50), rgb(90, 20, 90) }
+	Props.knightSuit(m, base * CFrame.new(0, 0.3, 0), nil, accents[seed % 4 + 1])
+	-- алебарда у правой руки
+	local hx = 1.5
+	C(m, "Haft", 7.6, 0.14, base * CFrame.new(hx, 4.1, -0.1), Props.WOOD, M.Wood, nc())
+	P(m, "AxeBlade", Vector3.new(0.08, 0.9, 0.7), base * CFrame.new(hx, 7.2, -0.42), rgb(170, 174, 180), M.Metal, nc())
+	P(m, "Spike", Vector3.new(0.08, 0.9, 0.14), base * CFrame.new(hx, 8.1, -0.1), rgb(170, 174, 180), M.Metal, nc())
+	P(m, "Hook", Vector3.new(0.08, 0.2, 0.42), base * CFrame.new(hx, 7.2, 0.22), rgb(170, 174, 180), M.Metal, nc())
 	return m
 end
 
@@ -8379,7 +8603,6 @@ L.egypt = function(c)
 	X.canopic(c.m, spot(d, o, -19, -44), d.door)
 	Props.statue(c.m, spot(d, o, -19, -7), "obelisk", d.door)
 	Props.statue(c.m, spot(d, o, 19, -7), "obelisk", d.door + 1)
-	X.flag(c.m, spot(d, o, 20, -42), "egypt")
 	hide(c, slotBack(d, o, -14))
 	hide(c, slotBack(d, o, 14))
 	hide(c, slotL(d, o, -34))
@@ -8406,7 +8629,6 @@ L.rome = function(c)
 	X.aqueduct(c.m, spot(d, o, 21, -34), 12)
 	Props.vase(c.m, spot(d, o, 21, -9), d.door)
 	Props.vase(c.m, spot(d, o, 21, -15), d.door + 1)
-	X.flag(c.m, spot(d, o, -21, -6), "rome")
 	hide(c, slotBack(d, o, -18))
 	hide(c, slotBack(d, o, 18))
 	chandelier(c, 0, -12, 5)
@@ -8438,8 +8660,6 @@ end
 
 L.estonia = function(c)
 	local d, o = c.d, c.origin
-	X.flag(c.m, spot(d, o, -16, -6), "estonia")
-	X.flag(c.m, spot(d, o, 15, -6), "estonia")
 	X.oldTown(c.m, spot(d, o, -6, -24), d.door)
 	X.windmill(c.m, spot(d, o, 12, -15, -0.4))
 	X.folkCostume(c.m, spot(d, o, 14, -29, -math.pi / 2), d.door)
@@ -8456,7 +8676,6 @@ end
 
 L.russia = function(c)
 	local d, o = c.d, c.origin
-	X.flag(c.m, spot(d, o, -17, -6), "russia")
 	X.onionChurch(c.m, spot(d, o, -5, -26))
 	X.matryoshka(c.m, spot(d, o, 12, -12), d.door)
 	X.samovar(c.m, spot(d, o, 12, -20))
@@ -8475,7 +8694,6 @@ end
 
 L.england = function(c)
 	local d, o = c.d, c.origin
-	X.flag(c.m, spot(d, o, -16, -6), "england")
 	X.phoneBox(c.m, spot(d, o, 15, -10))
 	X.clockTower(c.m, spot(d, o, -8, -26), 12)
 	X.bus(c.m, spot(d, o, 10, -28))
@@ -8493,7 +8711,6 @@ end
 
 L.france = function(c)
 	local d, o = c.d, c.origin
-	X.flag(c.m, spot(d, o, -17, -6), "france")
 	X.eiffel(c.m, spot(d, o, -6, -27), 16)
 	X.triumphArch(c.m, spot(d, o, 10, -13))
 	X.easel(c.m, spot(d, o, 15, -28, -math.pi / 2), d.door)
@@ -8510,14 +8727,13 @@ end
 
 L.japan = function(c)
 	local d, o = c.d, c.origin
-	X.flag(c.m, spot(d, o, -15, -6), "japan")
 	X.torii(c.m, spot(d, o, 0, -14), 6)
 	X.stoneLantern(c.m, spot(d, o, -7, -12))
 	X.stoneLantern(c.m, spot(d, o, 7, -12))
 	X.pagoda(c.m, spot(d, o, -9, -28))
 	X.samurai(c.m, spot(d, o, 12, -24, -math.pi / 2))
 	Props.rug(c.m, spot(d, o, 8, -34), 8, 6, rgb(190, 176, 120))
-	painting(c, -1, -36, 6, 4, 6)
+	painting(c, -1, -36, 7, 4, 6)
 	hide(c, slotBack(d, o, -12))
 	hide(c, slotBack(d, o, 12))
 	ceil(c, 0, -22)
@@ -8779,8 +8995,21 @@ function Special.lobby(parent)
 	local stone = rgb(150, 146, 138)
 	local cobble = rgb(110, 106, 100)
 	local rnd = Random.new(7)
-	P(m, "Ground", Vector3.new(420, 1, 640), CFrame.new(20, -0.5, -170), rgb(34, 52, 36), M.Grass)
-	P(m, "Path", Vector3.new(14, 0.2, 86), CFrame.new(0, 0.1, -11), cobble, M.Cobblestone)
+	-- земля и тропинка — рельеф Roblox: трава с шевелящимися травинками, плавные
+	-- повороты тропы без швов. Если рельеф недоступен, земля из обычной детали
+	local terrain = nil
+	pcall(function()
+		local t = workspace.Terrain
+		t:FillBlock(CFrame.new(20, -4, -170), Vector3.new(420, 8, 640), Enum.Material.Grass)
+		pcall(function()
+			(t :: any).Decoration = true
+		end)
+		terrain = t
+	end)
+	if not terrain then
+		P(m, "Ground", Vector3.new(420, 1, 640), CFrame.new(20, -0.5, -170), rgb(34, 52, 36), M.Grass)
+		P(m, "Path", Vector3.new(14, 0.2, 86), CFrame.new(0, 0.1, -11), cobble, M.Cobblestone)
+	end
 	-- крыльцо с пологими ступенями (по ним идут без прыжка)
 	P(m, "Porch", Vector3.new(46, 1.6, 22), CFrame.new(0, 0.8, -71), stone, M.Marble)
 	for k = 0, 3 do
@@ -8856,18 +9085,34 @@ function Special.lobby(parent)
 		return false
 	end
 	for i = 1, #trail - 1 do
-		local a = Vector3.new(trail[i][1], 0.1, trail[i][2])
-		local b = Vector3.new(trail[i + 1][1], 0.1, trail[i + 1][2])
+		local a = Vector3.new(trail[i][1], 0, trail[i][2])
+		local b = Vector3.new(trail[i + 1][1], 0, trail[i + 1][2])
 		local len = (b - a).Magnitude
-		P(m, "Trail", Vector3.new(6, 0.2 + (i % 2) * 0.02, len), CFrame.lookAt((a + b) / 2, b), cobble:Lerp(rgb(80, 70, 56), 0.3), M.Cobblestone, nc())
-		if i &gt; 1 then
-			C(m, "TrailBend", 0.2 + ((i + 1) % 2) * 0.02 + 0.01, 6, CFrame.new(a), cobble:Lerp(rgb(80, 70, 56), 0.3), M.Cobblestone, nc())
+		if terrain then
+			-- камень тропы утоплен в землю; на поворотах — круглые площадки
+			terrain:FillBlock(CFrame.lookAt((a + b) / 2, b) * CFrame.new(0, -2, 0), Vector3.new(6, 4, len + 2), Enum.Material.Cobblestone)
+			terrain:FillCylinder(CFrame.new(a + Vector3.new(0, -2, 0)), 4, 3.6, Enum.Material.Cobblestone)
+		else
+			P(m, "Trail", Vector3.new(6, 0.2, len), CFrame.lookAt((a + b) / 2 + Vector3.new(0, 0.1, 0), b + Vector3.new(0, 0.1, 0)), cobble:Lerp(rgb(80, 70, 56), 0.3), M.Cobblestone, nc())
+		end
+		-- бордюрные камни вдоль тропы
+		local dir = (b - a).Unit
+		local side = Vector3.new(-dir.Z, 0, dir.X)
+		for k = 1, math.floor(len / 4) do
+			local pnt = a + dir * (k * 4 - 1)
+			for _, sg in { -1, 1 } do
+				P(m, "Curb", Vector3.new(0.7, 0.35, 1.2), CFrame.lookAt(pnt + side * sg * 3.4 + Vector3.new(0, 0.12, 0), pnt + side * sg * 3.4 + dir + Vector3.new(0, 0.12, 0)) * CFrame.Angles(0, (k % 3) * 0.08, 0), rgb(120, 116, 108):Lerp(rgb(90, 88, 84), (k % 2) * 0.5), M.Slate, nc())
+			end
 		end
 		if i % 2 == 0 then
-			local dir = (b - a).Unit
-			local side = Vector3.new(-dir.Z, 0, dir.X) * 4.6
-			Props.lampPost(m, CFrame.new(a + side + Vector3.new(0, -0.1, 0)))
+			Props.lampPost(m, CFrame.new(a + side * 4.8))
 		end
+	end
+	if terrain then
+		local last = trail[#trail]
+		terrain:FillCylinder(CFrame.new(last[1], -2, last[2]), 4, 3.6, Enum.Material.Cobblestone)
+		-- главная дорожка и площадка у крыльца тоже из камня
+		terrain:FillBlock(CFrame.new(0, -2, -11), Vector3.new(14, 4, 86), Enum.Material.Pavement)
 	end
 
 	-- бесконечный фасад: одно и то же крыло повторяется и уходит вдаль --------------
@@ -8957,16 +9202,6 @@ function Special.lobby(parent)
 			S(m, "Bush", s1 * 0.7, CFrame.new(x + s1 * 0.4, s1 * 0.22, z - s1 * 0.2), g, M.Grass, nc())
 		end
 	end
-	-- пучки высокой травы у дорожек
-	for i = 1, 90 do
-		local x, z = rnd:NextNumber(-60, 120), rnd:NextNumber(-70, 50)
-		if free(x, z, 0.5) or (math.abs(x) &gt; 8 and math.abs(x) &lt; 14 and z &gt; -50 and z &lt; 30) then
-			local h = rnd:NextNumber(0.8, 1.8)
-			P(m, "Grass", Vector3.new(0.6, h, 0.1), CFrame.new(x, h / 2, z) * CFrame.Angles(rnd:NextNumber(-0.3, 0.3), rnd:NextNumber(0, 3), 0), rgb(50, 90, 44), M.Grass, nc({ CastShadow = false }))
-			local _ = i
-		end
-	end
-
 	-- округа за оградой: тёмные дома, деревья, всё уходит дальше ----------------------
 	for i, h in { { -150, 40, 26 }, { -160, -10, 34 }, { -146, -70, 22 }, { -40, 110, 30 }, { 30, 118, 24 }, { 90, 106, 36 } } do
 		P(m, "FarHouse", Vector3.new(24, h[3], 20), CFrame.new(h[1], h[3] / 2, h[2]), rgb(52, 50, 54), M.Concrete, nc())
@@ -9799,6 +10034,7 @@ local CollectionService = game:GetService("CollectionService")
 local TweenService = game:GetService("TweenService")
 local StarterGui = game:GetService("StarterGui")
 local Lighting = game:GetService("Lighting")
+local GuiService = game:GetService("GuiService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Workshop"):WaitForChild("Shared")
 local Remotes = require(Shared.Roblox.Remotes)
@@ -9844,7 +10080,8 @@ end
 
 pcall(function()
 	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, false)
-	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true)
+	-- свой инвентарь внизу экрана вместо стандартного
+	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
 end)
 task.spawn(request, "Lang", app.lang)
 task.spawn(function()
@@ -9998,10 +10235,13 @@ Ui.corner(flBack, 2)
 local flFill = Ui.frame(flBack, { BackgroundColor3 = Color3.fromRGB(230, 210, 120), Size = UDim2.fromScale(1, 1), ZIndex = 12 })
 Ui.corner(flFill, 2)
 
-local sneakBtn = Ui.button(hud, "🧍", nil, { Size = UDim2.fromOffset(64, 64), Position = UDim2.new(1, -84, 1, -210), TextSize = 34, BackgroundTransparency = 0.45, ZIndex = 11 })
+-- присесть / встать: стрелка вниз — присесть, вверх — встать
+local sneakBtn = Ui.iconButton(hud, 64, nil, { Position = UDim2.new(1, -84, 1, -210), BackgroundTransparency = 0.35, ZIndex = 11 })
+local sneakIcon = Ui.chevron(sneakBtn, false)
 local function setSneak(on: boolean)
 	app.sneaking = on
-	sneakBtn.Text = if on then "🧎" else "🧍"
+	sneakIcon:Destroy()
+	sneakIcon = Ui.chevron(sneakBtn, on)
 	sneakBtn.BackgroundColor3 = if on then Ui.C.line else Ui.C.panel
 	task.spawn(request, "Sneak", on)
 end
@@ -10039,7 +10279,9 @@ local function refreshHud()
 	local fl = (player:GetAttribute("Flash") or Rules.FLASH_MAX) / Rules.FLASH_MAX
 	flFill.Size = UDim2.fromScale(math.clamp(fl, 0, 1), 1)
 	local tool = char and char:FindFirstChildOfClass("Tool")
-	flBack.Visible = tool ~= nil and tool:GetAttribute("Item") == "flashlight"
+	-- заряд фонарика показан в его ячейке инвентаря
+	flBack.Visible = false
+	local _t = tool
 	leaveBtn.Text = T("Leave")
 end
 player:GetAttributeChangedSignal("Coins"):Connect(refreshHud)
@@ -10146,36 +10388,141 @@ voidSound.Volume = 0
 voidSound.Parent = gui
 voidSound:Play()
 
--- высота и громкость шагов для материала пола
-local STEP = {
-	[Enum.Material.Marble] = { 1.2, 0.8 },
-	[Enum.Material.Slate] = { 1.05, 0.7 },
-	[Enum.Material.WoodPlanks] = { 0.9, 0.65 },
-	[Enum.Material.Wood] = { 0.9, 0.65 },
-	[Enum.Material.Carpet] = { 0.7, 0.2 },
-	[Enum.Material.Fabric] = { 0.7, 0.2 },
-	[Enum.Material.Concrete] = { 0.95, 0.6 },
-	[Enum.Material.CeramicTiles] = { 1.3, 0.75 },
-	[Enum.Material.DiamondPlate] = { 1.5, 0.9 },
-	[Enum.Material.Metal] = { 1.5, 0.9 },
-	[Enum.Material.Sand] = { 0.6, 0.3 },
-	[Enum.Material.Grass] = { 0.65, 0.3 },
-	[Enum.Material.Cobblestone] = { 1, 0.6 },
+-- Шаги: на каждый шаг — свой короткий звук, набор слоёв зависит от поверхности
+-- (паркет стучит глуше, мрамор звонко и с эхом зала, металл звенит, ковёр глушит,
+-- трава и песок шуршат). Стандартный звук бега у своего персонажа выключен
+local SND = {
+	step = "rbxasset://sounds/action_footsteps_plastic.mp3",
+	knock = "rbxasset://sounds/collide.wav",
+	click = "rbxasset://sounds/clickfast.wav",
+	rustle = "rbxasset://sounds/swoosh.wav",
+	land = "rbxasset://sounds/action_jump_land.mp3",
 }
-local function stepSound()
+-- слой: звук, высота, громкость, эквалайзер (низ, середина, верх), эхо
+local STEP_SETS = {
+	wood = { { SND.step, 0.78, 0.6, { 3, 2, -8 } }, { SND.knock, 0.5, 0.1, { 4, 0, -10 } } },
+	stone = { { SND.step, 1.22, 0.62, { -4, 1, 3 }, true }, { SND.click, 0.55, 0.05, { -6, 0, 2 }, true } },
+	tile = { { SND.step, 1.38, 0.55, { -6, 0, 4 }, true } },
+	concrete = { { SND.step, 0.98, 0.6, { 0, 1, -2 } }, { SND.land, 1.6, 0.12, { 0, 0, -4 } } },
+	metal = { { SND.step, 1.08, 0.55, { -2, 3, 2 } }, { SND.click, 0.38, 0.14, { -4, 4, 0 }, true } },
+	soft = { { SND.step, 0.6, 0.28, { 2, -4, -18 } } },
+	grass = { { SND.rustle, 2.6, 0.22, { -6, 0, 2 } }, { SND.step, 0.52, 0.25, { 2, -2, -14 } } },
+	sand = { { SND.rustle, 1.7, 0.2, { 0, -2, -4 } }, { SND.step, 0.48, 0.2, { 2, -4, -16 } } },
+}
+local M_ = Enum.Material
+local MAT_SET = {
+	[M_.WoodPlanks] = "wood", [M_.Wood] = "wood",
+	[M_.Marble] = "stone", [M_.Slate] = "stone", [M_.Granite] = "stone", [M_.Limestone] = "stone", [M_.Sandstone] = "stone", [M_.Basalt] = "stone",
+	[M_.CeramicTiles] = "tile", [M_.Glass] = "tile", [M_.Ice] = "tile", [M_.SmoothPlastic] = "tile", [M_.Plastic] = "tile",
+	[M_.Concrete] = "concrete", [M_.Pavement] = "concrete", [M_.Cobblestone] = "concrete", [M_.Brick] = "concrete", [M_.Plaster] = "concrete", [M_.Asphalt] = "concrete",
+	[M_.Metal] = "metal", [M_.DiamondPlate] = "metal", [M_.CorrodedMetal] = "metal", [M_.Foil] = "metal",
+	[M_.Carpet] = "soft", [M_.Fabric] = "soft",
+	[M_.Grass] = "grass", [M_.LeafyGrass] = "grass", [M_.Ground] = "grass", [M_.Mud] = "grass",
+	[M_.Sand] = "sand", [M_.Snow] = "sand",
+}
+local stepFolder = Instance.new("Folder")
+stepFolder.Name = "Steps"
+stepFolder.Parent = gui
+local stepPool = {}
+for name, layers in STEP_SETS do
+	stepPool[name] = {}
+	for li, layer in layers do
+		local pair = {}
+		for k = 1, 2 do
+			local snd = Instance.new("Sound")
+			snd.SoundId = layer[1]
+			snd.Volume = layer[3]
+			local eq = Instance.new("EqualizerSoundEffect")
+			eq.LowGain, eq.MidGain, eq.HighGain = layer[4][1], layer[4][2], layer[4][3]
+			eq.Parent = snd
+			if layer[5] then
+				local rv = Instance.new("ReverbSoundEffect")
+				rv.DecayTime = 1.2
+				rv.WetLevel = -14
+				rv.DryLevel = 0
+				rv.Parent = snd
+			end
+			snd.Parent = stepFolder
+			pair[k] = snd
+		end
+		stepPool[name][li] = { layer = layer, pair = pair, turn = 1 }
+	end
+end
+local stride = { dist = 0, foot = 1 }
+local function footfall(set: string, quiet: boolean)
+	for _, l in stepPool[set] or stepPool.concrete do
+		local snd = l.pair[l.turn]
+		l.turn = 3 - l.turn
+		snd.PlaybackSpeed = l.layer[2] * (0.94 + math.random() * 0.12)
+		snd.Volume = l.layer[3] * (if quiet then 0.35 else 1) * (0.85 + math.random() * 0.3)
+		snd:Play()
+	end
+end
+local function stepSound(dt: number)
 	local char = player.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart")
+	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
-	local snd = root and root:FindFirstChild("Running")
-	if not snd or not hum or not snd:IsA("Sound") then
+	if not root or not hum then
 		return
 	end
-	local prof = STEP[hum.FloorMaterial] or { 1, 0.6 }
+	local run = root:FindFirstChild("Running")
+	if run and run:IsA("Sound") then
+		run.Volume = 0
+	end
 	local v = root.AssemblyLinearVelocity
 	local speed = Vector3.new(v.X, 0, v.Z).Magnitude
-	-- медленный шаг — редкие и тихие шаги
-	snd.PlaybackSpeed = 1.85 * prof[1] * math.clamp(speed / 15, 0.45, 1.1)
-	snd.Volume = if app.steps then prof[2] * (if app.sneaking then 0.3 else 1) else 0
+	if hum.FloorMaterial == Enum.Material.Air or speed &lt; 1 or not app.steps or hiddenEye then
+		stride.dist = math.min(stride.dist, 1.5)
+		return
+	end
+	stride.dist += speed * dt
+	local len = if app.sneaking then 2.6 else 3.9
+	if stride.dist &gt;= len then
+		stride.dist = 0
+		footfall(MAT_SET[hum.FloorMaterial] or "concrete", app.sneaking)
+	end
+end
+
+-- Нельзя забираться на экспонаты, мебель и постаменты: если персонаж встал на
+-- что-то, что не пол зала, он возвращается туда, где стоял на полу
+local climb = { safe = nil :: CFrame?, y = 0 }
+local climbRay = RaycastParams.new()
+climbRay.FilterType = Enum.RaycastFilterType.Exclude
+local WALK_NAMES = { Floor = true, Step = true, Ramp = true, StairLanding = true, Gallery = true, Porch = true, Stair = true, StairRamp = true, Path = true, Ground = true, Threshold = true }
+local function walkable(part: Instance): boolean
+	if part:IsA("Terrain") or WALK_NAMES[part.Name] then
+		return true
+	end
+	local par = part.Parent
+	if par and par:IsA("Model") then
+		local n = par.Name
+		return string.sub(n, 1, 5) == "Room_" or n == "Annex" or n == "Lobby"
+	end
+	return false
+end
+local function antiClimb()
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not root or not hum or app.scene or app.dead or hiddenEye or root.Anchored then
+		climb.safe = nil
+		return
+	end
+	if hum.FloorMaterial == Enum.Material.Air then
+		return
+	end
+	climbRay.FilterDescendantsInstances = { char }
+	local hit = workspace:Raycast(root.Position, Vector3.new(0, -9, 0), climbRay)
+	if not hit then
+		return
+	end
+	if walkable(hit.Instance) then
+		climb.safe = root.CFrame
+		climb.y = hit.Position.Y
+	elseif climb.safe and hit.Position.Y - climb.y &gt; 0.4 then
+		root.CFrame = CFrame.new(climb.safe.Position) * root.CFrame.Rotation
+		root.AssemblyLinearVelocity = Vector3.zero
+	end
 end
 
 local function voidStep(t: number, dt: number)
@@ -10425,14 +10772,14 @@ local function openJournal()
 	end
 	journalBox.Visible = true
 end
-local journalBtn = Ui.button(hud, "📖", function()
+local journalBtn = Ui.iconButton(gui, 46, function()
 	if journalBox.Visible then
 		journalBox.Visible = false
 	else
 		openJournal()
 	end
-end, { Size = UDim2.fromOffset(48, 44), Position = UDim2.new(0, 16, 0, 100), TextSize = 24, BackgroundTransparency = 0.5, ZIndex = 11 })
-local _ = journalBtn
+end, { Position = UDim2.new(0, 16, 0, 100), BackgroundTransparency = 0.35, ZIndex = 11 })
+Ui.bookIcon(journalBtn)
 
 -- достижения: список с описаниями (открывается в лобби — кнопкой или у доски)
 local ACH = { "darkness", "darkness_hid", "coinkeeper", "coin_paid", "mimic_solved", "door50", "colossus_down", "door100", "finale" }
@@ -10475,21 +10822,28 @@ local function openAchievements()
 		row.ZIndex = 63
 		row.Parent = scroll
 		Ui.corner(row, 8)
-		Ui.label(row, if on then "🏆" else "🔒", { TextSize = 26, Size = UDim2.fromOffset(44, 62), ZIndex = 64 })
+		local mark = Ui.frame(row, { BackgroundTransparency = 1, Size = UDim2.fromOffset(44, 62), ZIndex = 64 })
+		if on then
+			Ui.trophyIcon(mark)
+		else
+			Ui.chevron(mark, true, Ui.C.dim)
+		end
 		Ui.label(row, T("a_" .. id), { Font = Ui.TITLE, TextSize = 20, TextColor3 = if on then Ui.C.gold else Ui.C.dim, Size = UDim2.new(1, -52, 0, 26), Position = UDim2.fromOffset(48, 4), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 64 })
 		Ui.label(row, T("a_" .. id .. "_t"), { TextSize = 14, TextWrapped = true, Size = UDim2.new(1, -52, 0, 30), Position = UDim2.fromOffset(48, 30), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 64 })
 	end
 	achBox.Visible = true
 end
-local achBtn = Ui.button(hud, "🏆", function()
+local achBtn = Ui.iconButton(gui, 46, function()
 	if achBox.Visible then
 		achBox.Visible = false
 	else
 		openAchievements()
 	end
-end, { Size = UDim2.fromOffset(48, 44), Position = UDim2.new(0, 16, 0, 150), TextSize = 24, BackgroundTransparency = 0.5, ZIndex = 11 })
+end, { Position = UDim2.new(0, 16, 0, 154), BackgroundTransparency = 0.35, ZIndex = 11 })
+Ui.trophyIcon(achBtn)
 local function refreshAchBtn()
 	achBtn.Visible = not inRun()
+	journalBtn.Visible = not app.dead and not app.scene
 end
 refreshAchBtn()
 workspace:GetAttributeChangedSignal("Mode"):Connect(refreshAchBtn)
@@ -10712,12 +11066,28 @@ local function buildSettings()
 		Lighting.GlobalShadows = v
 	end)
 end
-Ui.button(gui, "⚙", function()
+-- настройки — рядом со стандартными кнопками Roblox (значок, меню, чат)
+local setBtn = Ui.iconButton(gui, 40, function()
 	setBox.Visible = not setBox.Visible
 	if setBox.Visible then
 		buildSettings()
 	end
-end, { Size = UDim2.fromOffset(40, 36), Position = UDim2.new(1, -52, 0, 50), TextSize = 20, BackgroundTransparency = 0.5, ZIndex = 79 })
+end, { BackgroundTransparency = 0.25, ZIndex = 79 })
+Ui.gearIcon(setBtn)
+local adminSlot = nil
+local function placeTopbar()
+	local inset = GuiService.TopbarInset
+	local x = if inset.Width &gt; 0 then inset.Min.X + 6 else 240
+	local h = if inset.Height &gt; 0 then inset.Height else 44
+	local y = inset.Min.Y + (h - 40) / 2
+	setBtn.Position = UDim2.fromOffset(x, y)
+	setBox.Position = UDim2.fromOffset(x, y + 48)
+	if adminSlot then
+		adminSlot.Position = UDim2.fromOffset(x + 48, y)
+	end
+end
+placeTopbar()
+GuiService:GetPropertyChangedSignal("TopbarInset"):Connect(placeTopbar)
 
 task.spawn(function()
 	local ok, res = pcall(function()
@@ -10752,13 +11122,253 @@ task.spawn(function()
 			end, { LayoutOrder = i, ZIndex = 87, Size = UDim2.new(1, -4, 0, 40), TextSize = 14 })
 		end
 	end
-	Ui.button(gui, T("Admin"), function()
+	adminSlot = Ui.button(gui, string.upper(T("Admin")), function()
 		ap.Visible = not ap.Visible
 		setBox.Visible = false
 		if ap.Visible then
 			fill()
 		end
-	end, { Size = UDim2.fromOffset(64, 36), Position = UDim2.new(1, -124, 0, 50), TextSize = 13, BackgroundTransparency = 0.5, ZIndex = 79, TextColor3 = Ui.C.gold })
+	end, { Size = UDim2.fromOffset(70, 40), TextSize = 12, BackgroundTransparency = 0.25, ZIndex = 79, TextColor3 = Ui.C.gold })
+	placeTopbar()
+	ap.Position = UDim2.new(0, adminSlot.Position.X.Offset, 0, adminSlot.Position.Y.Offset + 48)
+end)
+
+-- ---------------------------------------------------------------------------
+-- инвентарь: ячейки внизу экрана, в каждой — объёмная моделька предмета.
+-- Нажми ячейку (или 1–9), чтобы взять предмет в руку; ещё раз — убрать
+
+local ITEM_ORDER = { flashlight = 1, battery = 2, plant = 3, lockpick = 4, key = 5, hammer = 6, meat = 7, pole = 8, lens = 9, coldkey = 10, clockkey = 11 }
+local invBar = Ui.frame(gui, { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -12), Size = UDim2.fromOffset(0, 70), AutomaticSize = Enum.AutomaticSize.X, ZIndex = 12 })
+Ui.list(invBar, 8, true)
+local invName = Ui.label(gui, "", { Font = Ui.BOLD, TextSize = 15, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -88), Size = UDim2.fromOffset(300, 22), ZIndex = 12 })
+invName.TextStrokeTransparency = 0.5
+local invTools: { Tool } = {}
+
+local function myTools(): { Tool }
+	local list = {}
+	local bp = player:FindFirstChildOfClass("Backpack")
+	for _, holder in { bp, player.Character } do
+		if holder then
+			for _, t in holder:GetChildren() do
+				if t:IsA("Tool") then
+					table.insert(list, t)
+				end
+			end
+		end
+	end
+	table.sort(list, function(a, b)
+		return (ITEM_ORDER[a:GetAttribute("Item") or ""] or 99) &lt; (ITEM_ORDER[b:GetAttribute("Item") or ""] or 99)
+	end)
+	return list
+end
+
+-- моделька предмета в окошке ячейки
+local function itemView(tool: Tool, parent: GuiObject)
+	local vp = Instance.new("ViewportFrame")
+	vp.BackgroundTransparency = 1
+	vp.Size = UDim2.new(1, -8, 1, -8)
+	vp.Position = UDim2.fromOffset(4, 4)
+	vp.Ambient = Color3.fromRGB(150, 140, 130)
+	vp.LightColor = Color3.fromRGB(255, 236, 210)
+	vp.LightDirection = Vector3.new(-1, -1.4, -0.6)
+	vp.ZIndex = parent.ZIndex + 1
+	local m = Instance.new("Model")
+	local handle = tool:FindFirstChild("Handle") :: BasePart?
+	if not handle then
+		return vp
+	end
+	local base = handle.CFrame
+	for _, d in tool:GetDescendants() do
+		if d:IsA("BasePart") then
+			local c = Instance.new("Part")
+			c.Size = d.Size
+			c.Color = d.Color
+			c.Material = d.Material
+			c.Transparency = d.Transparency
+			c.Anchored = true
+			if d:IsA("Part") then
+				c.Shape = d.Shape
+			end
+			c.CFrame = base:ToObjectSpace(d.CFrame)
+			c.Parent = m
+		end
+	end
+	m.Parent = vp
+	local cf, size = m:GetBoundingBox()
+	local cam = Instance.new("Camera")
+	cam.FieldOfView = 35
+	local r = math.max(size.X, size.Y, size.Z)
+	cam.CFrame = CFrame.lookAt(cf.Position + Vector3.new(r * 1.1, r * 0.9, r * 1.5), cf.Position)
+	cam.Parent = vp
+	vp.CurrentCamera = cam
+	vp.Parent = parent
+	return vp
+end
+
+local function equipToggle(tool: Tool)
+	local char = player.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not hum or app.dead or hiddenEye then
+		return
+	end
+	if tool.Parent == char then
+		hum:UnequipTools()
+	else
+		hum:EquipTool(tool)
+	end
+end
+
+local function rebuildInv()
+	for _, c in invBar:GetChildren() do
+		if c:IsA("GuiObject") then
+			c:Destroy()
+		end
+	end
+	invTools = myTools()
+	local held = nil
+	for i, tool in invTools do
+		local on = tool.Parent == player.Character
+		local slot = Ui.button(invBar, "", function()
+			equipToggle(tool)
+		end, { Size = UDim2.fromOffset(62, 62), BackgroundTransparency = if on then 0.05 else 0.3, LayoutOrder = i, ZIndex = 12 })
+		local st = slot:FindFirstChildOfClass("UIStroke")
+		if st then
+			st.Color = if on then Ui.C.gold else Ui.C.line
+			st.Thickness = if on then 2.4 else 1.2
+			st.Transparency = 0
+		end
+		itemView(tool, slot)
+		Ui.label(slot, tostring(i), { Font = Ui.BOLD, TextSize = 11, TextColor3 = Ui.C.dim, Size = UDim2.fromOffset(14, 14), Position = UDim2.fromOffset(4, 2), ZIndex = 15, TextXAlignment = Enum.TextXAlignment.Left })
+		local count = string.match(tool.Name, "×(%d+)$")
+		if count then
+			local badge = Ui.label(slot, count, { Font = Ui.BOLD, TextSize = 13, TextColor3 = Ui.C.text, Size = UDim2.fromOffset(22, 16), Position = UDim2.new(1, -24, 1, -18), ZIndex = 15, TextXAlignment = Enum.TextXAlignment.Right })
+			badge.TextStrokeTransparency = 0.4
+		end
+		if tool:GetAttribute("Item") == "flashlight" then
+			local fl = (player:GetAttribute("Flash") or Rules.FLASH_MAX) / Rules.FLASH_MAX
+			local back = Ui.frame(slot, { BackgroundColor3 = Color3.fromRGB(20, 18, 16), Size = UDim2.new(1, -12, 0, 4), Position = UDim2.new(0, 6, 1, -7), ZIndex = 15 })
+			Ui.frame(back, { BackgroundColor3 = Color3.fromRGB(230, 210, 120), Size = UDim2.fromScale(math.clamp(fl, 0, 1), 1), ZIndex = 16 })
+		end
+		if on then
+			held = tool
+		end
+	end
+	invName.Text = if held then (string.gsub(held.Name, " ×%d+$", "")) else ""
+	invBar.Visible = not app.dead and not app.scene and not app.tbc
+end
+
+local invQueued = false
+local function queueInv()
+	if invQueued then
+		return
+	end
+	invQueued = true
+	task.defer(function()
+		invQueued = false
+		rebuildInv()
+	end)
+end
+local function watchHolder(h: Instance?)
+	if not h then
+		return
+	end
+	h.ChildAdded:Connect(function(c)
+		if c:IsA("Tool") then
+			c:GetPropertyChangedSignal("Name"):Connect(queueInv)
+			queueInv()
+		end
+	end)
+	h.ChildRemoved:Connect(queueInv)
+	for _, c in h:GetChildren() do
+		if c:IsA("Tool") then
+			c:GetPropertyChangedSignal("Name"):Connect(queueInv)
+		end
+	end
+	queueInv()
+end
+player.ChildAdded:Connect(function(c)
+	if c:IsA("Backpack") then
+		watchHolder(c)
+	end
+end)
+watchHolder(player:FindFirstChildOfClass("Backpack"))
+player.CharacterAdded:Connect(watchHolder)
+watchHolder(player.Character)
+player:GetAttributeChangedSignal("Flash"):Connect(queueInv)
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then
+		return
+	end
+	local n = input.KeyCode.Value - Enum.KeyCode.One.Value + 1
+	if n &gt;= 1 and n &lt;= 9 and invTools[n] then
+		equipToggle(invTools[n])
+	end
+end)
+
+-- ---------------------------------------------------------------------------
+-- атмосфера: затемнение по краям экрана, пыль в воздухе, покачивание головы при ходьбе
+
+local vignette = Ui.frame(fullGui, { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 2 })
+for _, e in { { 0, 0, 1, 0.22, 90 }, { 0, 0.78, 1, 0.22, -90 }, { 0, 0, 0.18, 1, 0 }, { 0.82, 0, 0.18, 1, 180 } } do
+	local f = Ui.frame(vignette, { BackgroundColor3 = Color3.new(0, 0, 0), Position = UDim2.fromScale(e[1], e[2]), Size = UDim2.fromScale(e[3], e[4]), ZIndex = 2 })
+	local g = Instance.new("UIGradient")
+	g.Rotation = e[5]
+	g.Transparency = NumberSequence.new(0.25, 1)
+	g.Parent = f
+end
+
+local dustPart = Instance.new("Part")
+dustPart.Name = "Dust"
+dustPart.Anchored = true
+dustPart.CanCollide = false
+dustPart.CanQuery = false
+dustPart.CanTouch = false
+dustPart.Transparency = 1
+dustPart.Size = Vector3.new(36, 14, 36)
+local dust = Instance.new("ParticleEmitter")
+dust.Texture = "rbxasset://textures/particles/smoke_main.dds"
+dust.Shape = Enum.ParticleEmitterShape.Box
+dust.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+dust.Rate = 14
+dust.Lifetime = NumberRange.new(6, 10)
+dust.Speed = NumberRange.new(0.05, 0.3)
+dust.SpreadAngle = Vector2.new(180, 180)
+dust.Size = NumberSequence.new(0.06)
+dust.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.3, 0.55), NumberSequenceKeypoint.new(1, 1) })
+dust.Color = ColorSequence.new(Color3.fromRGB(240, 226, 200))
+dust.LightInfluence = 1
+dust.RotSpeed = NumberRange.new(-20, 20)
+dust.Parent = dustPart
+dustPart.Parent = workspace
+
+local bob = { t = 0, amp = 0 }
+RunService:BindToRenderStep("MuseumBob", Enum.RenderPriority.Camera.Value + 1, function(dt)
+	local run = inRun()
+	vignette.Visible = run and not app.tbc
+	dust.Enabled = run
+	if run then
+		dustPart.CFrame = CFrame.new(camera.CFrame.Position)
+	end
+	if app.scene or app.tbc or hiddenEye or app.dead or not run then
+		return
+	end
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not root or not hum then
+		return
+	end
+	local v = root.AssemblyLinearVelocity
+	local speed = Vector3.new(v.X, 0, v.Z).Magnitude
+	local moving = speed &gt; 1 and hum.FloorMaterial ~= Enum.Material.Air
+	if moving then
+		bob.t += dt * (if app.sneaking then 6 else 9.5) * math.clamp(speed / 15, 0.5, 1.2)
+	end
+	local want = if moving then (if app.sneaking then 0.05 else 0.12) else 0
+	bob.amp += (want - bob.amp) * math.min(1, dt * 6)
+	local a = bob.amp
+	local breathe = math.sin(os.clock() * 1.5) * 0.015
+	camera.CFrame *= CFrame.new(math.cos(bob.t) * a * 0.55, math.abs(math.sin(bob.t)) * a - a * 0.5 + breathe, 0) * CFrame.Angles(0, 0, math.cos(bob.t) * a * 0.05)
 end)
 
 -- ---------------------------------------------------------------------------
@@ -10858,6 +11468,8 @@ end)
 
 local function onMode()
 	applyLighting()
+	queueInv()
+	refreshAchBtn()
 	hud.Visible = inRun() and not app.dead and not app.scene and not app.tbc
 	setCamera()
 	if inRun() and not app.arrived and player.Character then
@@ -10908,7 +11520,8 @@ RunService.RenderStepped:Connect(function(dt)
 	local t = os.clock()
 	darkStep(t)
 	voidStep(t, dt)
-	stepSound()
+	stepSound(dt)
+	antiClimb()
 	if app.scene then
 		return
 	end
@@ -10971,7 +11584,7 @@ Ui.FONT = Enum.Font.Gotham
 Ui.BOLD = Enum.Font.GothamBold
 Ui.TITLE = Enum.Font.Antique
 Ui.C = {
-	panel = Color3.fromRGB(18, 16, 14),
+	panel = Color3.fromRGB(22, 19, 17),
 	line = Color3.fromRGB(120, 86, 46),
 	text = Color3.fromRGB(236, 226, 206),
 	dim = Color3.fromRGB(160, 150, 136),
@@ -11029,15 +11642,117 @@ function Ui.button(parent, text: string, fn, props)
 		(b :: any)[k] = v
 	end
 	Ui.corner(b)
+	local g = Instance.new("UIGradient")
+	g.Rotation = 90
+	g.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(150, 150, 150))
+	g.Parent = b
 	local st = Instance.new("UIStroke")
 	st.Color = Ui.C.line
-	st.Thickness = 1.5
+	st.Transparency = 0.25
+	st.Thickness = 1.2
 	st.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	st.Parent = b
 	if fn then
 		b.Activated:Connect(fn)
 	end
 	b.Parent = parent
+	return b
+end
+
+-- ---------------------------------------------------------------------------
+-- значки, нарисованные из рамок (без эмодзи и без загруженных картинок)
+
+local function bit(parent, color: Color3, x, y, w, h, round: number?, rot: number?)
+	local f = Instance.new("Frame")
+	f.BorderSizePixel = 0
+	f.BackgroundColor3 = color
+	f.AnchorPoint = Vector2.new(0.5, 0.5)
+	f.Position = UDim2.fromScale(x, y)
+	f.Size = UDim2.fromScale(w, h)
+	f.Rotation = rot or 0
+	f.ZIndex = parent.ZIndex + 1
+	if round then
+		local c = Instance.new("UICorner")
+		c.CornerRadius = UDim.new(round, 0)
+		c.Parent = f
+	end
+	f.Parent = parent
+	return f
+end
+Ui.bit = bit
+
+-- холст значка поверх кнопки
+function Ui.iconHolder(parent, scale: number?)
+	local h = Instance.new("Frame")
+	h.Name = "Icon"
+	h.BackgroundTransparency = 1
+	h.AnchorPoint = Vector2.new(0.5, 0.5)
+	h.Position = UDim2.fromScale(0.5, 0.5)
+	h.Size = UDim2.fromScale(scale or 0.56, scale or 0.56)
+	h.ZIndex = parent.ZIndex + 1
+	local ar = Instance.new("UIAspectRatioConstraint")
+	ar.Parent = h
+	h.Parent = parent
+	return h
+end
+
+function Ui.gearIcon(parent, color: Color3?)
+	local h = Ui.iconHolder(parent)
+	color = color or Ui.C.text
+	for k = 0, 7 do
+		bit(h, color, 0.5, 0.5, 0.18, 1, 0.2, k * 22.5)
+	end
+	bit(h, color, 0.5, 0.5, 0.78, 0.78, 1)
+	bit(h, Ui.C.panel, 0.5, 0.5, 0.34, 0.34, 1)
+	return h
+end
+
+function Ui.bookIcon(parent, color: Color3?)
+	local h = Ui.iconHolder(parent)
+	color = color or Ui.C.text
+	bit(h, color, 0.27, 0.52, 0.44, 0.78, 0.12, -6)
+	bit(h, color, 0.73, 0.52, 0.44, 0.78, 0.12, 6)
+	bit(h, Ui.C.panel, 0.5, 0.52, 0.06, 0.8)
+	for k = 0, 2 do
+		bit(h, Ui.C.panel, 0.27, 0.32 + k * 0.16, 0.26, 0.04, nil, -6)
+		bit(h, Ui.C.panel, 0.73, 0.32 + k * 0.16, 0.26, 0.04, nil, 6)
+	end
+	return h
+end
+
+function Ui.trophyIcon(parent, color: Color3?)
+	local h = Ui.iconHolder(parent)
+	color = color or Ui.C.gold
+	bit(h, color, 0.5, 0.3, 0.66, 0.5, 0.45)
+	bit(h, color, 0.5, 0.12, 0.7, 0.12)
+	bit(h, color, 0.5, 0.66, 0.12, 0.24)
+	bit(h, color, 0.5, 0.86, 0.5, 0.12, 0.2)
+	for _, x in { 0.12, 0.88 } do
+		bit(h, color, x, 0.32, 0.16, 0.3, 1)
+		bit(h, Ui.C.panel, x, 0.32, 0.07, 0.16, 1)
+	end
+	return h
+end
+
+-- стрелка-шеврон: up = true — вверх
+function Ui.chevron(parent, up: boolean, color: Color3?)
+	local h = Ui.iconHolder(parent, 0.5)
+	color = color or Ui.C.text
+	local y = if up then 0.62 else 0.38
+	local a = if up then 1 else -1
+	bit(h, color, 0.32, y - a * 0.0, 0.62, 0.16, 0.5, -a * 45)
+	bit(h, color, 0.68, y - a * 0.0, 0.62, 0.16, 0.5, a * 45)
+	return h
+end
+
+-- круглая кнопка-значок в общем стиле
+function Ui.iconButton(parent, size: number, fn, props)
+	local b = Ui.button(parent, "", fn, props)
+	b.Size = UDim2.fromOffset(size, size)
+	local c = b:FindFirstChildOfClass("UICorner")
+	if c then
+		c.CornerRadius = UDim.new(0, math.floor(size * 0.28))
+	end
 	return b
 end
 

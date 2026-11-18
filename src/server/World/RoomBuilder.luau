@@ -868,7 +868,6 @@ L.egypt = function(c)
 	X.canopic(c.m, spot(d, o, -19, -44), d.door)
 	Props.statue(c.m, spot(d, o, -19, -7), "obelisk", d.door)
 	Props.statue(c.m, spot(d, o, 19, -7), "obelisk", d.door + 1)
-	X.flag(c.m, spot(d, o, 20, -42), "egypt")
 	hide(c, slotBack(d, o, -14))
 	hide(c, slotBack(d, o, 14))
 	hide(c, slotL(d, o, -34))
@@ -895,7 +894,6 @@ L.rome = function(c)
 	X.aqueduct(c.m, spot(d, o, 21, -34), 12)
 	Props.vase(c.m, spot(d, o, 21, -9), d.door)
 	Props.vase(c.m, spot(d, o, 21, -15), d.door + 1)
-	X.flag(c.m, spot(d, o, -21, -6), "rome")
 	hide(c, slotBack(d, o, -18))
 	hide(c, slotBack(d, o, 18))
 	chandelier(c, 0, -12, 5)
@@ -927,8 +925,6 @@ end
 
 L.estonia = function(c)
 	local d, o = c.d, c.origin
-	X.flag(c.m, spot(d, o, -16, -6), "estonia")
-	X.flag(c.m, spot(d, o, 15, -6), "estonia")
 	X.oldTown(c.m, spot(d, o, -6, -24), d.door)
 	X.windmill(c.m, spot(d, o, 12, -15, -0.4))
 	X.folkCostume(c.m, spot(d, o, 14, -29, -math.pi / 2), d.door)
@@ -945,7 +941,6 @@ end
 
 L.russia = function(c)
 	local d, o = c.d, c.origin
-	X.flag(c.m, spot(d, o, -17, -6), "russia")
 	X.onionChurch(c.m, spot(d, o, -5, -26))
 	X.matryoshka(c.m, spot(d, o, 12, -12), d.door)
 	X.samovar(c.m, spot(d, o, 12, -20))
@@ -964,7 +959,6 @@ end
 
 L.england = function(c)
 	local d, o = c.d, c.origin
-	X.flag(c.m, spot(d, o, -16, -6), "england")
 	X.phoneBox(c.m, spot(d, o, 15, -10))
 	X.clockTower(c.m, spot(d, o, -8, -26), 12)
 	X.bus(c.m, spot(d, o, 10, -28))
@@ -982,7 +976,6 @@ end
 
 L.france = function(c)
 	local d, o = c.d, c.origin
-	X.flag(c.m, spot(d, o, -17, -6), "france")
 	X.eiffel(c.m, spot(d, o, -6, -27), 16)
 	X.triumphArch(c.m, spot(d, o, 10, -13))
 	X.easel(c.m, spot(d, o, 15, -28, -math.pi / 2), d.door)
@@ -999,14 +992,13 @@ end
 
 L.japan = function(c)
 	local d, o = c.d, c.origin
-	X.flag(c.m, spot(d, o, -15, -6), "japan")
 	X.torii(c.m, spot(d, o, 0, -14), 6)
 	X.stoneLantern(c.m, spot(d, o, -7, -12))
 	X.stoneLantern(c.m, spot(d, o, 7, -12))
 	X.pagoda(c.m, spot(d, o, -9, -28))
 	X.samurai(c.m, spot(d, o, 12, -24, -math.pi / 2))
 	Props.rug(c.m, spot(d, o, 8, -34), 8, 6, rgb(190, 176, 120))
-	painting(c, -1, -36, 6, 4, 6)
+	painting(c, -1, -36, 7, 4, 6)
 	hide(c, slotBack(d, o, -12))
 	hide(c, slotBack(d, o, 12))
 	ceil(c, 0, -22)

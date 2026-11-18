@@ -288,56 +288,101 @@ function X.romanColumn(parent, cf: CFrame, h: number)
 	return m
 end
 
+-- макет Колизея: кольцо из плоских стенных секций, на внешней стороне нарисованы
+-- три яруса арок, сверху аттик; внутри ряды сидений и песок арены
 function X.colosseum(parent, cf: CFrame, r: number)
 	local m = model(parent, "Colosseum")
-	local stone = rgb(196, 176, 140)
-	local _, top = Props.plinth(m, cf, r * 2 + 1, 1.6, rgb(120, 110, 96))
-	local n = 20
-	for tier = 0, 2 do
-		local y = 0.1 + tier * 1.3
-		for k = 0, n - 1 do
-			if not (tier == 2 and k % 5 == 0) then
-				local a = k / n * math.pi * 2
-				P(m, "Pier", Vector3.new(0.4, 1.1, 0.5), top * CFrame.new(math.cos(a) * r, y + 0.55, math.sin(a) * r) * CFrame.Angles(0, -a, 0), stone, M.Sandstone, nc())
-				local a2 = (k + 0.5) / n * math.pi * 2
-				P(m, "Lintel", Vector3.new(0.5, 0.2, r * 2 * math.pi / n + 0.1), top * CFrame.new(math.cos(a2) * r, y + 1.2, math.sin(a2) * r) * CFrame.Angles(0, -a2, 0), stone:Lerp(rgb(0, 0, 0), 0.1), M.Sandstone, nc())
-			end
+	local stone = rgb(204, 184, 146)
+	local shade = rgb(120, 100, 76)
+	local _, top = Props.plinth(m, cf, r * 2 + 1.2, 1.4, rgb(110, 102, 90))
+	local n = 24
+	local h = 3.2
+	local segLen = 2 * r * math.sin(math.pi / n) + 0.04
+	for k = 0, n - 1 do
+		local a = (k + 0.5) / n * math.pi * 2
+		local broken = k >= 3 and k <= 7
+		local hh = if broken then h * (0.55 + (k % 2) * 0.12) else h
+		local seg = P(m, "Wall", Vector3.new(segLen, hh, 0.32), top * CFrame.Angles(0, -a, 0) * CFrame.new(0, hh / 2, -r), stone, M.Sandstone, nc())
+		local f = canvas(seg, Enum.NormalId.Front, stone)
+		local tiers = if broken then 2 else 3
+		for t = 0, tiers - 1 do
+			local y = 1 - (t + 0.5) / 3 * h / hh
+			-- арка: тёмный проём с полукруглым верхом и полуколонны по бокам
+			shape(f, shade, 0.5, y + 0.02 * h / hh, 0.5, 0.18 * h / hh)
+			shape(f, shade, 0.5, y - 0.07 * h / hh, 0.5, 0.18 * h / hh, 1)
+			shape(f, stone:Lerp(rgb(255, 255, 255), 0.15), 0.06, y, 0.1, 0.3 * h / hh)
+			shape(f, stone:Lerp(rgb(0, 0, 0), 0.12), 0.5, y + 0.15 * h / hh, 1, 0.03 * h / hh)
 		end
 	end
-	C(m, "Arena", 0.1, r * 1.3, top * CFrame.new(0, 0.06, 0), rgb(214, 190, 140), M.Sand, nc())
-	for k = 0, 2 do
-		C(m, "Seats", 0.3, r * 1.3 + 0.5 + k * 0.5, top * CFrame.new(0, 0.2 + k * 0.3, 0), stone:Lerp(rgb(255, 255, 255), 0.1), M.Sandstone, nc())
+	-- верхний карниз и внутренние ряды трибун
+	for k = 0, 3 do
+		C(m, "Tier", 0.5, r * 2 - 0.9 - k * 1.1, top * CFrame.new(0, 0.25 + k * 0.5, 0), stone:Lerp(rgb(255, 255, 255), 0.08 * (k % 2)), M.Sandstone, nc())
 	end
+	C(m, "Arena", 0.14, r * 2 - 5.4, top * CFrame.new(0, 2.07, 0), rgb(214, 188, 136), M.Sand, nc())
+	P(m, "ArenaWall", Vector3.new(r * 0.9, 0.3, 0.2), top * CFrame.new(0, 2.25, -r * 0.55), stone, M.Sandstone, nc())
 	return m
 end
 
 function X.legionary(parent, cf: CFrame)
 	local m = model(parent, "Legionary")
-	local red, steel = rgb(150, 26, 30), rgb(170, 172, 178)
-	C(m, "Stand", 0.3, 2, cf * CFrame.new(0, 0.15, 0), rgb(50, 40, 32), M.Wood)
-	for _, x in { -0.4, 0.4 } do
-		P(m, "Leg", Vector3.new(0.5, 2.6, 0.5), cf * CFrame.new(x, 1.6, 0), rgb(150, 110, 80), M.SmoothPlastic, nc())
-		P(m, "Sandal", Vector3.new(0.6, 0.3, 0.9), cf * CFrame.new(x, 0.46, -0.1), rgb(80, 50, 30), M.SmoothPlastic, nc())
+	local red, steel, skin, leather = rgb(150, 26, 30), rgb(176, 178, 184), rgb(196, 160, 126), rgb(96, 62, 36)
+	local function p(name, size, ocf, col, mat)
+		return P(m, name, size, cf * ocf, col, mat or M.SmoothPlastic, nc())
 	end
-	P(m, "Tunic", Vector3.new(1.8, 1.2, 1), cf * CFrame.new(0, 3.2, 0), red, M.Fabric)
-	for k = 0, 3 do
-		P(m, "Lorica", Vector3.new(1.9, 0.36, 1.1), cf * CFrame.new(0, 3.9 + k * 0.38, 0), steel:Lerp(rgb(0, 0, 0), k % 2 * 0.15), M.Metal, nc())
+	C(m, "Stand", 0.3, 2.2, cf * CFrame.new(0, 0.15, 0), rgb(50, 40, 32), M.Wood)
+	for _, x in { -0.38, 0.38 } do
+		p("Sandal", Vector3.new(0.5, 0.24, 0.92), CFrame.new(x, 0.43, -0.12), leather)
+		p("Shin", Vector3.new(0.42, 1.5, 0.46), CFrame.new(x, 1.3, 0), skin)
+		p("Straps", Vector3.new(0.46, 0.7, 0.5), CFrame.new(x, 0.85, 0), leather)
+		p("Greave", Vector3.new(0.44, 0.9, 0.2), CFrame.new(x, 1.58, -0.2), steel, M.Metal)
+		p("Thigh", Vector3.new(0.5, 1.2, 0.54), CFrame.new(x, 2.55, 0), skin)
 	end
-	for _, x in { -1.2, 1.2 } do
-		P(m, "Pauldron", Vector3.new(0.9, 0.4, 1.1), cf * CFrame.new(x, 5.4, 0), steel, M.Metal, nc())
-		P(m, "Arm", Vector3.new(0.45, 1.8, 0.45), cf * CFrame.new(x * 1.05, 4.4, 0), rgb(150, 110, 80), M.SmoothPlastic, nc())
+	-- туника, пояс с подвесками, сегментный доспех
+	p("Tunic", Vector3.new(1.7, 1.2, 1.0), CFrame.new(0, 3.2, 0), red, M.Fabric)
+	p("Cingulum", Vector3.new(1.76, 0.22, 1.06), CFrame.new(0, 3.72, 0), leather)
+	for k = -2, 2 do
+		p("Pteruges", Vector3.new(0.14, 0.9, 0.06), CFrame.new(k * 0.14, 3.2, -0.55), leather)
 	end
-	S(m, "Head", 1, cf * CFrame.new(0, 6.1, 0), rgb(150, 110, 80), M.SmoothPlastic, nc())
-	S(m, "Helmet", 1.15, cf * CFrame.new(0, 6.3, 0.05), steel, M.Metal, nc())
-	P(m, "Crest", Vector3.new(0.2, 0.6, 1.4), cf * CFrame.new(0, 7, 0.05), red, M.Fabric, nc())
-	-- скутум: высокий изогнутый щит
-	local scutum = P(m, "Scutum", Vector3.new(2.2, 3.4, 0.2), cf * CFrame.new(-1.4, 3.6, -0.7) * CFrame.Angles(0, 0.3, 0), red, M.SmoothPlastic, nc())
+	for k = 0, 4 do
+		p("Lorica", Vector3.new(1.84 - k * 0.02, 0.32, 1.1 - k * 0.01), CFrame.new(0, 3.98 + k * 0.32, 0), steel:Lerp(rgb(0, 0, 0), k % 2 * 0.15), M.Metal)
+	end
+	p("Chest", Vector3.new(1.7, 0.5, 1.04), CFrame.new(0, 5.55, 0), steel, M.Metal)
+	for _, sx in { -1, 1 } do
+		for k = 0, 2 do
+			p("Shoulder", Vector3.new(0.86, 0.18, 1.08), CFrame.new(sx * (1.0 + k * 0.05), 5.62 - k * 0.17, 0) * CFrame.Angles(0, 0, sx * 0.35), steel:Lerp(rgb(0, 0, 0), k % 2 * 0.15), M.Metal)
+		end
+		p("UpperArm", Vector3.new(0.44, 0.9, 0.46), CFrame.new(sx * 1.08, 4.9, 0), red, M.Fabric)
+		p("Forearm", Vector3.new(0.38, 1.0, 0.4), CFrame.new(sx * 1.1, 3.98, -0.06), skin)
+		p("Hand", Vector3.new(0.35, 0.38, 0.42), CFrame.new(sx * 1.1, 3.35, -0.1), skin)
+	end
+	-- шея, голова, шлем с нащёчниками, назатыльником и гребнем
+	C(m, "Neck", 0.4, 0.5, cf * CFrame.new(0, 5.95, 0), skin, M.SmoothPlastic, nc())
+	p("Head", Vector3.new(0.82, 0.95, 0.9), CFrame.new(0, 6.52, 0), skin)
+	p("Brow", Vector3.new(0.84, 0.12, 0.2), CFrame.new(0, 6.7, -0.42), skin:Lerp(rgb(0, 0, 0), 0.2))
+	p("Nose", Vector3.new(0.14, 0.26, 0.14), CFrame.new(0, 6.5, -0.5), skin)
+	S(m, "Helmet", 1.06, cf * CFrame.new(0, 6.88, 0.04), steel, M.Metal, nc())
+	p("HelmetRim", Vector3.new(1.0, 0.12, 1.06), CFrame.new(0, 6.84, 0.02), GOLD, M.Metal)
+	p("Visor", Vector3.new(0.96, 0.08, 0.3), CFrame.new(0, 6.85, -0.52), steel, M.Metal)
+	for _, sx in { -1, 1 } do
+		p("Cheek", Vector3.new(0.08, 0.6, 0.5), CFrame.new(sx * 0.46, 6.4, -0.1), steel, M.Metal)
+	end
+	p("NeckGuard", Vector3.new(1.0, 0.1, 0.5), CFrame.new(0, 6.42, 0.6) * CFrame.Angles(-0.4, 0, 0), steel, M.Metal)
+	p("CrestBase", Vector3.new(0.14, 0.2, 0.9), CFrame.new(0, 7.42, 0.04), GOLD, M.Metal)
+	p("Crest", Vector3.new(0.2, 0.55, 1.2), CFrame.new(0, 7.75, 0.04), red, M.Fabric)
+	-- скутум в левой руке, пилум в правой
+	local scutum = P(m, "Scutum", Vector3.new(2.1, 3.3, 0.2), cf * CFrame.new(-1.5, 3.65, -0.55) * CFrame.Angles(0, 0.35, 0), red, M.SmoothPlastic, nc())
 	local f = canvas(scutum, Enum.NormalId.Front, red)
-	shape(f, GOLD, 0.5, 0.5, 0.3, 0.3 * 2.2 / 3.4, 1)
-	shape(f, GOLD, 0.5, 0.5, 0.06, 0.9)
-	shape(f, GOLD, 0.5, 0.5, 0.9, 0.04)
-	C(m, "Pilum", 6.4, 0.12, cf * CFrame.new(1.5, 3.4, 0), rgb(110, 80, 50), M.Wood, nc())
-	P(m, "PilumTip", Vector3.new(0.12, 1.4, 0.12), cf * CFrame.new(1.5, 7.3, 0), steel, M.Metal, nc())
+	shape(f, GOLD, 0.5, 0.5, 0.32, 0.32 * 2.1 / 3.3, 1)
+	shape(f, rgb(170, 170, 176), 0.5, 0.5, 0.18, 0.18 * 2.1 / 3.3, 1)
+	shape(f, GOLD, 0.5, 0.5, 0.05, 0.92)
+	shape(f, GOLD, 0.5, 0.5, 0.92, 0.035)
+	for _, y in { 0.04, 0.96 } do
+		shape(f, GOLD, 0.5, y, 1, 0.03)
+	end
+	P(m, "ScutumRim", Vector3.new(2.14, 3.34, 0.12), cf * CFrame.new(-1.5, 3.65, -0.52) * CFrame.Angles(0, 0.35, 0), rgb(120, 110, 90), M.Metal, nc())
+	C(m, "Pilum", 6.6, 0.12, cf * CFrame.new(1.1, 4.1, -0.1), rgb(110, 80, 50), M.Wood, nc())
+	P(m, "PilumShank", Vector3.new(0.07, 1.6, 0.07), cf * CFrame.new(1.1, 8.2, -0.1), rgb(150, 150, 156), M.Metal, nc())
+	P(m, "PilumTip", Vector3.new(0.16, 0.36, 0.16), cf * CFrame.new(1.1, 9.1, -0.1) * CFrame.Angles(0, math.rad(45), 0), rgb(190, 190, 196), M.Metal, nc())
 	return m
 end
 
@@ -423,41 +468,89 @@ function X.throne(parent, cf: CFrame)
 	return m
 end
 
--- конь в попоне с рыцарем в доспехах
+-- конь в попоне и рыцарь верхом с копьём
 function X.knightHorse(parent, cf: CFrame, seed: number)
 	local m = model(parent, "KnightHorse")
-	local horse, cloth = rgb(60, 44, 34), if seed % 2 == 0 then rgb(30, 50, 120) else rgb(130, 20, 30)
+	local coat = if seed % 2 == 0 then rgb(66, 46, 34) else rgb(200, 196, 190)
+	local mane = rgb(30, 22, 18)
+	local cloth = if seed % 2 == 0 then rgb(28, 48, 120) else rgb(130, 20, 30)
 	local steel = rgb(160, 164, 170)
-	P(m, "Plinth", Vector3.new(4.4, 0.6, 8.4), cf * CFrame.new(0, 0.3, 0), rgb(110, 104, 96), M.Marble)
-	local b = cf * CFrame.new(0, 0.6, 0)
-	for _, sx in { -0.8, 0.8 } do
-		for _, z in { -2.4, 2.4 } do
-			P(m, "HorseLeg", Vector3.new(0.6, 3.6, 0.6), b * CFrame.new(sx, 1.8, z), horse, M.SmoothPlastic, nc())
-			P(m, "Hoof", Vector3.new(0.7, 0.35, 0.8), b * CFrame.new(sx, 0.18, z - 0.05), rgb(30, 26, 24), M.SmoothPlastic, nc())
+	P(m, "Plinth", Vector3.new(5, 0.6, 9.4), cf * CFrame.new(0, 0.3, 0), rgb(110, 104, 96), M.Marble)
+	P(m, "PlinthTrim", Vector3.new(5.2, 0.15, 9.6), cf * CFrame.new(0, 0.6, 0), GOLD, M.Metal, nc())
+	local b = cf * CFrame.new(0, 0.68, 0)
+	local function hp(name, size, ocf, col, mat)
+		return P(m, name, size, b * ocf, col or coat, mat or M.SmoothPlastic, nc())
+	end
+	-- ноги: плечо/бедро, предплечье/голень, путовый сустав, копыто
+	for _, leg in { { -0.75, -2.3, 0 }, { 0.75, -2.3, 0.25 }, { -0.75, 2.2, 0.2 }, { 0.75, 2.2, -0.15 } } do
+		local x, z, bend = leg[1], leg[2], leg[3]
+		local front = z < 0
+		hp("UpperLeg", Vector3.new(0.75, 1.9, if front then 0.85 else 1.1), CFrame.new(x, 3.35, z + (if front then 0 else 0.15)) * CFrame.Angles(bend * 0.4, 0, 0))
+		hp("LowerLeg", Vector3.new(0.48, 1.7, 0.5), CFrame.new(x, 1.55, z + bend * 0.3))
+		hp("Fetlock", Vector3.new(0.52, 0.32, 0.56), CFrame.new(x, 0.62, z + bend * 0.3), coat:Lerp(rgb(0, 0, 0), 0.2))
+		hp("Hoof", Vector3.new(0.56, 0.36, 0.66), CFrame.new(x, 0.18, z + bend * 0.3 - 0.05), rgb(36, 30, 26))
+	end
+	-- туловище: грудь, бочка, круп
+	C(m, "Barrel", 4.2, 2.3, b * CFrame.new(0, 4.35, 0) * CFrame.Angles(math.pi / 2, 0, 0), coat, M.SmoothPlastic, nc())
+	S(m, "Chest", 2.45, b * CFrame.new(0, 4.4, -2.1), coat, M.SmoothPlastic, nc())
+	S(m, "Rump", 2.6, b * CFrame.new(0, 4.5, 2.05), coat, M.SmoothPlastic, nc())
+	-- шея, голова, морда, уши, грива
+	hp("Neck", Vector3.new(1.05, 2.6, 1.4), CFrame.new(0, 5.6, -2.95) * CFrame.Angles(-0.55, 0, 0))
+	hp("Head", Vector3.new(0.95, 1.1, 1.5), CFrame.new(0, 6.75, -3.95) * CFrame.Angles(0.45, 0, 0))
+	hp("Muzzle", Vector3.new(0.8, 0.8, 1.1), CFrame.new(0, 6.1, -4.6) * CFrame.Angles(0.75, 0, 0), coat:Lerp(rgb(0, 0, 0), 0.25))
+	for _, x in { -0.3, 0.3 } do
+		hp("Ear", Vector3.new(0.18, 0.5, 0.2), CFrame.new(x, 7.45, -3.65) * CFrame.Angles(-0.2, 0, x * 0.4))
+		hp("Eye", Vector3.new(0.06, 0.16, 0.16), CFrame.new(x * 1.62, 6.95, -4.05), rgb(15, 12, 10))
+	end
+	hp("Mane", Vector3.new(0.22, 2.4, 0.5), CFrame.new(0, 6.05, -2.55) * CFrame.Angles(-0.55, 0, 0), mane)
+	hp("Forelock", Vector3.new(0.3, 0.5, 0.3), CFrame.new(0, 7.3, -3.95), mane)
+	hp("TailRoot", Vector3.new(0.4, 0.8, 0.5), CFrame.new(0, 4.9, 3.35) * CFrame.Angles(0.6, 0, 0), mane)
+	hp("Tail", Vector3.new(0.5, 2.6, 0.45), CFrame.new(0, 3.55, 3.75) * CFrame.Angles(0.15, 0, 0), mane)
+	-- сбруя: шанфрон (налобник), уздечка, поводья
+	hp("Chanfron", Vector3.new(1.0, 0.5, 1.5), CFrame.new(0, 7.05, -4.0) * CFrame.Angles(0.45, 0, 0), steel, M.Metal)
+	hp("Spike", Vector3.new(0.1, 0.5, 0.1), CFrame.new(0, 7.4, -4.2) * CFrame.Angles(-0.3, 0, 0), GOLD, M.Metal)
+	hp("Bridle", Vector3.new(0.98, 0.1, 0.1), CFrame.new(0, 6.15, -4.35) * CFrame.Angles(0.75, 0, 0), rgb(40, 26, 18))
+	rod(m, "Rein", (b * CFrame.new(-0.45, 6.1, -4.4)).Position, (b * CFrame.new(-0.3, 6.1, -1.5)).Position, 0.06, rgb(40, 26, 18), M.Fabric, nc())
+	rod(m, "Rein", (b * CFrame.new(0.45, 6.1, -4.4)).Position, (b * CFrame.new(0.3, 6.1, -1.5)).Position, 0.06, rgb(40, 26, 18), M.Fabric, nc())
+	-- попона: спина, бока до колен, нагрудник, с гербом и бахромой
+	hp("CaparisonTop", Vector3.new(2.5, 0.12, 4.6), CFrame.new(0, 5.52, 0), cloth, M.Fabric)
+	for _, sx in { -1, 1 } do
+		local side = hp("Caparison", Vector3.new(0.08, 2.6, 4.7), CFrame.new(sx * 1.23, 4.2, 0), cloth, M.Fabric)
+		local f = canvas(side, if sx < 0 then Enum.NormalId.Left else Enum.NormalId.Right, cloth)
+		shape(f, GOLD, 0.5, 0.42, 0.22, 0.22 * 4.7 / 2.6, 1)
+		shape(f, cloth, 0.5, 0.42, 0.15, 0.15 * 4.7 / 2.6, 1)
+		shape(f, GOLD, 0.5, 0.42, 0.07, 0.3)
+		shape(f, GOLD, 0.5, 0.95, 1, 0.07)
+		for k = 0, 11 do
+			shape(f, GOLD, (k + 0.5) / 12, 1, 0.03, 0.06)
 		end
 	end
-	P(m, "HorseBody", Vector3.new(2.2, 2.2, 5.8), b * CFrame.new(0, 4.4, 0), horse, M.SmoothPlastic)
-	P(m, "Neck", Vector3.new(1.3, 2.6, 1.4), b * CFrame.new(0, 5.8, -2.9) * CFrame.Angles(-0.5, 0, 0), horse, M.SmoothPlastic, nc())
-	P(m, "HorseHead", Vector3.new(1.1, 1.1, 2.4), b * CFrame.new(0, 6.6, -4.1) * CFrame.Angles(0.5, 0, 0), horse, M.SmoothPlastic, nc())
-	P(m, "Chanfron", Vector3.new(1.15, 0.5, 2.2), b * CFrame.new(0, 7.0, -4.2) * CFrame.Angles(0.5, 0, 0), steel, M.Metal, nc())
-	P(m, "Tail", Vector3.new(0.4, 2.4, 0.4), b * CFrame.new(0, 3.8, 3.1) * CFrame.Angles(0.3, 0, 0), rgb(30, 22, 18), M.SmoothPlastic, nc())
-	-- попона с гербом свисает по бокам
-	for _, sx in { -1, 1 } do
-		local cap = P(m, "Caparison", Vector3.new(0.08, 2.6, 6.2), b * CFrame.new(sx * 1.16, 3.7, 0), cloth, M.Fabric, nc())
-		local f = canvas(cap, if sx < 0 then Enum.NormalId.Left else Enum.NormalId.Right, cloth)
-		shape(f, GOLD, 0.5, 0.45, 0.3, 0.3 * 6.2 / 2.6 * 0.4, 1)
-		shape(f, GOLD, 0.5, 0.95, 1, 0.06)
-	end
-	P(m, "Saddle", Vector3.new(2.3, 0.5, 1.8), b * CFrame.new(0, 5.7, 0.2), rgb(80, 50, 30), M.SmoothPlastic, nc())
+	local front = hp("Peytral", Vector3.new(2.3, 1.6, 0.08), CFrame.new(0, 4.4, -3.3) * CFrame.Angles(0.15, 0, 0), cloth, M.Fabric)
+	local ff = canvas(front, Enum.NormalId.Front, cloth)
+	shape(ff, GOLD, 0.5, 0.9, 1, 0.1)
+	shape(ff, GOLD, 0.5, 0.4, 0.2, 0.36, 1)
+	-- седло, луки седла, стремена
+	hp("Saddle", Vector3.new(1.7, 0.38, 1.9), CFrame.new(0, 5.75, -0.1), rgb(80, 50, 30))
+	hp("Pommel", Vector3.new(1.2, 0.6, 0.25), CFrame.new(0, 6.1, -0.98), rgb(80, 50, 30))
+	hp("Cantle", Vector3.new(1.4, 0.9, 0.25), CFrame.new(0, 6.25, 0.82), rgb(80, 50, 30))
 	-- всадник
-	for _, sx in { -0.9, 0.9 } do
-		P(m, "RiderLeg", Vector3.new(0.5, 2.2, 0.6), b * CFrame.new(sx * 1.25, 5, 0.1), steel, M.Metal, nc())
+	Props.knightSuit(m, b * CFrame.new(0, 2.1, 0.55), steel, cloth, true)
+	for _, sx in { -1, 1 } do
+		hp("Stirrup", Vector3.new(0.65, 0.12, 0.6), CFrame.new(sx * 1.24, 3.84, -0.97), steel, M.Metal)
+		rod(m, "Leather", (b * CFrame.new(sx * 1.1, 5.7, -0.4)).Position, (b * CFrame.new(sx * 1.24, 3.9, -0.97)).Position, 0.06, rgb(40, 26, 18), M.Fabric, nc())
 	end
-	P(m, "RiderBody", Vector3.new(1.7, 2.2, 1), b * CFrame.new(0, 7.1, 0.2), steel, M.Metal)
-	P(m, "Surcoat", Vector3.new(1.75, 1.6, 1.05), b * CFrame.new(0, 6.7, 0.2), cloth, M.Fabric, nc())
-	S(m, "RiderHelm", 1.1, b * CFrame.new(0, 8.7, 0.2), steel, M.Metal, nc())
-	P(m, "Visor", Vector3.new(0.7, 0.12, 0.1), b * CFrame.new(0, 8.75, -0.32), rgb(10, 10, 10), M.SmoothPlastic, nc())
-	C(m, "Lance", 9, 0.25, b * CFrame.new(1.2, 7.4, -2.6) * CFrame.Angles(math.rad(-80), 0, 0), rgb(200, 190, 170), M.Wood, nc())
+	-- копьё под рукой, вымпел
+	local lanceA = (b * CFrame.new(1.12, 5.4, 2.4)).Position
+	local lanceB = (b * CFrame.new(1.25, 7.8, -6.2)).Position
+	rod(m, "Lance", lanceA, lanceB, 0.22, rgb(220, 210, 186), M.Wood, nc())
+	C(m, "Vamplate", 0.4, 0.9, CFrame.lookAt(lanceA:Lerp(lanceB, 0.26), lanceB) * CFrame.Angles(math.pi / 2, 0, 0), steel, M.Metal, nc())
+	local pen = P(m, "Pennant", Vector3.new(0.05, 0.7, 1.4), CFrame.lookAt(lanceA:Lerp(lanceB, 0.9), lanceB) * CFrame.new(0, -0.4, 0.4), cloth, M.Fabric, nc())
+	local _ = pen
+	-- щит на левой руке
+	local sh = P(m, "HorseShield", Vector3.new(0.14, 1.9, 1.5), b * CFrame.new(-1.38, 5.6, 0.45) * CFrame.Angles(0, 0.15, 0), cloth, M.SmoothPlastic, nc())
+	local sf = canvas(sh, Enum.NormalId.Left, cloth)
+	shape(sf, GOLD, 0.5, 0.45, 0.6, 0.12)
+	shape(sf, GOLD, 0.5, 0.45, 0.14, 0.7)
 	return m
 end
 
@@ -540,7 +633,9 @@ function X.folkCostume(parent, cf: CFrame, seed: number)
 	P(m, "Apron", Vector3.new(1.1, 2.4, 0.06), cf * CFrame.new(0, 1.9, -1.0), rgb(240, 236, 226), M.Fabric, nc())
 	P(m, "Blouse", Vector3.new(1.5, 1.6, 0.9), cf * CFrame.new(0, 4.2, 0), rgb(245, 242, 234), M.Fabric)
 	P(m, "Vest", Vector3.new(1.55, 1, 0.95), cf * CFrame.new(0, 4.3, 0), rgb(40, 40, 50), M.Fabric, nc())
+	C(m, "Neck", 0.5, 0.4, cf * CFrame.new(0, 5.1, 0), rgb(200, 190, 176), M.SmoothPlastic, nc())
 	S(m, "Head", 0.9, cf * CFrame.new(0, 5.5, 0), rgb(200, 190, 176), M.SmoothPlastic, nc())
+	P(m, "Hair", Vector3.new(0.5, 1.2, 0.3), cf * CFrame.new(0, 5.0, 0.4), rgb(170, 130, 70), M.Fabric, nc())
 	C(m, "Wreath", 0.2, 1.1, cf * CFrame.new(0, 5.9, 0), rgb(60, 120, 60), M.Grass, nc())
 	return m
 end
@@ -609,11 +704,19 @@ function X.onionChurch(parent, cf: CFrame)
 	local domes = { { 0, 0, 2.2, 6.4, rgb(230, 190, 60) }, { -2, -2, 1.2, 4.2, rgb(40, 120, 70) }, { 2, -2, 1.2, 4.6, rgb(200, 50, 50) }, { -2, 2, 1.2, 4.4, rgb(40, 80, 160) }, { 2, 2, 1.2, 4, rgb(230, 120, 40) } }
 	for _, d in domes do
 		local x, z, r, h, col = d[1], d[2], d[3], d[4], d[5]
-		C(m, "Drum", h - 1.2, r * 0.8, top * CFrame.new(x, (h - 1.2) / 2, z), rgb(236, 226, 206), M.Plaster, nc())
-		S(m, "Onion", r * 1.1, top * CFrame.new(x, h, z), col, M.SmoothPlastic, nc())
-		C(m, "OnionTip", r * 0.7, r * 0.3, top * CFrame.new(x, h + r * 0.75, z), col, M.SmoothPlastic, nc())
-		P(m, "Cross", Vector3.new(0.1, 0.9, 0.1), top * CFrame.new(x, h + r * 1.4, z), GOLD, M.Metal, nc())
-		P(m, "CrossBar", Vector3.new(0.5, 0.1, 0.13), top * CFrame.new(x, h + r * 1.5, z), GOLD, M.Metal, nc())
+		-- барабан, на нём луковица (шар с вытянутой маковкой), крест над ней
+		local T = h - 1.2
+		local D = r * 1.1
+		C(m, "Drum", T, r * 0.8, top * CFrame.new(x, T / 2, z), rgb(236, 226, 206), M.Plaster, nc())
+		C(m, "DrumCap", 0.2, r * 0.9, top * CFrame.new(x, T, z), GOLD, M.Metal, nc())
+		local cy = T + D * 0.42
+		S(m, "Onion", D, top * CFrame.new(x, cy, z), col, M.SmoothPlastic, nc())
+		for k = 0, 2 do
+			C(m, "OnionTip", D * 0.2, D * (0.62 - k * 0.2), top * CFrame.new(x, cy + D * (0.42 + k * 0.17), z), col, M.SmoothPlastic, nc())
+		end
+		local tipY = cy + D * 0.85
+		P(m, "Cross", Vector3.new(0.1, 0.9, 0.1), top * CFrame.new(x, tipY + 0.4, z), GOLD, M.Metal, nc())
+		P(m, "CrossBar", Vector3.new(0.5, 0.1, 0.13), top * CFrame.new(x, tipY + 0.55, z), GOLD, M.Metal, nc())
 	end
 	return m
 end
@@ -725,7 +828,10 @@ function X.guard(parent, cf: CFrame)
 	for _, x in { -1.15, 1.15 } do
 		P(m, "Arm", Vector3.new(0.5, 2.2, 0.55), cf * CFrame.new(x, 4.3, 0), rgb(190, 20, 30), M.Fabric, nc())
 	end
+	C(m, "Neck", 0.5, 0.45, cf * CFrame.new(0, 5.6, 0), rgb(220, 190, 160), M.SmoothPlastic, nc())
+	P(m, "Collar", Vector3.new(1.1, 0.3, 0.8), cf * CFrame.new(0, 5.42, 0), rgb(190, 20, 30), M.Fabric, nc())
 	S(m, "Head", 0.95, cf * CFrame.new(0, 6, 0), rgb(220, 190, 160), M.SmoothPlastic, nc())
+	P(m, "ChinStrap", Vector3.new(0.8, 0.1, 0.1), cf * CFrame.new(0, 5.66, -0.42), GOLD, M.Metal, nc())
 	C(m, "Bearskin", 1.8, 1.2, cf * CFrame.new(0, 7.2, 0.05), rgb(20, 18, 18), M.Fabric, nc())
 	C(m, "Musket", 4.4, 0.16, cf * CFrame.new(1.45, 4.8, -0.2), rgb(80, 56, 36), M.Wood, nc())
 	return m

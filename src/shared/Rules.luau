@@ -43,7 +43,7 @@ end
 
 Rules.SELF_SHARE = 0.7 -- «расплатиться собой»: 70 % текущего здоровья
 Rules.COIN_FROM = 30
-Rules.COINS_PER_DOOR = 2
+Rules.COINS_PER_DOOR = 0 -- золото только в ящиках: его должно не хватать
 
 -- ставка: в первой локации от 20 до 100, в каждой следующей на 100 больше, максимум 500
 function Rules.coinPrice(door: number): number
@@ -79,7 +79,7 @@ function Rules.darkChance(since: number): number
 	if since < Rules.DARK_GAP then
 		return 0
 	end
-	return math.min(0.4, (since - Rules.DARK_GAP + 1) * 0.06)
+	return math.min(0.4, (since - Rules.DARK_GAP + 1) * 0.075)
 end
 
 -- тебЯ ----------------------------------------------------------------------
@@ -152,15 +152,15 @@ end
 -- что лежит в ящике: r в [0, 1)
 function Rules.loot(r: number, door: number): (string, number)
 	-- у каждого ящика своя находка, поэтому пустых больше
-	if r < 0.25 then
-		return "coins", 3 + math.floor(r * 40) + math.floor(door / 10)
-	elseif r < 0.33 then
+	if r < 0.16 then
+		return "coins", 2 + math.floor(r * 30) + math.floor(door / 20)
+	elseif r < 0.22 then
 		return "battery", 1
-	elseif r < 0.355 then
+	elseif r < 0.24 then
 		return "lockpick", 1
-	elseif r < 0.365 then
+	elseif r < 0.25 then
 		return "plant", 1
-	elseif r < 0.372 then
+	elseif r < 0.256 then
 		return "hammer", 1
 	end
 	return "nothing", 0
@@ -170,7 +170,7 @@ function Rules.lockedChance(door: number): number
 	if door < 3 then
 		return 0
 	end
-	return math.min(0.25, 0.1 + door / 500)
+	return math.min(0.3, 0.14 + door / 400)
 end
 
 -- шум и Колосс ---------------------------------------------------------------

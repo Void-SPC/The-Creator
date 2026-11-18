@@ -380,7 +380,8 @@ function setFlash(p: Player, on: boolean)
 	if not s then
 		return
 	end
-	s.flashOn = on and s.flash > 0 and s.alive and equipped(p, "flashlight")
+	-- на улице фонарик тоже работает (там игрок не «в забеге»)
+	s.flashOn = on and s.flash > 0 and (s.alive or G.mode == "lobby") and equipped(p, "flashlight")
 	local tool = s.tools.flashlight
 	local beam = tool and tool:FindFirstChild("Handle") and tool.Handle:FindFirstChild("Beam")
 	if beam then
@@ -979,7 +980,7 @@ function G.bossDead(info, pos: Vector3?)
 	local a = info.arena
 	for _, p in G.alivePlayers() do
 		G.achieve(p, "colossus_down")
-		give(p, "coins", 40)
+		give(p, "coins", 15)
 	end
 	G.sendAll({ type = "fx", kind = "calm" })
 	local at = pos or a.zone.Position
@@ -1692,6 +1693,8 @@ local function loadCharacter(p: Player, cf: CFrame, inRun: boolean)
 		syncTools(p)
 		setFlash(p, false)
 	else
+		-- на улице только фонарик
+		syncTools(p)
 		players[p].alive = false
 		p:SetAttribute("Alive", nil)
 	end
@@ -1772,6 +1775,10 @@ function G.startHere()
 		lobby.model:Destroy()
 		lobby = nil
 	end
+	-- рельеф улицы музею не нужен
+	pcall(function()
+		workspace.Terrain:Clear()
+	end)
 	startRun()
 	for p in players do
 		if p.Parent then

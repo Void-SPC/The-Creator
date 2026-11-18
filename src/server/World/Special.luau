@@ -86,8 +86,21 @@ function Special.lobby(parent)
 	local stone = rgb(150, 146, 138)
 	local cobble = rgb(110, 106, 100)
 	local rnd = Random.new(7)
-	P(m, "Ground", Vector3.new(420, 1, 640), CFrame.new(20, -0.5, -170), rgb(34, 52, 36), M.Grass)
-	P(m, "Path", Vector3.new(14, 0.2, 86), CFrame.new(0, 0.1, -11), cobble, M.Cobblestone)
+	-- земля и тропинка — рельеф Roblox: трава с шевелящимися травинками, плавные
+	-- повороты тропы без швов. Если рельеф недоступен, земля из обычной детали
+	local terrain = nil
+	pcall(function()
+		local t = workspace.Terrain
+		t:FillBlock(CFrame.new(20, -4, -170), Vector3.new(420, 8, 640), Enum.Material.Grass)
+		pcall(function()
+			(t :: any).Decoration = true
+		end)
+		terrain = t
+	end)
+	if not terrain then
+		P(m, "Ground", Vector3.new(420, 1, 640), CFrame.new(20, -0.5, -170), rgb(34, 52, 36), M.Grass)
+		P(m, "Path", Vector3.new(14, 0.2, 86), CFrame.new(0, 0.1, -11), cobble, M.Cobblestone)
+	end
 	-- крыльцо с пологими ступенями (по ним идут без прыжка)
 	P(m, "Porch", Vector3.new(46, 1.6, 22), CFrame.new(0, 0.8, -71), stone, M.Marble)
 	for k = 0, 3 do
@@ -163,18 +176,34 @@ function Special.lobby(parent)
 		return false
 	end
 	for i = 1, #trail - 1 do
-		local a = Vector3.new(trail[i][1], 0.1, trail[i][2])
-		local b = Vector3.new(trail[i + 1][1], 0.1, trail[i + 1][2])
+		local a = Vector3.new(trail[i][1], 0, trail[i][2])
+		local b = Vector3.new(trail[i + 1][1], 0, trail[i + 1][2])
 		local len = (b - a).Magnitude
-		P(m, "Trail", Vector3.new(6, 0.2 + (i % 2) * 0.02, len), CFrame.lookAt((a + b) / 2, b), cobble:Lerp(rgb(80, 70, 56), 0.3), M.Cobblestone, nc())
-		if i > 1 then
-			C(m, "TrailBend", 0.2 + ((i + 1) % 2) * 0.02 + 0.01, 6, CFrame.new(a), cobble:Lerp(rgb(80, 70, 56), 0.3), M.Cobblestone, nc())
+		if terrain then
+			-- камень тропы утоплен в землю; на поворотах — круглые площадки
+			terrain:FillBlock(CFrame.lookAt((a + b) / 2, b) * CFrame.new(0, -2, 0), Vector3.new(6, 4, len + 2), Enum.Material.Cobblestone)
+			terrain:FillCylinder(CFrame.new(a + Vector3.new(0, -2, 0)), 4, 3.6, Enum.Material.Cobblestone)
+		else
+			P(m, "Trail", Vector3.new(6, 0.2, len), CFrame.lookAt((a + b) / 2 + Vector3.new(0, 0.1, 0), b + Vector3.new(0, 0.1, 0)), cobble:Lerp(rgb(80, 70, 56), 0.3), M.Cobblestone, nc())
+		end
+		-- бордюрные камни вдоль тропы
+		local dir = (b - a).Unit
+		local side = Vector3.new(-dir.Z, 0, dir.X)
+		for k = 1, math.floor(len / 4) do
+			local pnt = a + dir * (k * 4 - 1)
+			for _, sg in { -1, 1 } do
+				P(m, "Curb", Vector3.new(0.7, 0.35, 1.2), CFrame.lookAt(pnt + side * sg * 3.4 + Vector3.new(0, 0.12, 0), pnt + side * sg * 3.4 + dir + Vector3.new(0, 0.12, 0)) * CFrame.Angles(0, (k % 3) * 0.08, 0), rgb(120, 116, 108):Lerp(rgb(90, 88, 84), (k % 2) * 0.5), M.Slate, nc())
+			end
 		end
 		if i % 2 == 0 then
-			local dir = (b - a).Unit
-			local side = Vector3.new(-dir.Z, 0, dir.X) * 4.6
-			Props.lampPost(m, CFrame.new(a + side + Vector3.new(0, -0.1, 0)))
+			Props.lampPost(m, CFrame.new(a + side * 4.8))
 		end
+	end
+	if terrain then
+		local last = trail[#trail]
+		terrain:FillCylinder(CFrame.new(last[1], -2, last[2]), 4, 3.6, Enum.Material.Cobblestone)
+		-- главная дорожка и площадка у крыльца тоже из камня
+		terrain:FillBlock(CFrame.new(0, -2, -11), Vector3.new(14, 4, 86), Enum.Material.Pavement)
 	end
 
 	-- бесконечный фасад: одно и то же крыло повторяется и уходит вдаль --------------
@@ -264,16 +293,6 @@ function Special.lobby(parent)
 			S(m, "Bush", s1 * 0.7, CFrame.new(x + s1 * 0.4, s1 * 0.22, z - s1 * 0.2), g, M.Grass, nc())
 		end
 	end
-	-- пучки высокой травы у дорожек
-	for i = 1, 90 do
-		local x, z = rnd:NextNumber(-60, 120), rnd:NextNumber(-70, 50)
-		if free(x, z, 0.5) or (math.abs(x) > 8 and math.abs(x) < 14 and z > -50 and z < 30) then
-			local h = rnd:NextNumber(0.8, 1.8)
-			P(m, "Grass", Vector3.new(0.6, h, 0.1), CFrame.new(x, h / 2, z) * CFrame.Angles(rnd:NextNumber(-0.3, 0.3), rnd:NextNumber(0, 3), 0), rgb(50, 90, 44), M.Grass, nc({ CastShadow = false }))
-			local _ = i
-		end
-	end
-
 	-- округа за оградой: тёмные дома, деревья, всё уходит дальше ----------------------
 	for i, h in { { -150, 40, 26 }, { -160, -10, 34 }, { -146, -70, 22 }, { -40, 110, 30 }, { 30, 118, 24 }, { 90, 106, 36 } } do
 		P(m, "FarHouse", Vector3.new(24, h[3], 20), CFrame.new(h[1], h[3] / 2, h[2]), rgb(52, 50, 54), M.Concrete, nc())
