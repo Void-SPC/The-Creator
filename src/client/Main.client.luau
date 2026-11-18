@@ -19,6 +19,7 @@ local Lang = require(Shared.Lang)
 local Rules = require(Shared.Rules)
 local AdminCommands = require(Shared.AdminCommands)
 local Ui = require(script.Parent.Ui)
+local Scares = require(script.Parent.Scares)
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -819,6 +820,16 @@ local function onDead(msg)
 	slits.Visible = false
 	hud.Visible = false
 	closePanels()
+	-- скример того, кто убил; камерой в это время управляет он
+	if msg.cause and msg.cause ~= "unknown" then
+		app.scene = true
+		Scares.play(msg.cause)
+		app.scene = false
+		camera.CameraType = Enum.CameraType.Custom
+	end
+	if not app.dead then
+		return
+	end
 	deathTitle.Text = T("Died")
 	local id = msg.cause
 	deathCause.Text = (if id and Lang.en["j_" .. id] then T("j_" .. id) .. "\n" else "") .. T("DiedAt", Rules.plate(msg.door or 0))
@@ -1352,7 +1363,7 @@ Remotes.event("Game").OnClientEvent:Connect(function(msg)
 	elseif msg.type == "enterFailed" then
 		black.BackgroundTransparency = 1
 	elseif msg.type == "dead" then
-		onDead(msg)
+		task.spawn(onDead, msg)
 	elseif msg.type == "results" then
 		if not app.tbc then
 			toast(T("Results", Rules.plate(msg.door or 0)), Ui.C.text, 8)

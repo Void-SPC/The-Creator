@@ -1,8 +1,8 @@
 {
   "file": "Workshop.rbxlx",
-  "version": "6.4.1",
-  "sha256": "708a70dabde0987af3ca7ff5f45c95016b31e308d08055936a64ac7b7e3b2ddb",
-  "bytes": 492767,
+  "version": "6.5.0",
+  "sha256": "0b8a9e73ed7fa3b698c744c48f0f2f05d2bc5a600a061a6366cd120a2278143c",
+  "bytes": 506970,
   "scripts": [
     {
       "path": "src/shared/AdminCommands.luau",
@@ -98,6 +98,11 @@
       "path": "src/client/Main.client.luau",
       "class": "LocalScript",
       "name": "Main"
+    },
+    {
+      "path": "src/client/Scares.luau",
+      "class": "ModuleScript",
+      "name": "Scares"
     },
     {
       "path": "src/client/Ui.luau",
