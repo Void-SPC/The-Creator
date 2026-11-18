@@ -591,7 +591,7 @@ function Special.arena(parent, d, origin: CFrame, rand, prev)
 		for _, dx in { -2.9, 0, 2.9 } do
 			P(m, "Baluster", Vector3.new(0.3, 3.2, 0.3), L(cx + dx, 1.6, SZ0 + 3.85), stone, M.Marble, nc())
 		end
-		P(m, "LandingRail", Vector3.new(0.34, 0.36, 4), L(sx * (G0 - 6.0), 3.41, SZ0 + 2), Props.WOOD_DARK, M.Wood, nc())
+		P(m, "LandingRail", Vector3.new(0.34, 0.36, 3.9), L(sx * (G0 - 6.0), 3.41, SZ0 + 1.95), Props.WOOD_DARK, M.Wood, nc())
 		for _, dz in { 0.6, 2, 3.4 } do
 			P(m, "Baluster", Vector3.new(0.3, 3.2, 0.3), L(sx * (G0 - 6.0), 1.6, SZ0 + dz), stone, M.Marble, nc())
 		end

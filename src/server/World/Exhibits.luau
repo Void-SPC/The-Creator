@@ -3,6 +3,7 @@
 -- Франция, Япония. Модели музейные (макеты, манекены, предметы), всё из простых деталей;
 -- флаги, гербы, письмена и мозаики нарисованы плоско на поверхности
 
+local CollectionService = game:GetService("CollectionService")
 local Shared = game:GetService("ReplicatedStorage").Workshop.Shared
 local M = require(Shared.Materials)
 local Props = require(script.Parent.Props)
@@ -964,6 +965,192 @@ function X.stoneLantern(parent, cf: CFrame)
 	l.Parent = light
 	P(m, "Kasa", Vector3.new(2.2, 0.5, 2.2), cf * CFrame.new(0, 4.05, 0), stone, M.Slate)
 	S(m, "Hoju", 0.6, cf * CFrame.new(0, 4.5, 0), stone, M.Slate, nc())
+	return m
+end
+
+-- стойка с катанами у стены (cf — слот у стены, лицо в зал)
+function X.katanaRack(parent, cf: CFrame)
+	local m = model(parent, "KatanaRack")
+	local base = cf * CFrame.new(0, 0, -0.9)
+	local lac = rgb(30, 24, 22)
+	P(m, "RackBase", Vector3.new(3.2, 0.4, 1.2), base * CFrame.new(0, 0.2, 0), lac, M.Wood)
+	for _, sx in { -1, 1 } do
+		P(m, "RackSide", Vector3.new(0.3, 2.6, 1), base * CFrame.new(sx * 1.4, 1.7, 0), lac, M.Wood)
+	end
+	for k = 0, 2 do
+		local y = 1.2 + k * 0.85
+		local sc = base * CFrame.new(0, y, -0.15)
+		P(m, "Saya", Vector3.new(2.9, 0.16, 0.16), sc, if k % 2 == 0 then rgb(20, 18, 18) else rgb(110, 20, 24), M.SmoothPlastic, nc())
+		P(m, "Tsuka", Vector3.new(0.9, 0.17, 0.17), sc * CFrame.new(1.85, 0.02, 0), rgb(230, 226, 214), M.Fabric, nc())
+		C(m, "Tsuba", 0.06, 0.4, sc * CFrame.new(1.38, 0, 0) * CFrame.Angles(0, 0, 0), GOLD, M.Metal, nc())
+	end
+	return m
+end
+
+-- расписная ширма из шести створок «гармошкой»
+function X.screen(parent, cf: CFrame, seed: number)
+	local m = model(parent, "Byobu")
+	local w, h = 1.3, 4.6
+	for k = 0, 5 do
+		local a = if k % 2 == 0 then 0.35 else -0.35
+		local x = (k - 2.5) * w * 0.94
+		local leaf = P(m, "ScreenLeaf", Vector3.new(w, h, 0.08), cf * CFrame.new(x, h / 2 + 0.1, 0) * CFrame.Angles(0, a, 0), rgb(220, 196, 130), M.Fabric, nc())
+		P(m, "ScreenFrame", Vector3.new(w + 0.1, h + 0.1, 0.06), cf * CFrame.new(x, h / 2 + 0.1, 0) * CFrame.Angles(0, a, 0) * CFrame.new(0, 0, 0.05), rgb(40, 26, 18), M.Wood, nc())
+		local f = canvas(leaf, Enum.NormalId.Front, rgb(222, 200, 140))
+		-- горы, солнце, ветка с цветами, журавль
+		shape(f, rgb(60, 70, 80), 0.5, 1.0, 1.6, 0.6, 1, (k - 2.5) * 6)
+		if k == 1 then
+			shape(f, rgb(200, 50, 40), 0.5, 0.28, 0.5, 0.5 * w / h * 4.6 / 1.3 * 0.28, 1)
+		end
+		if k >= 3 then
+			shape(f, rgb(60, 40, 30), 0.4, 0.3 + (k - 3) * 0.08, 1.2, 0.02, nil, -20)
+			for j = 0, 3 do
+				shape(f, rgb(240, 180, 200), 0.2 + j * 0.2, 0.26 + (k - 3) * 0.08 + j * 0.02, 0.08, 0.08 * w / h * 3.5, 1)
+			end
+		end
+		if k == 4 - (seed % 2) then
+			shape(f, rgb(250, 250, 246), 0.5, 0.6, 0.5, 0.06, 0.5)
+			shape(f, rgb(30, 30, 30), 0.72, 0.55, 0.06, 0.12)
+			shape(f, rgb(200, 40, 40), 0.74, 0.5, 0.06, 0.03, 1)
+		end
+	end
+	return m
+end
+
+-- бонсай на низком столике
+function X.bonsai(parent, cf: CFrame)
+	local m = model(parent, "Bonsai")
+	P(m, "LowTable", Vector3.new(2.6, 0.2, 1.6), cf * CFrame.new(0, 1.2, 0), rgb(50, 30, 22), M.Wood)
+	for _, sx in { -1, 1 } do
+		P(m, "TableLeg", Vector3.new(0.3, 1.1, 1.4), cf * CFrame.new(sx * 1.1, 0.55, 0), rgb(50, 30, 22), M.Wood, nc())
+	end
+	P(m, "Pot", Vector3.new(1.8, 0.35, 1.0), cf * CFrame.new(0, 1.48, 0), rgb(90, 60, 50), M.SmoothPlastic, nc())
+	P(m, "Soil", Vector3.new(1.6, 0.06, 0.8), cf * CFrame.new(0, 1.68, 0), rgb(60, 50, 40), M.Ground, nc())
+	local trunk = rgb(80, 56, 40)
+	rod(m, "Trunk", (cf * CFrame.new(-0.2, 1.68, 0)).Position, (cf * CFrame.new(0.2, 2.4, 0)).Position, 0.2, trunk, M.Wood, nc())
+	rod(m, "Trunk", (cf * CFrame.new(0.2, 2.4, 0)).Position, (cf * CFrame.new(-0.3, 3, 0)).Position, 0.16, trunk, M.Wood, nc())
+	rod(m, "Branch", (cf * CFrame.new(0.2, 2.4, 0)).Position, (cf * CFrame.new(0.8, 2.6, 0.1)).Position, 0.1, trunk, M.Wood, nc())
+	for _, p in { { -0.3, 3.15, 0, 0.9 }, { 0.85, 2.75, 0.1, 0.7 }, { 0.1, 2.8, -0.2, 0.6 }, { -0.7, 2.7, 0.1, 0.5 } } do
+		S(m, "Foliage", p[4], cf * CFrame.new(p[1], p[2], p[3]), rgb(46, 90, 50), M.Grass, nc())
+	end
+	return m
+end
+
+-- низкий чайный столик с подушками и чайным набором
+function X.teaTable(parent, cf: CFrame)
+	local m = model(parent, "TeaTable")
+	P(m, "Top", Vector3.new(3.2, 0.2, 2.2), cf * CFrame.new(0, 1.0, 0), rgb(60, 36, 24), M.Wood)
+	for _, sx in { -1, 1 } do
+		for _, sz in { -1, 1 } do
+			P(m, "Leg", Vector3.new(0.25, 0.9, 0.25), cf * CFrame.new(sx * 1.4, 0.45, sz * 0.9), rgb(50, 30, 20), M.Wood, nc())
+		end
+		P(m, "Zabuton", Vector3.new(1.6, 0.25, 1.6), cf * CFrame.new(sx * 2.6, 0.13, 0), rgb(140, 40, 50), M.Fabric)
+	end
+	C(m, "Teapot", 0.5, 0.6, cf * CFrame.new(0, 1.35, 0), rgb(40, 50, 44), M.SmoothPlastic, nc())
+	P(m, "Spout", Vector3.new(0.08, 0.08, 0.35), cf * CFrame.new(0, 1.4, -0.4), rgb(40, 50, 44), M.SmoothPlastic, nc())
+	for k = 0, 3 do
+		local a = k / 4 * math.pi * 2 + 0.4
+		C(m, "Cup", 0.25, 0.28, cf * CFrame.new(math.cos(a) * 0.9, 1.22, math.sin(a) * 0.6), rgb(230, 226, 214), M.SmoothPlastic, nc())
+	end
+	return m
+end
+
+-- бумажный фонарь, висит с потолка и светит
+function X.paperLantern(parent, top: Vector3, drop: number, color: Color3?)
+	local m = model(parent, "PaperLantern")
+	local col = color or rgb(200, 40, 34)
+	C(m, "Cord", drop, 0.06, CFrame.new(top - Vector3.new(0, drop / 2, 0)), rgb(30, 30, 30), M.Fabric, nc())
+	local c = top - Vector3.new(0, drop + 1, 0)
+	C(m, "LanternTop", 0.15, 0.9, CFrame.new(c + Vector3.new(0, 0.95, 0)), rgb(20, 20, 20), M.Wood, nc())
+	C(m, "LanternBottom", 0.15, 0.9, CFrame.new(c - Vector3.new(0, 0.95, 0)), rgb(20, 20, 20), M.Wood, nc())
+	local body = S(m, "LanternBody", 1.7, CFrame.new(c), col, M.Neon, nc({ Transparency = 0.15 }))
+	for k = -1, 1 do
+		C(m, "Rib", 0.04, 1.72 - math.abs(k) * 0.3, CFrame.new(c + Vector3.new(0, k * 0.45, 0)), rgb(30, 20, 18), M.Wood, nc())
+	end
+	local l = Instance.new("PointLight")
+	l.Range = 16
+	l.Brightness = 0.7
+	l.Color = rgb(255, 140, 100)
+	l.Parent = body
+	CollectionService:AddTag(body, "LabLight")
+	return m, body
+end
+
+-- сад камней: грабленый песок и три камня
+function X.zenGarden(parent, cf: CFrame, w: number, l: number)
+	local m = model(parent, "ZenGarden")
+	for _, s in { -1, 1 } do
+		P(m, "Frame", Vector3.new(0.3, 0.4, l), cf * CFrame.new(s * (w / 2 - 0.15), 0.2, 0), rgb(60, 40, 28), M.Wood)
+		P(m, "Frame", Vector3.new(w - 0.6, 0.36, 0.3), cf * CFrame.new(0, 0.18, s * (l / 2 - 0.15)), rgb(60, 40, 28), M.Wood)
+	end
+	local sand = P(m, "Sand", Vector3.new(w - 0.6, 0.2, l - 0.6), cf * CFrame.new(0, 0.1, 0), rgb(220, 214, 196), M.Sand)
+	local f = canvas(sand, Enum.NormalId.Top, rgb(222, 216, 198))
+	for k = 1, 9 do
+		shape(f, rgb(190, 184, 166), 0.5, k / 10, 1, 0.012)
+	end
+	for _, st in { { -0.25, -0.1, 1.1 }, { 0.2, 0.2, 0.7 }, { 0.3, -0.25, 0.5 } } do
+		local p = cf * CFrame.new(st[1] * w, 0.2 + st[3] * 0.25, st[2] * l)
+		S(m, "Stone", st[3], p, rgb(90, 88, 84), M.Slate, nc())
+		C(m, "Ripple", 0.02, st[3] * 1.8, cf * CFrame.new(st[1] * w, 0.21, st[2] * l), rgb(190, 184, 166), M.Sand, nc())
+	end
+	return m
+end
+
+-- барабан тайко на подставке
+function X.taiko(parent, cf: CFrame)
+	local m = model(parent, "Taiko")
+	for _, sx in { -1, 1 } do
+		P(m, "Stand", Vector3.new(0.3, 2.2, 1.6), cf * CFrame.new(sx * 1.1, 1.1, 0) * CFrame.Angles(0, 0, sx * 0.15), rgb(60, 30, 20), M.Wood)
+	end
+	local drum = cf * CFrame.new(0, 2.6, 0) * CFrame.Angles(0, 0, math.pi / 2)
+	C(m, "Drum", 2.2, 2.4, cf * CFrame.new(0, 2.6, 0) * CFrame.Angles(0, math.pi / 2, 0) * CFrame.Angles(0, 0, math.pi / 2), rgb(140, 70, 40), M.Wood)
+	local _ = drum
+	for _, sz in { -1.12, 1.12 } do
+		C(m, "Skin", 0.04, 2.3, cf * CFrame.new(0, 2.6, sz) * CFrame.Angles(math.pi / 2, 0, 0), rgb(230, 216, 186), M.Fabric, nc())
+		for k = 0, 11 do
+			local a = k / 12 * math.pi * 2
+			S(m, "Tack", 0.12, cf * CFrame.new(math.cos(a) * 1.17, 2.6 + math.sin(a) * 1.17, sz * 1.0), GOLD, M.Metal, nc())
+		end
+	end
+	for _, sx in { -0.3, 0.3 } do
+		rod(m, "Bachi", (cf * CFrame.new(sx, 1.0, -1.6)).Position, (cf * CFrame.new(sx * 2, 1.2, -2.6)).Position, 0.12, rgb(200, 170, 120), M.Wood, nc())
+	end
+	return m
+end
+
+-- кимоно, развешанное на перекладине у стены
+function X.kimono(parent, cf: CFrame, seed: number)
+	local m = model(parent, "Kimono")
+	local base = cf * CFrame.new(0, 0, -0.25)
+	P(m, "Pole", Vector3.new(5.2, 0.16, 0.16), base * CFrame.new(0, 8.2, 0), rgb(40, 26, 18), M.Wood, nc())
+	local colors = { rgb(30, 50, 110), rgb(130, 20, 40), rgb(30, 80, 60) }
+	local col = colors[seed % 3 + 1]
+	local robe = P(m, "Robe", Vector3.new(2.4, 5, 0.1), base * CFrame.new(0, 5.6, 0), col, M.Fabric, nc())
+	local sleeves = P(m, "Sleeves", Vector3.new(5, 1.7, 0.08), base * CFrame.new(0, 7.15, 0.02), col, M.Fabric, nc())
+	P(m, "Obi", Vector3.new(2.44, 0.6, 0.12), base * CFrame.new(0, 5.4, -0.02), rgb(220, 180, 60), M.Fabric, nc())
+	for _, part in { robe, sleeves } do
+		local f = canvas(part, Enum.NormalId.Front, col)
+		for k = 0, 7 do
+			shape(f, rgb(240, 200, 210), (k * 0.137 + 0.1) % 1, (k * 0.29 + 0.2) % 1, 0.08, 0.08 * part.Size.X / part.Size.Y, 1)
+		end
+		shape(f, rgb(240, 236, 226), 0.5, 0.04, 1, 0.03)
+	end
+	P(m, "Collar", Vector3.new(0.3, 3, 0.12), base * CFrame.new(-0.25, 6.6, -0.02) * CFrame.Angles(0, 0, -0.35), rgb(240, 236, 226), M.Fabric, nc())
+	P(m, "Collar", Vector3.new(0.3, 3, 0.12), base * CFrame.new(0.25, 6.6, -0.03) * CFrame.Angles(0, 0, 0.35), rgb(240, 236, 226), M.Fabric, nc())
+	return m
+end
+
+-- сакура в кадке
+function X.sakura(parent, cf: CFrame)
+	local m = model(parent, "Sakura")
+	P(m, "Tub", Vector3.new(2.4, 1.2, 2.4), cf * CFrame.new(0, 0.6, 0), rgb(70, 46, 30), M.WoodPlanks)
+	local trunk = rgb(70, 50, 44)
+	rod(m, "Trunk", (cf * CFrame.new(0, 1.2, 0)).Position, (cf * CFrame.new(0.3, 4.2, 0)).Position, 0.45, trunk, M.Wood, nc())
+	rod(m, "Branch", (cf * CFrame.new(0.3, 4.0, 0)).Position, (cf * CFrame.new(-1.5, 5.4, 0.4)).Position, 0.25, trunk, M.Wood, nc())
+	rod(m, "Branch", (cf * CFrame.new(0.3, 4.2, 0)).Position, (cf * CFrame.new(1.8, 5.6, -0.3)).Position, 0.25, trunk, M.Wood, nc())
+	for _, p in { { -1.5, 5.6, 0.4, 2.2 }, { 1.8, 5.8, -0.3, 2.4 }, { 0.3, 6.2, 0, 2.6 }, { -0.4, 5.2, -0.8, 1.6 } } do
+		S(m, "Blossom", p[4], cf * CFrame.new(p[1], p[2], p[3]), rgb(244, 190, 206), M.Grass, nc())
+	end
 	return m
 end
 

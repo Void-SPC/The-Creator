@@ -600,7 +600,13 @@ function E.spawnColossus(info)
 			local _, b = piece("Knee", Vector3.new(1.8, 1.6, 1.8), CFrame.new(sx * 3.5, -3.6, z + (if z < 0 then 0.4 else -0.5)), dark, hip)
 			local _, c = piece("Shin", Vector3.new(1.6, 4.6, 1.8), CFrame.new(sx * 3.5, -6.2, z), bone, hip)
 			local _, f = piece("Foot", Vector3.new(3, 0.8, 3.8), CFrame.new(sx * 3.5, -8.9, z - 0.7), dark, hip)
-			table.insert(motors.legs, { a, b, c, f, phase = if (sx < 0) == (z < 0) then 0 else math.pi, rest = sc(hip) })
+			table.insert(motors.legs, {
+				a, b, c, f,
+				phase = if (sx < 0) == (z < 0) then 0 else math.pi,
+				rest = sc(hip),
+				knee = sc(CFrame.new(sx * 3.5, -3.6, z)),
+				ankle = sc(CFrame.new(sx * 3.5, -8.5, z - 0.3)),
+			})
 		end
 	end
 	-- хвост: всё мельче к концу и ниже
@@ -609,6 +615,29 @@ function E.spawnColossus(info)
 	end
 	for _, mt in motors.all do
 		mt:SetAttribute("Home", mt.C0)
+	end
+	-- разложить суставы по частям тела: ноги, голова, хвост и всё остальное (корпус)
+	local taken = {}
+	for _, leg in motors.legs do
+		for j = 1, 4 do
+			taken[leg[j]] = true
+		end
+	end
+	for _, mt in motors.head do
+		taken[mt] = true
+	end
+	motors.body, motors.tail = {}, {}
+	motors.tailPivot = sc(CFrame.new(0, 3.8, 8.2))
+	local tk = 0
+	for _, mt in motors.all do
+		if not taken[mt] then
+			if mt.Part1 and mt.Part1.Name == "Tail" then
+				tk += 1
+				table.insert(motors.tail, { mt = mt, k = tk, home = mt.C0 })
+			else
+				table.insert(motors.body, mt)
+			end
+		end
 	end
 	model:PivotTo(info.arena.spawn * CFrame.new(0, E.COLOSSUS_HEIGHT, 0))
 	local root = model:FindFirstChild("HumanoidRootPart") :: BasePart
@@ -776,55 +805,96 @@ local function sniffAnim(b)
 	sound(b.root, SOUND.rumble, 1.4, 0.5)
 end
 
--- ноги шагают, пока он идёт; голова живёт своей позой
+-- Походка зверя: бедро качается, колено сгибается, когда нога идёт вперёд, стопа
+-- остаётся ровной; корпус покачивается и чуть пружинит на каждом шаге, на месте
+-- он дышит; хвост виляет волной от основания к кончику; голова кивает в такт
+-- шагам и живёт своей позой (прислушивается, рычит, ест, ослеплён)
 local function animateBeast()
 	local b = boss
-	if not b or not b.motors or not b.root.Parent or b.state == "defeat" or b.state == "statue" then
+	if not b or not b.motors or not b.motors.body or not b.root.Parent or b.state == "defeat" or b.state == "statue" then
 		return
 	end
 	local t = os.clock()
+	local dt = math.min(0.1, t - (b.lastT or t))
+	b.lastT = t
 	local v = b.root.AssemblyLinearVelocity
 	local speed = Vector3.new(v.X, 0, v.Z).Magnitude
-	local amp = math.clamp(speed / 12, 0, 1) * 0.45
-	local tremble = if b.state == "stun" then math.sin(t * 23) * 0.05 else 0
-	for _, leg in b.motors.legs do
-		local a = math.sin(t * (3 + speed * 0.25) + leg.phase) * amp + tremble
-		local c0 = leg.rest * CFrame.Angles(a, 0, 0)
-		for j = 1, 4 do
-			leg[j].C0 = c0
+	b.gait = (b.gait or 0) + dt * speed * 0.45
+	local want = math.clamp(speed / 9, 0, 1)
+	b.walk = (b.walk or 0) + (want - (b.walk or 0)) * math.min(1, dt * 5)
+	local w = b.walk
+	local stun = b.state == "stun"
+	local tremble = if stun then math.sin(t * 23) * 0.03 else 0
+	-- корпус
+	local bob = math.abs(math.sin(b.gait)) * 0.22 * w - 0.1 * w + math.sin(t * 1.3) * 0.05 * (1 - w)
+	local roll = math.sin(b.gait) * 0.035 * w + tremble
+	local pitch = math.sin(b.gait * 2) * 0.012 * w + (if b.state == "eat" then 0.05 else 0)
+	local body = CFrame.new(0, bob, 0) * CFrame.Angles(pitch, 0, roll)
+	for _, mt in b.motors.body do
+		local home = mt:GetAttribute("Home")
+		if typeof(home) == "CFrame" then
+			mt.C0 = body * home
 		end
 	end
-	local yaw, pitch, roll = 0, 0, 0
+	-- хвост
+	local tp = b.motors.tailPivot
+	for _, e in b.motors.tail do
+		local yaw = math.sin(t * (1.1 + w * 2.2) - e.k * 0.7) * (0.03 + 0.025 * e.k) * (0.6 + w)
+		if stun then
+			yaw += math.sin(t * 17 + e.k) * 0.06
+		end
+		e.mt.C0 = body * tp * CFrame.Angles(-0.015 * e.k * w, yaw, 0) * tp:Inverse() * e.home
+	end
+	-- ноги
+	for _, leg in b.motors.legs do
+		local ph = b.gait + leg.phase
+		local hipA = math.sin(ph) * 0.4 * w + tremble
+		local kneeA = -math.max(0, math.cos(ph)) * 0.7 * w
+		local H = leg.rest * CFrame.Angles(hipA, 0, 0) * leg.rest:Inverse()
+		local K = leg.knee * CFrame.Angles(kneeA, 0, 0) * leg.knee:Inverse()
+		local A = leg.ankle * CFrame.Angles(-(hipA + kneeA), 0, 0) * leg.ankle:Inverse()
+		leg[1].C0 = body * H * leg.rest
+		leg[2].C0 = body * H * K * leg.rest
+		leg[3].C0 = body * H * K * leg.rest
+		leg[4].C0 = body * H * K * A * leg.rest
+	end
+	-- голова
+	local yaw, hpitch, hroll = 0, math.sin(b.gait * 2) * 0.05 * w, 0
 	local ps = b.pose
 	if ps and t - ps.t0 < ps.dur then
 		local k = (t - ps.t0) / ps.dur
 		if ps.kind == "listen" then
-			-- замер, голова чуть набок и вверх
-			roll = math.sin(math.min(1, k * 3) * math.pi / 2) * 0.35
-			pitch = -0.12
+			hroll = math.sin(math.min(1, k * 3) * math.pi / 2) * 0.35
+			hpitch = -0.12
 		elseif ps.kind == "roar" then
-			pitch = -0.5 * math.sin(k * math.pi)
+			hpitch = -0.5 * math.sin(k * math.pi)
 			yaw = math.sin(t * 30) * 0.04
 		elseif ps.kind == "lost" then
 			yaw = math.sin(k * math.pi * 4) * 0.55
-			pitch = 0.1
+			hpitch = 0.1
 		elseif ps.kind == "eat" then
-			pitch = 0.5 + math.sin(t * 7) * 0.08
+			hpitch = 0.5 + math.sin(t * 7) * 0.08
 		elseif ps.kind == "stun" then
-			pitch = -0.55 + math.sin(t * 17) * 0.1
+			hpitch = -0.55 + math.sin(t * 17) * 0.1
 			yaw = math.sin(t * 5) * 0.3
+		elseif ps.kind == "bite" then
+			-- рывок головой вперёд и вниз
+			hpitch = 0.55 * math.sin(math.min(1, k * 2.5) * math.pi)
 		end
 	elseif b.sniffFrom and t - b.sniffFrom < Rules.COLOSSUS.sniffTime then
 		local k = (t - b.sniffFrom) / Rules.COLOSSUS.sniffTime
 		yaw = math.sin(k * math.pi * 3) * 0.6
-		pitch = -0.25 * math.sin(k * math.pi)
+		hpitch = -0.25 * math.sin(k * math.pi)
 	elseif b.state == "hunt" or b.state == "bait" then
-		pitch = 0.12
+		hpitch += 0.14
+	else
+		-- спокойно: медленно водит головой по сторонам
+		yaw = math.sin(t * 0.45) * 0.18 * (1 - w * 0.5)
 	end
 	for _, mt in b.motors.head do
 		local rest = mt:GetAttribute("Rest")
 		if typeof(rest) == "CFrame" then
-			mt.C0 = rest * CFrame.Angles(pitch, yaw, roll)
+			mt.C0 = body * rest * CFrame.Angles(hpitch, yaw, hroll)
 		end
 	end
 end
@@ -961,6 +1031,7 @@ local function stepColossus()
 			local low = r.Position.Y < arena.floorY + 7
 			if low and flat(r.Position - b.root.Position).Magnitude < 6.5 and b.state ~= "eat" and b.state ~= "stun" then
 				G.kill(p, "colossus")
+				pose(b, "bite", 0.7)
 				sound(b.root, SOUND.stone, 1.6, 0.5)
 				if b.state == "hunt" then
 					b.state = "wander"

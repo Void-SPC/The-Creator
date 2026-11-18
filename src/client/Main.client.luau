@@ -365,99 +365,36 @@ voidSound.Volume = 0
 voidSound.Parent = gui
 voidSound:Play()
 
--- Шаги: на каждый шаг — свой короткий звук, набор слоёв зависит от поверхности
--- (паркет стучит глуше, мрамор звонко и с эхом зала, металл звенит, ковёр глушит,
--- трава и песок шуршат). Стандартный звук бега у своего персонажа выключен
-local SND = {
-	step = "rbxasset://sounds/action_footsteps_plastic.mp3",
-	knock = "rbxasset://sounds/collide.wav",
-	click = "rbxasset://sounds/clickfast.wav",
-	rustle = "rbxasset://sounds/swoosh.wav",
-	land = "rbxasset://sounds/action_jump_land.mp3",
+-- высота и громкость шагов для материала пола
+local STEP = {
+	[Enum.Material.Marble] = { 1.2, 0.8 },
+	[Enum.Material.Slate] = { 1.05, 0.7 },
+	[Enum.Material.WoodPlanks] = { 0.9, 0.65 },
+	[Enum.Material.Wood] = { 0.9, 0.65 },
+	[Enum.Material.Carpet] = { 0.7, 0.2 },
+	[Enum.Material.Fabric] = { 0.7, 0.2 },
+	[Enum.Material.Concrete] = { 0.95, 0.6 },
+	[Enum.Material.CeramicTiles] = { 1.3, 0.75 },
+	[Enum.Material.DiamondPlate] = { 1.5, 0.9 },
+	[Enum.Material.Metal] = { 1.5, 0.9 },
+	[Enum.Material.Sand] = { 0.6, 0.3 },
+	[Enum.Material.Grass] = { 0.65, 0.3 },
+	[Enum.Material.Cobblestone] = { 1, 0.6 },
 }
--- слой: звук, высота, громкость, эквалайзер (низ, середина, верх), эхо
-local STEP_SETS = {
-	wood = { { SND.step, 0.78, 0.6, { 3, 2, -8 } }, { SND.knock, 0.5, 0.1, { 4, 0, -10 } } },
-	stone = { { SND.step, 1.22, 0.62, { -4, 1, 3 }, true }, { SND.click, 0.55, 0.05, { -6, 0, 2 }, true } },
-	tile = { { SND.step, 1.38, 0.55, { -6, 0, 4 }, true } },
-	concrete = { { SND.step, 0.98, 0.6, { 0, 1, -2 } }, { SND.land, 1.6, 0.12, { 0, 0, -4 } } },
-	metal = { { SND.step, 1.08, 0.55, { -2, 3, 2 } }, { SND.click, 0.38, 0.14, { -4, 4, 0 }, true } },
-	soft = { { SND.step, 0.6, 0.28, { 2, -4, -18 } } },
-	grass = { { SND.rustle, 2.6, 0.22, { -6, 0, 2 } }, { SND.step, 0.52, 0.25, { 2, -2, -14 } } },
-	sand = { { SND.rustle, 1.7, 0.2, { 0, -2, -4 } }, { SND.step, 0.48, 0.2, { 2, -4, -16 } } },
-}
-local M_ = Enum.Material
-local MAT_SET = {
-	[M_.WoodPlanks] = "wood", [M_.Wood] = "wood",
-	[M_.Marble] = "stone", [M_.Slate] = "stone", [M_.Granite] = "stone", [M_.Limestone] = "stone", [M_.Sandstone] = "stone", [M_.Basalt] = "stone",
-	[M_.CeramicTiles] = "tile", [M_.Glass] = "tile", [M_.Ice] = "tile", [M_.SmoothPlastic] = "tile", [M_.Plastic] = "tile",
-	[M_.Concrete] = "concrete", [M_.Pavement] = "concrete", [M_.Cobblestone] = "concrete", [M_.Brick] = "concrete", [M_.Plaster] = "concrete", [M_.Asphalt] = "concrete",
-	[M_.Metal] = "metal", [M_.DiamondPlate] = "metal", [M_.CorrodedMetal] = "metal", [M_.Foil] = "metal",
-	[M_.Carpet] = "soft", [M_.Fabric] = "soft",
-	[M_.Grass] = "grass", [M_.LeafyGrass] = "grass", [M_.Ground] = "grass", [M_.Mud] = "grass",
-	[M_.Sand] = "sand", [M_.Snow] = "sand",
-}
-local stepFolder = Instance.new("Folder")
-stepFolder.Name = "Steps"
-stepFolder.Parent = gui
-local stepPool = {}
-for name, layers in STEP_SETS do
-	stepPool[name] = {}
-	for li, layer in layers do
-		local pair = {}
-		for k = 1, 2 do
-			local snd = Instance.new("Sound")
-			snd.SoundId = layer[1]
-			snd.Volume = layer[3]
-			local eq = Instance.new("EqualizerSoundEffect")
-			eq.LowGain, eq.MidGain, eq.HighGain = layer[4][1], layer[4][2], layer[4][3]
-			eq.Parent = snd
-			if layer[5] then
-				local rv = Instance.new("ReverbSoundEffect")
-				rv.DecayTime = 1.2
-				rv.WetLevel = -14
-				rv.DryLevel = 0
-				rv.Parent = snd
-			end
-			snd.Parent = stepFolder
-			pair[k] = snd
-		end
-		stepPool[name][li] = { layer = layer, pair = pair, turn = 1 }
-	end
-end
-local stride = { dist = 0, foot = 1 }
-local function footfall(set: string, quiet: boolean)
-	for _, l in stepPool[set] or stepPool.concrete do
-		local snd = l.pair[l.turn]
-		l.turn = 3 - l.turn
-		snd.PlaybackSpeed = l.layer[2] * (0.94 + math.random() * 0.12)
-		snd.Volume = l.layer[3] * (if quiet then 0.35 else 1) * (0.85 + math.random() * 0.3)
-		snd:Play()
-	end
-end
-local function stepSound(dt: number)
+local function stepSound()
 	local char = player.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local root = char and char:FindFirstChild("HumanoidRootPart")
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
-	if not root or not hum then
+	local snd = root and root:FindFirstChild("Running")
+	if not snd or not hum or not snd:IsA("Sound") then
 		return
 	end
-	local run = root:FindFirstChild("Running")
-	if run and run:IsA("Sound") then
-		run.Volume = 0
-	end
+	local prof = STEP[hum.FloorMaterial] or { 1, 0.6 }
 	local v = root.AssemblyLinearVelocity
 	local speed = Vector3.new(v.X, 0, v.Z).Magnitude
-	if hum.FloorMaterial == Enum.Material.Air or speed < 1 or not app.steps or hiddenEye then
-		stride.dist = math.min(stride.dist, 1.5)
-		return
-	end
-	stride.dist += speed * dt
-	local len = if app.sneaking then 2.6 else 3.9
-	if stride.dist >= len then
-		stride.dist = 0
-		footfall(MAT_SET[hum.FloorMaterial] or "concrete", app.sneaking)
-	end
+	-- медленный шаг — редкие и тихие шаги
+	snd.PlaybackSpeed = 1.85 * prof[1] * math.clamp(speed / 15, 0.45, 1.1)
+	snd.Volume = if app.steps then prof[2] * (if app.sneaking then 0.3 else 1) else 0
 end
 
 -- Нельзя забираться на экспонаты, мебель и постаменты: если персонаж встал на
@@ -1497,7 +1434,7 @@ RunService.RenderStepped:Connect(function(dt)
 	local t = os.clock()
 	darkStep(t)
 	voidStep(t, dt)
-	stepSound(dt)
+	stepSound()
 	antiClimb()
 	if app.scene then
 		return

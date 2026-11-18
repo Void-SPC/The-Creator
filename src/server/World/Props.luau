@@ -1248,37 +1248,127 @@ function Props.statue(parent, cf: CFrame, kind: string, seed: number?)
 	local m = model(parent, "Statue")
 	local _, top = Props.plinth(m, cf, 2.6, 2.6)
 	local c = MARBLE
-	local function b(name, sx, sy, sz, ocf)
-		return P(m, name, Vector3.new(sx, sy, sz), top * ocf, c, M.Marble, nc())
+	local shade = MARBLE:Lerp(rgb(0, 0, 0), 0.12)
+	local r = Random.new(seed or 1)
+	local function b(name, sx, sy, sz, ocf, col)
+		return P(m, name, Vector3.new(sx, sy, sz), top * ocf, col or c, M.Marble, nc())
+	end
+	local function cyl(name, len, d, ocf, col)
+		return C(m, name, len, d, top * ocf, col or c, M.Marble, nc())
+	end
+	local function ball(name, d, ocf, col)
+		return S(m, name, d, top * ocf, col or c, M.Marble, nc())
+	end
+	local function limb(name, a: Vector3, bb: Vector3, d: number)
+		Props.rod(m, name, (top * CFrame.new(a)).Position, (top * CFrame.new(bb)).Position, d, c, M.Marble, nc())
+		S(m, "Joint", d * 1.02, top * CFrame.new(bb), c, M.Marble, nc())
+	end
+	-- голова с лицом и волосами; y — центр головы, s — размер
+	local function head(y: number, s: number, yaw: number)
+		local h = CFrame.new(0, y, 0) * CFrame.Angles(0, yaw, 0)
+		ball("Head", 0.92 * s, h)
+		b("Jaw", 0.6 * s, 0.42 * s, 0.62 * s, h * CFrame.new(0, -0.28 * s, -0.1 * s))
+		b("Brow", 0.66 * s, 0.12 * s, 0.14 * s, h * CFrame.new(0, 0.1 * s, -0.42 * s), shade)
+		b("Nose", 0.13 * s, 0.26 * s, 0.16 * s, h * CFrame.new(0, -0.04 * s, -0.47 * s))
+		b("Lips", 0.24 * s, 0.05 * s, 0.06 * s, h * CFrame.new(0, -0.26 * s, -0.4 * s), shade)
+		for _, sx in { -1, 1 } do
+			b("Ear", 0.08 * s, 0.24 * s, 0.16 * s, h * CFrame.new(sx * 0.46 * s, -0.02 * s, 0))
+			b("Eye", 0.14 * s, 0.05 * s, 0.05 * s, h * CFrame.new(sx * 0.16 * s, 0.02 * s, -0.43 * s), shade)
+		end
+		ball("Hair", 0.96 * s, h * CFrame.new(0, 0.08 * s, 0.06 * s), shade)
+		for k = 0, 6 do
+			local a = k / 7 * math.pi - math.pi / 2
+			ball("Curl", 0.22 * s, h * CFrame.new(math.sin(a) * 0.42 * s, 0.26 * s, -math.cos(a) * 0.3 * s - 0.02), shade)
+		end
 	end
 	if kind == "bust" then
-		b("Chest", 1.8, 1.1, 1, CFrame.new(0, 0.55, 0))
-		C(m, "Neck", 0.5, 0.5, top * CFrame.new(0, 1.3, 0), c, M.Marble, nc())
-		S(m, "Head", 1.2, top * CFrame.new(0, 2, 0), c, M.Marble, nc())
-		b("Nose", 0.16, 0.3, 0.2, CFrame.new(0, 1.95, -0.62))
-	elseif kind == "abstract" then
-		b("Cube", 1.6, 1.6, 1.6, CFrame.new(0, 0.8, 0) * CFrame.Angles(0, 0.5, 0))
-		b("Cube", 1.1, 1.1, 1.1, CFrame.new(0.1, 2.1, 0) * CFrame.Angles(0.4, 1, 0.3))
-		S(m, "Orb", 0.9, top * CFrame.new(-0.1, 3.2, 0.1), c, M.Marble, nc())
-	elseif kind == "obelisk" then
-		b("Tier", 1.6, 1.6, 1.6, CFrame.new(0, 0.8, 0))
-		b("Tier", 1.2, 2, 1.2, CFrame.new(0, 2.6, 0))
-		b("Tier", 0.8, 1.6, 0.8, CFrame.new(0, 4.4, 0))
-		b("Tip", 0.4, 0.5, 0.4, CFrame.new(0, 5.45, 0) * CFrame.Angles(0, math.pi / 4, 0))
-	else
-		for _, x in { -0.35, 0.35 } do
-			b("Leg", 0.5, 2.2, 0.5, CFrame.new(x, 1.1, 0))
+		cyl("Socle", 0.3, 1.5, CFrame.new(0, 0.15, 0))
+		cyl("SocleNeck", 0.3, 0.8, CFrame.new(0, 0.45, 0))
+		b("Chest", 1.9, 1.0, 1.0, CFrame.new(0, 1.05, 0))
+		for _, sx in { -1, 1 } do
+			ball("Shoulder", 0.9, CFrame.new(sx * 0.8, 1.32, 0))
 		end
-		b("Torso", 1.4, 1.8, 0.8, CFrame.new(0, 3.1, 0))
-		Props.rod(m, "Arm", (top * CFrame.new(-0.85, 3.8, 0)).Position, (top * CFrame.new(-1.1, 2.3, -0.3)).Position, 0.34, c, M.Marble, nc())
-		if kind ~= "broken" then
-			Props.rod(m, "Arm", (top * CFrame.new(0.85, 3.8, 0)).Position, (top * CFrame.new(1.3, 4.9, -0.4)).Position, 0.34, c, M.Marble, nc())
-			S(m, "Head", 0.9, top * CFrame.new(0, 4.5, 0), c, M.Marble, nc())
+		-- складки тоги через плечо
+		for k = 0, 3 do
+			b("Fold", 0.18, 1.1, 0.1, CFrame.new(-0.55 + k * 0.28, 1.05, -0.52) * CFrame.Angles(0, 0, 0.55), shade)
+		end
+		cyl("Neck", 0.5, 0.48, CFrame.new(0, 1.75, 0))
+		head(2.32, 1.15, 0)
+	elseif kind == "abstract" then
+		-- переплетённые кольца на витой колонне
+		for k = 0, 5 do
+			b("Twist", 0.9 - k * 0.06, 0.45, 0.9 - k * 0.06, CFrame.new(0, 0.23 + k * 0.45, 0) * CFrame.Angles(0, k * 0.3, 0), if k % 2 == 0 then c else shade)
+		end
+		for ring = 0, 1 do
+			local rc = CFrame.new(0, 3.6, 0) * CFrame.Angles(0, ring * math.pi / 2, ring * 0.5)
+			for k = 0, 15 do
+				local a = k / 16 * math.pi * 2
+				b("Ring", 0.22, 0.36, 0.22, rc * CFrame.new(math.cos(a) * 0.95, math.sin(a) * 0.95, 0) * CFrame.Angles(0, 0, a))
+			end
+		end
+		ball("Core", 0.6, CFrame.new(0, 3.6, 0), shade)
+	elseif kind == "obelisk" then
+		b("Step", 2.2, 0.3, 2.2, CFrame.new(0, 0.15, 0), shade)
+		b("Step", 1.8, 0.3, 1.8, CFrame.new(0, 0.45, 0))
+		local shaft = rgb(196, 180, 140)
+		for k = 0, 9 do
+			local w = 1.3 - k * 0.07
+			local part = b("Shaft", w, 0.5, w, CFrame.new(0, 0.85 + k * 0.5, 0), shaft)
+			part.Material = M.Sandstone
+		end
+		-- письмена бегут по граням
+		for face = 0, 3 do
+			for k = 0, 7 do
+				local w = 1.3 - k * 0.07
+				b("Glyph", 0.3, 0.12, 0.02, CFrame.Angles(0, face * math.pi / 2, 0) * CFrame.new((k % 2 - 0.5) * 0.2, 1.0 + k * 0.5, -w / 2 - 0.01), rgb(110, 90, 60))
+			end
+		end
+		b("Pyramidion", 0.6, 0.5, 0.6, CFrame.new(0, 5.85, 0) * CFrame.Angles(0, math.pi / 4, 0), rgb(214, 170, 70))
+		b("Tip", 0.3, 0.3, 0.3, CFrame.new(0, 6.2, 0) * CFrame.Angles(0, math.pi / 4, 0), rgb(214, 170, 70))
+	else
+		-- фигура в полный рост: вес на одной ноге, накидка, рука поднята
+		local broken = kind == "broken"
+		b("Base", 1.8, 0.2, 1.4, CFrame.new(0, 0.1, 0), shade)
+		for _, sx in { -1, 1 } do
+			local bent = sx > 0
+			b("Foot", 0.36, 0.22, 0.7, CFrame.new(sx * 0.32, 0.31, -0.16))
+			limb("Shin", Vector3.new(sx * 0.32, 0.4, 0), Vector3.new(sx * 0.3, 1.55, if bent then -0.12 else 0), 0.36)
+			limb("Thigh", Vector3.new(sx * 0.3, 1.55, if bent then -0.12 else 0), Vector3.new(sx * 0.27, 2.75, 0), 0.46)
+		end
+		-- драпировка от пояса до колен
+		for k = 0, 4 do
+			b("Drape", 1.24 - k * 0.04, 0.3, 0.86, CFrame.new(0.04 * (k % 2), 2.0 + k * 0.28, 0.02) * CFrame.Angles(0, 0, (k % 2 - 0.5) * 0.08), if k % 2 == 0 then c else shade)
+		end
+		b("Abdomen", 1.0, 0.7, 0.64, CFrame.new(0, 3.25, 0))
+		b("Chest", 1.28, 0.9, 0.74, CFrame.new(0, 3.98, 0))
+		b("Sash", 0.24, 1.6, 0.8, CFrame.new(-0.1, 3.6, 0) * CFrame.Angles(0, 0, 0.6), shade)
+		for _, sx in { -1, 1 } do
+			ball("Shoulder", 0.5, CFrame.new(sx * 0.66, 4.3, 0))
+		end
+		-- левая рука вдоль тела, правая поднята с венком
+		limb("Arm", Vector3.new(-0.7, 4.3, 0), Vector3.new(-0.82, 3.35, -0.05), 0.3)
+		limb("Arm", Vector3.new(-0.82, 3.35, -0.05), Vector3.new(-0.7, 2.6, -0.25), 0.26)
+		if broken then
+			limb("Arm", Vector3.new(0.7, 4.3, 0), Vector3.new(0.95, 3.7, -0.3), 0.3)
+			b("Break", 0.32, 0.06, 0.32, CFrame.new(0.95, 3.68, -0.3), shade)
+			b("Fragment", 0.3, 0.22, 0.4, CFrame.new(0.6, 0.31, 0.5) * CFrame.Angles(0.4, 0.8, 0.2))
+			b("Fragment", 0.22, 0.18, 0.3, CFrame.new(-0.5, 0.29, 0.55) * CFrame.Angles(0.2, 0.3, 0.5))
+			cyl("NeckStump", 0.24, 0.42, CFrame.new(0, 4.52, 0), shade)
+			for k = 0, 2 do
+				b("Crack", 0.03, 0.6, 0.03, CFrame.new(0.2 - k * 0.15, 3.9 - k * 0.3, -0.38) * CFrame.Angles(0, 0, 0.5 - k * 0.4), rgb(90, 86, 80))
+			end
 		else
-			C(m, "NeckStump", 0.2, 0.4, top * CFrame.new(0, 4.1, 0), c:Lerp(rgb(0, 0, 0), 0.3), M.Marble, nc())
+			limb("Arm", Vector3.new(0.7, 4.3, 0), Vector3.new(1.05, 5.0, -0.2), 0.3)
+			limb("Arm", Vector3.new(1.05, 5.0, -0.2), Vector3.new(1.0, 5.85, -0.35), 0.26)
+			local wreath = top * CFrame.new(1.0, 6.1, -0.35)
+			for k = 0, 9 do
+				local a = k / 10 * math.pi * 2
+				S(m, "Laurel", 0.16, wreath * CFrame.new(math.cos(a) * 0.3, 0, math.sin(a) * 0.3), c, M.Marble, nc())
+			end
+			cyl("Neck", 0.36, 0.34, CFrame.new(0, 4.62, 0))
+			head(5.08, 0.9, (r:NextNumber() - 0.5) * 0.6)
 		end
 	end
-	local _ = seed
 	return m
 end
 

@@ -2137,7 +2137,13 @@ function E.spawnColossus(info)
 			local _, b = piece("Knee", Vector3.new(1.8, 1.6, 1.8), CFrame.new(sx * 3.5, -3.6, z + (if z &lt; 0 then 0.4 else -0.5)), dark, hip)
 			local _, c = piece("Shin", Vector3.new(1.6, 4.6, 1.8), CFrame.new(sx * 3.5, -6.2, z), bone, hip)
 			local _, f = piece("Foot", Vector3.new(3, 0.8, 3.8), CFrame.new(sx * 3.5, -8.9, z - 0.7), dark, hip)
-			table.insert(motors.legs, { a, b, c, f, phase = if (sx &lt; 0) == (z &lt; 0) then 0 else math.pi, rest = sc(hip) })
+			table.insert(motors.legs, {
+				a, b, c, f,
+				phase = if (sx &lt; 0) == (z &lt; 0) then 0 else math.pi,
+				rest = sc(hip),
+				knee = sc(CFrame.new(sx * 3.5, -3.6, z)),
+				ankle = sc(CFrame.new(sx * 3.5, -8.5, z - 0.3)),
+			})
 		end
 	end
 	-- хвост: всё мельче к концу и ниже
@@ -2146,6 +2152,29 @@ function E.spawnColossus(info)
 	end
 	for _, mt in motors.all do
 		mt:SetAttribute("Home", mt.C0)
+	end
+	-- разложить суставы по частям тела: ноги, голова, хвост и всё остальное (корпус)
+	local taken = {}
+	for _, leg in motors.legs do
+		for j = 1, 4 do
+			taken[leg[j]] = true
+		end
+	end
+	for _, mt in motors.head do
+		taken[mt] = true
+	end
+	motors.body, motors.tail = {}, {}
+	motors.tailPivot = sc(CFrame.new(0, 3.8, 8.2))
+	local tk = 0
+	for _, mt in motors.all do
+		if not taken[mt] then
+			if mt.Part1 and mt.Part1.Name == "Tail" then
+				tk += 1
+				table.insert(motors.tail, { mt = mt, k = tk, home = mt.C0 })
+			else
+				table.insert(motors.body, mt)
+			end
+		end
 	end
 	model:PivotTo(info.arena.spawn * CFrame.new(0, E.COLOSSUS_HEIGHT, 0))
 	local root = model:FindFirstChild("HumanoidRootPart") :: BasePart
@@ -2313,55 +2342,96 @@ local function sniffAnim(b)
 	sound(b.root, SOUND.rumble, 1.4, 0.5)
 end
 
--- ноги шагают, пока он идёт; голова живёт своей позой
+-- Походка зверя: бедро качается, колено сгибается, когда нога идёт вперёд, стопа
+-- остаётся ровной; корпус покачивается и чуть пружинит на каждом шаге, на месте
+-- он дышит; хвост виляет волной от основания к кончику; голова кивает в такт
+-- шагам и живёт своей позой (прислушивается, рычит, ест, ослеплён)
 local function animateBeast()
 	local b = boss
-	if not b or not b.motors or not b.root.Parent or b.state == "defeat" or b.state == "statue" then
+	if not b or not b.motors or not b.motors.body or not b.root.Parent or b.state == "defeat" or b.state == "statue" then
 		return
 	end
 	local t = os.clock()
+	local dt = math.min(0.1, t - (b.lastT or t))
+	b.lastT = t
 	local v = b.root.AssemblyLinearVelocity
 	local speed = Vector3.new(v.X, 0, v.Z).Magnitude
-	local amp = math.clamp(speed / 12, 0, 1) * 0.45
-	local tremble = if b.state == "stun" then math.sin(t * 23) * 0.05 else 0
-	for _, leg in b.motors.legs do
-		local a = math.sin(t * (3 + speed * 0.25) + leg.phase) * amp + tremble
-		local c0 = leg.rest * CFrame.Angles(a, 0, 0)
-		for j = 1, 4 do
-			leg[j].C0 = c0
+	b.gait = (b.gait or 0) + dt * speed * 0.45
+	local want = math.clamp(speed / 9, 0, 1)
+	b.walk = (b.walk or 0) + (want - (b.walk or 0)) * math.min(1, dt * 5)
+	local w = b.walk
+	local stun = b.state == "stun"
+	local tremble = if stun then math.sin(t * 23) * 0.03 else 0
+	-- корпус
+	local bob = math.abs(math.sin(b.gait)) * 0.22 * w - 0.1 * w + math.sin(t * 1.3) * 0.05 * (1 - w)
+	local roll = math.sin(b.gait) * 0.035 * w + tremble
+	local pitch = math.sin(b.gait * 2) * 0.012 * w + (if b.state == "eat" then 0.05 else 0)
+	local body = CFrame.new(0, bob, 0) * CFrame.Angles(pitch, 0, roll)
+	for _, mt in b.motors.body do
+		local home = mt:GetAttribute("Home")
+		if typeof(home) == "CFrame" then
+			mt.C0 = body * home
 		end
 	end
-	local yaw, pitch, roll = 0, 0, 0
+	-- хвост
+	local tp = b.motors.tailPivot
+	for _, e in b.motors.tail do
+		local yaw = math.sin(t * (1.1 + w * 2.2) - e.k * 0.7) * (0.03 + 0.025 * e.k) * (0.6 + w)
+		if stun then
+			yaw += math.sin(t * 17 + e.k) * 0.06
+		end
+		e.mt.C0 = body * tp * CFrame.Angles(-0.015 * e.k * w, yaw, 0) * tp:Inverse() * e.home
+	end
+	-- ноги
+	for _, leg in b.motors.legs do
+		local ph = b.gait + leg.phase
+		local hipA = math.sin(ph) * 0.4 * w + tremble
+		local kneeA = -math.max(0, math.cos(ph)) * 0.7 * w
+		local H = leg.rest * CFrame.Angles(hipA, 0, 0) * leg.rest:Inverse()
+		local K = leg.knee * CFrame.Angles(kneeA, 0, 0) * leg.knee:Inverse()
+		local A = leg.ankle * CFrame.Angles(-(hipA + kneeA), 0, 0) * leg.ankle:Inverse()
+		leg[1].C0 = body * H * leg.rest
+		leg[2].C0 = body * H * K * leg.rest
+		leg[3].C0 = body * H * K * leg.rest
+		leg[4].C0 = body * H * K * A * leg.rest
+	end
+	-- голова
+	local yaw, hpitch, hroll = 0, math.sin(b.gait * 2) * 0.05 * w, 0
 	local ps = b.pose
 	if ps and t - ps.t0 &lt; ps.dur then
 		local k = (t - ps.t0) / ps.dur
 		if ps.kind == "listen" then
-			-- замер, голова чуть набок и вверх
-			roll = math.sin(math.min(1, k * 3) * math.pi / 2) * 0.35
-			pitch = -0.12
+			hroll = math.sin(math.min(1, k * 3) * math.pi / 2) * 0.35
+			hpitch = -0.12
 		elseif ps.kind == "roar" then
-			pitch = -0.5 * math.sin(k * math.pi)
+			hpitch = -0.5 * math.sin(k * math.pi)
 			yaw = math.sin(t * 30) * 0.04
 		elseif ps.kind == "lost" then
 			yaw = math.sin(k * math.pi * 4) * 0.55
-			pitch = 0.1
+			hpitch = 0.1
 		elseif ps.kind == "eat" then
-			pitch = 0.5 + math.sin(t * 7) * 0.08
+			hpitch = 0.5 + math.sin(t * 7) * 0.08
 		elseif ps.kind == "stun" then
-			pitch = -0.55 + math.sin(t * 17) * 0.1
+			hpitch = -0.55 + math.sin(t * 17) * 0.1
 			yaw = math.sin(t * 5) * 0.3
+		elseif ps.kind == "bite" then
+			-- рывок головой вперёд и вниз
+			hpitch = 0.55 * math.sin(math.min(1, k * 2.5) * math.pi)
 		end
 	elseif b.sniffFrom and t - b.sniffFrom &lt; Rules.COLOSSUS.sniffTime then
 		local k = (t - b.sniffFrom) / Rules.COLOSSUS.sniffTime
 		yaw = math.sin(k * math.pi * 3) * 0.6
-		pitch = -0.25 * math.sin(k * math.pi)
+		hpitch = -0.25 * math.sin(k * math.pi)
 	elseif b.state == "hunt" or b.state == "bait" then
-		pitch = 0.12
+		hpitch += 0.14
+	else
+		-- спокойно: медленно водит головой по сторонам
+		yaw = math.sin(t * 0.45) * 0.18 * (1 - w * 0.5)
 	end
 	for _, mt in b.motors.head do
 		local rest = mt:GetAttribute("Rest")
 		if typeof(rest) == "CFrame" then
-			mt.C0 = rest * CFrame.Angles(pitch, yaw, roll)
+			mt.C0 = body * rest * CFrame.Angles(hpitch, yaw, hroll)
 		end
 	end
 end
@@ -2498,6 +2568,7 @@ local function stepColossus()
 			local low = r.Position.Y &lt; arena.floorY + 7
 			if low and flat(r.Position - b.root.Position).Magnitude &lt; 6.5 and b.state ~= "eat" and b.state ~= "stun" then
 				G.kill(p, "colossus")
+				pose(b, "bite", 0.7)
 				sound(b.root, SOUND.stone, 1.6, 0.5)
 				if b.state == "hunt" then
 					b.state = "wander"
@@ -4842,6 +4913,7 @@ end)
 -- Франция, Япония. Модели музейные (макеты, манекены, предметы), всё из простых деталей;
 -- флаги, гербы, письмена и мозаики нарисованы плоско на поверхности
 
+local CollectionService = game:GetService("CollectionService")
 local Shared = game:GetService("ReplicatedStorage").Workshop.Shared
 local M = require(Shared.Materials)
 local Props = require(script.Parent.Props)
@@ -5803,6 +5875,192 @@ function X.stoneLantern(parent, cf: CFrame)
 	l.Parent = light
 	P(m, "Kasa", Vector3.new(2.2, 0.5, 2.2), cf * CFrame.new(0, 4.05, 0), stone, M.Slate)
 	S(m, "Hoju", 0.6, cf * CFrame.new(0, 4.5, 0), stone, M.Slate, nc())
+	return m
+end
+
+-- стойка с катанами у стены (cf — слот у стены, лицо в зал)
+function X.katanaRack(parent, cf: CFrame)
+	local m = model(parent, "KatanaRack")
+	local base = cf * CFrame.new(0, 0, -0.9)
+	local lac = rgb(30, 24, 22)
+	P(m, "RackBase", Vector3.new(3.2, 0.4, 1.2), base * CFrame.new(0, 0.2, 0), lac, M.Wood)
+	for _, sx in { -1, 1 } do
+		P(m, "RackSide", Vector3.new(0.3, 2.6, 1), base * CFrame.new(sx * 1.4, 1.7, 0), lac, M.Wood)
+	end
+	for k = 0, 2 do
+		local y = 1.2 + k * 0.85
+		local sc = base * CFrame.new(0, y, -0.15)
+		P(m, "Saya", Vector3.new(2.9, 0.16, 0.16), sc, if k % 2 == 0 then rgb(20, 18, 18) else rgb(110, 20, 24), M.SmoothPlastic, nc())
+		P(m, "Tsuka", Vector3.new(0.9, 0.17, 0.17), sc * CFrame.new(1.85, 0.02, 0), rgb(230, 226, 214), M.Fabric, nc())
+		C(m, "Tsuba", 0.06, 0.4, sc * CFrame.new(1.38, 0, 0) * CFrame.Angles(0, 0, 0), GOLD, M.Metal, nc())
+	end
+	return m
+end
+
+-- расписная ширма из шести створок «гармошкой»
+function X.screen(parent, cf: CFrame, seed: number)
+	local m = model(parent, "Byobu")
+	local w, h = 1.3, 4.6
+	for k = 0, 5 do
+		local a = if k % 2 == 0 then 0.35 else -0.35
+		local x = (k - 2.5) * w * 0.94
+		local leaf = P(m, "ScreenLeaf", Vector3.new(w, h, 0.08), cf * CFrame.new(x, h / 2 + 0.1, 0) * CFrame.Angles(0, a, 0), rgb(220, 196, 130), M.Fabric, nc())
+		P(m, "ScreenFrame", Vector3.new(w + 0.1, h + 0.1, 0.06), cf * CFrame.new(x, h / 2 + 0.1, 0) * CFrame.Angles(0, a, 0) * CFrame.new(0, 0, 0.05), rgb(40, 26, 18), M.Wood, nc())
+		local f = canvas(leaf, Enum.NormalId.Front, rgb(222, 200, 140))
+		-- горы, солнце, ветка с цветами, журавль
+		shape(f, rgb(60, 70, 80), 0.5, 1.0, 1.6, 0.6, 1, (k - 2.5) * 6)
+		if k == 1 then
+			shape(f, rgb(200, 50, 40), 0.5, 0.28, 0.5, 0.5 * w / h * 4.6 / 1.3 * 0.28, 1)
+		end
+		if k &gt;= 3 then
+			shape(f, rgb(60, 40, 30), 0.4, 0.3 + (k - 3) * 0.08, 1.2, 0.02, nil, -20)
+			for j = 0, 3 do
+				shape(f, rgb(240, 180, 200), 0.2 + j * 0.2, 0.26 + (k - 3) * 0.08 + j * 0.02, 0.08, 0.08 * w / h * 3.5, 1)
+			end
+		end
+		if k == 4 - (seed % 2) then
+			shape(f, rgb(250, 250, 246), 0.5, 0.6, 0.5, 0.06, 0.5)
+			shape(f, rgb(30, 30, 30), 0.72, 0.55, 0.06, 0.12)
+			shape(f, rgb(200, 40, 40), 0.74, 0.5, 0.06, 0.03, 1)
+		end
+	end
+	return m
+end
+
+-- бонсай на низком столике
+function X.bonsai(parent, cf: CFrame)
+	local m = model(parent, "Bonsai")
+	P(m, "LowTable", Vector3.new(2.6, 0.2, 1.6), cf * CFrame.new(0, 1.2, 0), rgb(50, 30, 22), M.Wood)
+	for _, sx in { -1, 1 } do
+		P(m, "TableLeg", Vector3.new(0.3, 1.1, 1.4), cf * CFrame.new(sx * 1.1, 0.55, 0), rgb(50, 30, 22), M.Wood, nc())
+	end
+	P(m, "Pot", Vector3.new(1.8, 0.35, 1.0), cf * CFrame.new(0, 1.48, 0), rgb(90, 60, 50), M.SmoothPlastic, nc())
+	P(m, "Soil", Vector3.new(1.6, 0.06, 0.8), cf * CFrame.new(0, 1.68, 0), rgb(60, 50, 40), M.Ground, nc())
+	local trunk = rgb(80, 56, 40)
+	rod(m, "Trunk", (cf * CFrame.new(-0.2, 1.68, 0)).Position, (cf * CFrame.new(0.2, 2.4, 0)).Position, 0.2, trunk, M.Wood, nc())
+	rod(m, "Trunk", (cf * CFrame.new(0.2, 2.4, 0)).Position, (cf * CFrame.new(-0.3, 3, 0)).Position, 0.16, trunk, M.Wood, nc())
+	rod(m, "Branch", (cf * CFrame.new(0.2, 2.4, 0)).Position, (cf * CFrame.new(0.8, 2.6, 0.1)).Position, 0.1, trunk, M.Wood, nc())
+	for _, p in { { -0.3, 3.15, 0, 0.9 }, { 0.85, 2.75, 0.1, 0.7 }, { 0.1, 2.8, -0.2, 0.6 }, { -0.7, 2.7, 0.1, 0.5 } } do
+		S(m, "Foliage", p[4], cf * CFrame.new(p[1], p[2], p[3]), rgb(46, 90, 50), M.Grass, nc())
+	end
+	return m
+end
+
+-- низкий чайный столик с подушками и чайным набором
+function X.teaTable(parent, cf: CFrame)
+	local m = model(parent, "TeaTable")
+	P(m, "Top", Vector3.new(3.2, 0.2, 2.2), cf * CFrame.new(0, 1.0, 0), rgb(60, 36, 24), M.Wood)
+	for _, sx in { -1, 1 } do
+		for _, sz in { -1, 1 } do
+			P(m, "Leg", Vector3.new(0.25, 0.9, 0.25), cf * CFrame.new(sx * 1.4, 0.45, sz * 0.9), rgb(50, 30, 20), M.Wood, nc())
+		end
+		P(m, "Zabuton", Vector3.new(1.6, 0.25, 1.6), cf * CFrame.new(sx * 2.6, 0.13, 0), rgb(140, 40, 50), M.Fabric)
+	end
+	C(m, "Teapot", 0.5, 0.6, cf * CFrame.new(0, 1.35, 0), rgb(40, 50, 44), M.SmoothPlastic, nc())
+	P(m, "Spout", Vector3.new(0.08, 0.08, 0.35), cf * CFrame.new(0, 1.4, -0.4), rgb(40, 50, 44), M.SmoothPlastic, nc())
+	for k = 0, 3 do
+		local a = k / 4 * math.pi * 2 + 0.4
+		C(m, "Cup", 0.25, 0.28, cf * CFrame.new(math.cos(a) * 0.9, 1.22, math.sin(a) * 0.6), rgb(230, 226, 214), M.SmoothPlastic, nc())
+	end
+	return m
+end
+
+-- бумажный фонарь, висит с потолка и светит
+function X.paperLantern(parent, top: Vector3, drop: number, color: Color3?)
+	local m = model(parent, "PaperLantern")
+	local col = color or rgb(200, 40, 34)
+	C(m, "Cord", drop, 0.06, CFrame.new(top - Vector3.new(0, drop / 2, 0)), rgb(30, 30, 30), M.Fabric, nc())
+	local c = top - Vector3.new(0, drop + 1, 0)
+	C(m, "LanternTop", 0.15, 0.9, CFrame.new(c + Vector3.new(0, 0.95, 0)), rgb(20, 20, 20), M.Wood, nc())
+	C(m, "LanternBottom", 0.15, 0.9, CFrame.new(c - Vector3.new(0, 0.95, 0)), rgb(20, 20, 20), M.Wood, nc())
+	local body = S(m, "LanternBody", 1.7, CFrame.new(c), col, M.Neon, nc({ Transparency = 0.15 }))
+	for k = -1, 1 do
+		C(m, "Rib", 0.04, 1.72 - math.abs(k) * 0.3, CFrame.new(c + Vector3.new(0, k * 0.45, 0)), rgb(30, 20, 18), M.Wood, nc())
+	end
+	local l = Instance.new("PointLight")
+	l.Range = 16
+	l.Brightness = 0.7
+	l.Color = rgb(255, 140, 100)
+	l.Parent = body
+	CollectionService:AddTag(body, "LabLight")
+	return m, body
+end
+
+-- сад камней: грабленый песок и три камня
+function X.zenGarden(parent, cf: CFrame, w: number, l: number)
+	local m = model(parent, "ZenGarden")
+	for _, s in { -1, 1 } do
+		P(m, "Frame", Vector3.new(0.3, 0.4, l), cf * CFrame.new(s * (w / 2 - 0.15), 0.2, 0), rgb(60, 40, 28), M.Wood)
+		P(m, "Frame", Vector3.new(w - 0.6, 0.36, 0.3), cf * CFrame.new(0, 0.18, s * (l / 2 - 0.15)), rgb(60, 40, 28), M.Wood)
+	end
+	local sand = P(m, "Sand", Vector3.new(w - 0.6, 0.2, l - 0.6), cf * CFrame.new(0, 0.1, 0), rgb(220, 214, 196), M.Sand)
+	local f = canvas(sand, Enum.NormalId.Top, rgb(222, 216, 198))
+	for k = 1, 9 do
+		shape(f, rgb(190, 184, 166), 0.5, k / 10, 1, 0.012)
+	end
+	for _, st in { { -0.25, -0.1, 1.1 }, { 0.2, 0.2, 0.7 }, { 0.3, -0.25, 0.5 } } do
+		local p = cf * CFrame.new(st[1] * w, 0.2 + st[3] * 0.25, st[2] * l)
+		S(m, "Stone", st[3], p, rgb(90, 88, 84), M.Slate, nc())
+		C(m, "Ripple", 0.02, st[3] * 1.8, cf * CFrame.new(st[1] * w, 0.21, st[2] * l), rgb(190, 184, 166), M.Sand, nc())
+	end
+	return m
+end
+
+-- барабан тайко на подставке
+function X.taiko(parent, cf: CFrame)
+	local m = model(parent, "Taiko")
+	for _, sx in { -1, 1 } do
+		P(m, "Stand", Vector3.new(0.3, 2.2, 1.6), cf * CFrame.new(sx * 1.1, 1.1, 0) * CFrame.Angles(0, 0, sx * 0.15), rgb(60, 30, 20), M.Wood)
+	end
+	local drum = cf * CFrame.new(0, 2.6, 0) * CFrame.Angles(0, 0, math.pi / 2)
+	C(m, "Drum", 2.2, 2.4, cf * CFrame.new(0, 2.6, 0) * CFrame.Angles(0, math.pi / 2, 0) * CFrame.Angles(0, 0, math.pi / 2), rgb(140, 70, 40), M.Wood)
+	local _ = drum
+	for _, sz in { -1.12, 1.12 } do
+		C(m, "Skin", 0.04, 2.3, cf * CFrame.new(0, 2.6, sz) * CFrame.Angles(math.pi / 2, 0, 0), rgb(230, 216, 186), M.Fabric, nc())
+		for k = 0, 11 do
+			local a = k / 12 * math.pi * 2
+			S(m, "Tack", 0.12, cf * CFrame.new(math.cos(a) * 1.17, 2.6 + math.sin(a) * 1.17, sz * 1.0), GOLD, M.Metal, nc())
+		end
+	end
+	for _, sx in { -0.3, 0.3 } do
+		rod(m, "Bachi", (cf * CFrame.new(sx, 1.0, -1.6)).Position, (cf * CFrame.new(sx * 2, 1.2, -2.6)).Position, 0.12, rgb(200, 170, 120), M.Wood, nc())
+	end
+	return m
+end
+
+-- кимоно, развешанное на перекладине у стены
+function X.kimono(parent, cf: CFrame, seed: number)
+	local m = model(parent, "Kimono")
+	local base = cf * CFrame.new(0, 0, -0.25)
+	P(m, "Pole", Vector3.new(5.2, 0.16, 0.16), base * CFrame.new(0, 8.2, 0), rgb(40, 26, 18), M.Wood, nc())
+	local colors = { rgb(30, 50, 110), rgb(130, 20, 40), rgb(30, 80, 60) }
+	local col = colors[seed % 3 + 1]
+	local robe = P(m, "Robe", Vector3.new(2.4, 5, 0.1), base * CFrame.new(0, 5.6, 0), col, M.Fabric, nc())
+	local sleeves = P(m, "Sleeves", Vector3.new(5, 1.7, 0.08), base * CFrame.new(0, 7.15, 0.02), col, M.Fabric, nc())
+	P(m, "Obi", Vector3.new(2.44, 0.6, 0.12), base * CFrame.new(0, 5.4, -0.02), rgb(220, 180, 60), M.Fabric, nc())
+	for _, part in { robe, sleeves } do
+		local f = canvas(part, Enum.NormalId.Front, col)
+		for k = 0, 7 do
+			shape(f, rgb(240, 200, 210), (k * 0.137 + 0.1) % 1, (k * 0.29 + 0.2) % 1, 0.08, 0.08 * part.Size.X / part.Size.Y, 1)
+		end
+		shape(f, rgb(240, 236, 226), 0.5, 0.04, 1, 0.03)
+	end
+	P(m, "Collar", Vector3.new(0.3, 3, 0.12), base * CFrame.new(-0.25, 6.6, -0.02) * CFrame.Angles(0, 0, -0.35), rgb(240, 236, 226), M.Fabric, nc())
+	P(m, "Collar", Vector3.new(0.3, 3, 0.12), base * CFrame.new(0.25, 6.6, -0.03) * CFrame.Angles(0, 0, 0.35), rgb(240, 236, 226), M.Fabric, nc())
+	return m
+end
+
+-- сакура в кадке
+function X.sakura(parent, cf: CFrame)
+	local m = model(parent, "Sakura")
+	P(m, "Tub", Vector3.new(2.4, 1.2, 2.4), cf * CFrame.new(0, 0.6, 0), rgb(70, 46, 30), M.WoodPlanks)
+	local trunk = rgb(70, 50, 44)
+	rod(m, "Trunk", (cf * CFrame.new(0, 1.2, 0)).Position, (cf * CFrame.new(0.3, 4.2, 0)).Position, 0.45, trunk, M.Wood, nc())
+	rod(m, "Branch", (cf * CFrame.new(0.3, 4.0, 0)).Position, (cf * CFrame.new(-1.5, 5.4, 0.4)).Position, 0.25, trunk, M.Wood, nc())
+	rod(m, "Branch", (cf * CFrame.new(0.3, 4.2, 0)).Position, (cf * CFrame.new(1.8, 5.6, -0.3)).Position, 0.25, trunk, M.Wood, nc())
+	for _, p in { { -1.5, 5.6, 0.4, 2.2 }, { 1.8, 5.8, -0.3, 2.4 }, { 0.3, 6.2, 0, 2.6 }, { -0.4, 5.2, -0.8, 1.6 } } do
+		S(m, "Blossom", p[4], cf * CFrame.new(p[1], p[2], p[3]), rgb(244, 190, 206), M.Grass, nc())
+	end
 	return m
 end
 
@@ -7063,37 +7321,127 @@ function Props.statue(parent, cf: CFrame, kind: string, seed: number?)
 	local m = model(parent, "Statue")
 	local _, top = Props.plinth(m, cf, 2.6, 2.6)
 	local c = MARBLE
-	local function b(name, sx, sy, sz, ocf)
-		return P(m, name, Vector3.new(sx, sy, sz), top * ocf, c, M.Marble, nc())
+	local shade = MARBLE:Lerp(rgb(0, 0, 0), 0.12)
+	local r = Random.new(seed or 1)
+	local function b(name, sx, sy, sz, ocf, col)
+		return P(m, name, Vector3.new(sx, sy, sz), top * ocf, col or c, M.Marble, nc())
+	end
+	local function cyl(name, len, d, ocf, col)
+		return C(m, name, len, d, top * ocf, col or c, M.Marble, nc())
+	end
+	local function ball(name, d, ocf, col)
+		return S(m, name, d, top * ocf, col or c, M.Marble, nc())
+	end
+	local function limb(name, a: Vector3, bb: Vector3, d: number)
+		Props.rod(m, name, (top * CFrame.new(a)).Position, (top * CFrame.new(bb)).Position, d, c, M.Marble, nc())
+		S(m, "Joint", d * 1.02, top * CFrame.new(bb), c, M.Marble, nc())
+	end
+	-- голова с лицом и волосами; y — центр головы, s — размер
+	local function head(y: number, s: number, yaw: number)
+		local h = CFrame.new(0, y, 0) * CFrame.Angles(0, yaw, 0)
+		ball("Head", 0.92 * s, h)
+		b("Jaw", 0.6 * s, 0.42 * s, 0.62 * s, h * CFrame.new(0, -0.28 * s, -0.1 * s))
+		b("Brow", 0.66 * s, 0.12 * s, 0.14 * s, h * CFrame.new(0, 0.1 * s, -0.42 * s), shade)
+		b("Nose", 0.13 * s, 0.26 * s, 0.16 * s, h * CFrame.new(0, -0.04 * s, -0.47 * s))
+		b("Lips", 0.24 * s, 0.05 * s, 0.06 * s, h * CFrame.new(0, -0.26 * s, -0.4 * s), shade)
+		for _, sx in { -1, 1 } do
+			b("Ear", 0.08 * s, 0.24 * s, 0.16 * s, h * CFrame.new(sx * 0.46 * s, -0.02 * s, 0))
+			b("Eye", 0.14 * s, 0.05 * s, 0.05 * s, h * CFrame.new(sx * 0.16 * s, 0.02 * s, -0.43 * s), shade)
+		end
+		ball("Hair", 0.96 * s, h * CFrame.new(0, 0.08 * s, 0.06 * s), shade)
+		for k = 0, 6 do
+			local a = k / 7 * math.pi - math.pi / 2
+			ball("Curl", 0.22 * s, h * CFrame.new(math.sin(a) * 0.42 * s, 0.26 * s, -math.cos(a) * 0.3 * s - 0.02), shade)
+		end
 	end
 	if kind == "bust" then
-		b("Chest", 1.8, 1.1, 1, CFrame.new(0, 0.55, 0))
-		C(m, "Neck", 0.5, 0.5, top * CFrame.new(0, 1.3, 0), c, M.Marble, nc())
-		S(m, "Head", 1.2, top * CFrame.new(0, 2, 0), c, M.Marble, nc())
-		b("Nose", 0.16, 0.3, 0.2, CFrame.new(0, 1.95, -0.62))
-	elseif kind == "abstract" then
-		b("Cube", 1.6, 1.6, 1.6, CFrame.new(0, 0.8, 0) * CFrame.Angles(0, 0.5, 0))
-		b("Cube", 1.1, 1.1, 1.1, CFrame.new(0.1, 2.1, 0) * CFrame.Angles(0.4, 1, 0.3))
-		S(m, "Orb", 0.9, top * CFrame.new(-0.1, 3.2, 0.1), c, M.Marble, nc())
-	elseif kind == "obelisk" then
-		b("Tier", 1.6, 1.6, 1.6, CFrame.new(0, 0.8, 0))
-		b("Tier", 1.2, 2, 1.2, CFrame.new(0, 2.6, 0))
-		b("Tier", 0.8, 1.6, 0.8, CFrame.new(0, 4.4, 0))
-		b("Tip", 0.4, 0.5, 0.4, CFrame.new(0, 5.45, 0) * CFrame.Angles(0, math.pi / 4, 0))
-	else
-		for _, x in { -0.35, 0.35 } do
-			b("Leg", 0.5, 2.2, 0.5, CFrame.new(x, 1.1, 0))
+		cyl("Socle", 0.3, 1.5, CFrame.new(0, 0.15, 0))
+		cyl("SocleNeck", 0.3, 0.8, CFrame.new(0, 0.45, 0))
+		b("Chest", 1.9, 1.0, 1.0, CFrame.new(0, 1.05, 0))
+		for _, sx in { -1, 1 } do
+			ball("Shoulder", 0.9, CFrame.new(sx * 0.8, 1.32, 0))
 		end
-		b("Torso", 1.4, 1.8, 0.8, CFrame.new(0, 3.1, 0))
-		Props.rod(m, "Arm", (top * CFrame.new(-0.85, 3.8, 0)).Position, (top * CFrame.new(-1.1, 2.3, -0.3)).Position, 0.34, c, M.Marble, nc())
-		if kind ~= "broken" then
-			Props.rod(m, "Arm", (top * CFrame.new(0.85, 3.8, 0)).Position, (top * CFrame.new(1.3, 4.9, -0.4)).Position, 0.34, c, M.Marble, nc())
-			S(m, "Head", 0.9, top * CFrame.new(0, 4.5, 0), c, M.Marble, nc())
+		-- складки тоги через плечо
+		for k = 0, 3 do
+			b("Fold", 0.18, 1.1, 0.1, CFrame.new(-0.55 + k * 0.28, 1.05, -0.52) * CFrame.Angles(0, 0, 0.55), shade)
+		end
+		cyl("Neck", 0.5, 0.48, CFrame.new(0, 1.75, 0))
+		head(2.32, 1.15, 0)
+	elseif kind == "abstract" then
+		-- переплетённые кольца на витой колонне
+		for k = 0, 5 do
+			b("Twist", 0.9 - k * 0.06, 0.45, 0.9 - k * 0.06, CFrame.new(0, 0.23 + k * 0.45, 0) * CFrame.Angles(0, k * 0.3, 0), if k % 2 == 0 then c else shade)
+		end
+		for ring = 0, 1 do
+			local rc = CFrame.new(0, 3.6, 0) * CFrame.Angles(0, ring * math.pi / 2, ring * 0.5)
+			for k = 0, 15 do
+				local a = k / 16 * math.pi * 2
+				b("Ring", 0.22, 0.36, 0.22, rc * CFrame.new(math.cos(a) * 0.95, math.sin(a) * 0.95, 0) * CFrame.Angles(0, 0, a))
+			end
+		end
+		ball("Core", 0.6, CFrame.new(0, 3.6, 0), shade)
+	elseif kind == "obelisk" then
+		b("Step", 2.2, 0.3, 2.2, CFrame.new(0, 0.15, 0), shade)
+		b("Step", 1.8, 0.3, 1.8, CFrame.new(0, 0.45, 0))
+		local shaft = rgb(196, 180, 140)
+		for k = 0, 9 do
+			local w = 1.3 - k * 0.07
+			local part = b("Shaft", w, 0.5, w, CFrame.new(0, 0.85 + k * 0.5, 0), shaft)
+			part.Material = M.Sandstone
+		end
+		-- письмена бегут по граням
+		for face = 0, 3 do
+			for k = 0, 7 do
+				local w = 1.3 - k * 0.07
+				b("Glyph", 0.3, 0.12, 0.02, CFrame.Angles(0, face * math.pi / 2, 0) * CFrame.new((k % 2 - 0.5) * 0.2, 1.0 + k * 0.5, -w / 2 - 0.01), rgb(110, 90, 60))
+			end
+		end
+		b("Pyramidion", 0.6, 0.5, 0.6, CFrame.new(0, 5.85, 0) * CFrame.Angles(0, math.pi / 4, 0), rgb(214, 170, 70))
+		b("Tip", 0.3, 0.3, 0.3, CFrame.new(0, 6.2, 0) * CFrame.Angles(0, math.pi / 4, 0), rgb(214, 170, 70))
+	else
+		-- фигура в полный рост: вес на одной ноге, накидка, рука поднята
+		local broken = kind == "broken"
+		b("Base", 1.8, 0.2, 1.4, CFrame.new(0, 0.1, 0), shade)
+		for _, sx in { -1, 1 } do
+			local bent = sx &gt; 0
+			b("Foot", 0.36, 0.22, 0.7, CFrame.new(sx * 0.32, 0.31, -0.16))
+			limb("Shin", Vector3.new(sx * 0.32, 0.4, 0), Vector3.new(sx * 0.3, 1.55, if bent then -0.12 else 0), 0.36)
+			limb("Thigh", Vector3.new(sx * 0.3, 1.55, if bent then -0.12 else 0), Vector3.new(sx * 0.27, 2.75, 0), 0.46)
+		end
+		-- драпировка от пояса до колен
+		for k = 0, 4 do
+			b("Drape", 1.24 - k * 0.04, 0.3, 0.86, CFrame.new(0.04 * (k % 2), 2.0 + k * 0.28, 0.02) * CFrame.Angles(0, 0, (k % 2 - 0.5) * 0.08), if k % 2 == 0 then c else shade)
+		end
+		b("Abdomen", 1.0, 0.7, 0.64, CFrame.new(0, 3.25, 0))
+		b("Chest", 1.28, 0.9, 0.74, CFrame.new(0, 3.98, 0))
+		b("Sash", 0.24, 1.6, 0.8, CFrame.new(-0.1, 3.6, 0) * CFrame.Angles(0, 0, 0.6), shade)
+		for _, sx in { -1, 1 } do
+			ball("Shoulder", 0.5, CFrame.new(sx * 0.66, 4.3, 0))
+		end
+		-- левая рука вдоль тела, правая поднята с венком
+		limb("Arm", Vector3.new(-0.7, 4.3, 0), Vector3.new(-0.82, 3.35, -0.05), 0.3)
+		limb("Arm", Vector3.new(-0.82, 3.35, -0.05), Vector3.new(-0.7, 2.6, -0.25), 0.26)
+		if broken then
+			limb("Arm", Vector3.new(0.7, 4.3, 0), Vector3.new(0.95, 3.7, -0.3), 0.3)
+			b("Break", 0.32, 0.06, 0.32, CFrame.new(0.95, 3.68, -0.3), shade)
+			b("Fragment", 0.3, 0.22, 0.4, CFrame.new(0.6, 0.31, 0.5) * CFrame.Angles(0.4, 0.8, 0.2))
+			b("Fragment", 0.22, 0.18, 0.3, CFrame.new(-0.5, 0.29, 0.55) * CFrame.Angles(0.2, 0.3, 0.5))
+			cyl("NeckStump", 0.24, 0.42, CFrame.new(0, 4.52, 0), shade)
+			for k = 0, 2 do
+				b("Crack", 0.03, 0.6, 0.03, CFrame.new(0.2 - k * 0.15, 3.9 - k * 0.3, -0.38) * CFrame.Angles(0, 0, 0.5 - k * 0.4), rgb(90, 86, 80))
+			end
 		else
-			C(m, "NeckStump", 0.2, 0.4, top * CFrame.new(0, 4.1, 0), c:Lerp(rgb(0, 0, 0), 0.3), M.Marble, nc())
+			limb("Arm", Vector3.new(0.7, 4.3, 0), Vector3.new(1.05, 5.0, -0.2), 0.3)
+			limb("Arm", Vector3.new(1.05, 5.0, -0.2), Vector3.new(1.0, 5.85, -0.35), 0.26)
+			local wreath = top * CFrame.new(1.0, 6.1, -0.35)
+			for k = 0, 9 do
+				local a = k / 10 * math.pi * 2
+				S(m, "Laurel", 0.16, wreath * CFrame.new(math.cos(a) * 0.3, 0, math.sin(a) * 0.3), c, M.Marble, nc())
+			end
+			cyl("Neck", 0.36, 0.34, CFrame.new(0, 4.62, 0))
+			head(5.08, 0.9, (r:NextNumber() - 0.5) * 0.6)
 		end
 	end
-	local _ = seed
 	return m
 end
 
@@ -8731,14 +9079,25 @@ L.japan = function(c)
 	X.stoneLantern(c.m, spot(d, o, -7, -12))
 	X.stoneLantern(c.m, spot(d, o, 7, -12))
 	X.pagoda(c.m, spot(d, o, -9, -28))
-	X.samurai(c.m, spot(d, o, 12, -24, -math.pi / 2))
-	Props.rug(c.m, spot(d, o, 8, -34), 8, 6, rgb(190, 176, 120))
+	X.samurai(c.m, spot(d, o, 12, -22, -math.pi / 2))
+	X.samurai(c.m, spot(d, o, 12, -27, -math.pi / 2))
+	X.katanaRack(c.m, slotR(d, o, -14))
+	X.kimono(c.m, onWall(slotL, d, o, -21, 0), d.door)
+	X.screen(c.m, spot(d, o, -14, -9, 0.15), d.door)
+	X.bonsai(c.m, spot(d, o, -15, -35, math.pi / 2))
+	X.taiko(c.m, spot(d, o, -14, -17, math.pi / 2))
+	X.sakura(c.m, spot(d, o, 15, -8))
+	X.zenGarden(c.m, spot(d, o, -2, -37), 8, 5)
+	Props.rug(c.m, spot(d, o, 9, -35), 8, 6, rgb(190, 176, 120))
+	X.teaTable(c.m, spot(d, o, 9, -35))
+	for _, p in { { -4, -20 }, { 4, -20 }, { 0, -30 }, { -10, -40 }, { 12, -40 } } do
+		local _, body = X.paperLantern(c.m, at(o, p[1], c.info.top, p[2]).Position, 3 + (math.abs(p[1]) % 3))
+		table.insert(c.info.lights, body)
+	end
 	painting(c, -1, -36, 7, 4, 6)
 	hide(c, slotBack(d, o, -12))
 	hide(c, slotBack(d, o, 12))
 	ceil(c, 0, -22)
-	ceil(c, -8, -38)
-	ceil(c, 8, -38)
 end
 
 -- переход к залу Колосса: парадный коридор со статуями
@@ -9500,7 +9859,7 @@ function Special.arena(parent, d, origin: CFrame, rand, prev)
 		for _, dx in { -2.9, 0, 2.9 } do
 			P(m, "Baluster", Vector3.new(0.3, 3.2, 0.3), L(cx + dx, 1.6, SZ0 + 3.85), stone, M.Marble, nc())
 		end
-		P(m, "LandingRail", Vector3.new(0.34, 0.36, 4), L(sx * (G0 - 6.0), 3.41, SZ0 + 2), Props.WOOD_DARK, M.Wood, nc())
+		P(m, "LandingRail", Vector3.new(0.34, 0.36, 3.9), L(sx * (G0 - 6.0), 3.41, SZ0 + 1.95), Props.WOOD_DARK, M.Wood, nc())
 		for _, dz in { 0.6, 2, 3.4 } do
 			P(m, "Baluster", Vector3.new(0.3, 3.2, 0.3), L(sx * (G0 - 6.0), 1.6, SZ0 + dz), stone, M.Marble, nc())
 		end
@@ -10388,99 +10747,36 @@ voidSound.Volume = 0
 voidSound.Parent = gui
 voidSound:Play()
 
--- Шаги: на каждый шаг — свой короткий звук, набор слоёв зависит от поверхности
--- (паркет стучит глуше, мрамор звонко и с эхом зала, металл звенит, ковёр глушит,
--- трава и песок шуршат). Стандартный звук бега у своего персонажа выключен
-local SND = {
-	step = "rbxasset://sounds/action_footsteps_plastic.mp3",
-	knock = "rbxasset://sounds/collide.wav",
-	click = "rbxasset://sounds/clickfast.wav",
-	rustle = "rbxasset://sounds/swoosh.wav",
-	land = "rbxasset://sounds/action_jump_land.mp3",
+-- высота и громкость шагов для материала пола
+local STEP = {
+	[Enum.Material.Marble] = { 1.2, 0.8 },
+	[Enum.Material.Slate] = { 1.05, 0.7 },
+	[Enum.Material.WoodPlanks] = { 0.9, 0.65 },
+	[Enum.Material.Wood] = { 0.9, 0.65 },
+	[Enum.Material.Carpet] = { 0.7, 0.2 },
+	[Enum.Material.Fabric] = { 0.7, 0.2 },
+	[Enum.Material.Concrete] = { 0.95, 0.6 },
+	[Enum.Material.CeramicTiles] = { 1.3, 0.75 },
+	[Enum.Material.DiamondPlate] = { 1.5, 0.9 },
+	[Enum.Material.Metal] = { 1.5, 0.9 },
+	[Enum.Material.Sand] = { 0.6, 0.3 },
+	[Enum.Material.Grass] = { 0.65, 0.3 },
+	[Enum.Material.Cobblestone] = { 1, 0.6 },
 }
--- слой: звук, высота, громкость, эквалайзер (низ, середина, верх), эхо
-local STEP_SETS = {
-	wood = { { SND.step, 0.78, 0.6, { 3, 2, -8 } }, { SND.knock, 0.5, 0.1, { 4, 0, -10 } } },
-	stone = { { SND.step, 1.22, 0.62, { -4, 1, 3 }, true }, { SND.click, 0.55, 0.05, { -6, 0, 2 }, true } },
-	tile = { { SND.step, 1.38, 0.55, { -6, 0, 4 }, true } },
-	concrete = { { SND.step, 0.98, 0.6, { 0, 1, -2 } }, { SND.land, 1.6, 0.12, { 0, 0, -4 } } },
-	metal = { { SND.step, 1.08, 0.55, { -2, 3, 2 } }, { SND.click, 0.38, 0.14, { -4, 4, 0 }, true } },
-	soft = { { SND.step, 0.6, 0.28, { 2, -4, -18 } } },
-	grass = { { SND.rustle, 2.6, 0.22, { -6, 0, 2 } }, { SND.step, 0.52, 0.25, { 2, -2, -14 } } },
-	sand = { { SND.rustle, 1.7, 0.2, { 0, -2, -4 } }, { SND.step, 0.48, 0.2, { 2, -4, -16 } } },
-}
-local M_ = Enum.Material
-local MAT_SET = {
-	[M_.WoodPlanks] = "wood", [M_.Wood] = "wood",
-	[M_.Marble] = "stone", [M_.Slate] = "stone", [M_.Granite] = "stone", [M_.Limestone] = "stone", [M_.Sandstone] = "stone", [M_.Basalt] = "stone",
-	[M_.CeramicTiles] = "tile", [M_.Glass] = "tile", [M_.Ice] = "tile", [M_.SmoothPlastic] = "tile", [M_.Plastic] = "tile",
-	[M_.Concrete] = "concrete", [M_.Pavement] = "concrete", [M_.Cobblestone] = "concrete", [M_.Brick] = "concrete", [M_.Plaster] = "concrete", [M_.Asphalt] = "concrete",
-	[M_.Metal] = "metal", [M_.DiamondPlate] = "metal", [M_.CorrodedMetal] = "metal", [M_.Foil] = "metal",
-	[M_.Carpet] = "soft", [M_.Fabric] = "soft",
-	[M_.Grass] = "grass", [M_.LeafyGrass] = "grass", [M_.Ground] = "grass", [M_.Mud] = "grass",
-	[M_.Sand] = "sand", [M_.Snow] = "sand",
-}
-local stepFolder = Instance.new("Folder")
-stepFolder.Name = "Steps"
-stepFolder.Parent = gui
-local stepPool = {}
-for name, layers in STEP_SETS do
-	stepPool[name] = {}
-	for li, layer in layers do
-		local pair = {}
-		for k = 1, 2 do
-			local snd = Instance.new("Sound")
-			snd.SoundId = layer[1]
-			snd.Volume = layer[3]
-			local eq = Instance.new("EqualizerSoundEffect")
-			eq.LowGain, eq.MidGain, eq.HighGain = layer[4][1], layer[4][2], layer[4][3]
-			eq.Parent = snd
-			if layer[5] then
-				local rv = Instance.new("ReverbSoundEffect")
-				rv.DecayTime = 1.2
-				rv.WetLevel = -14
-				rv.DryLevel = 0
-				rv.Parent = snd
-			end
-			snd.Parent = stepFolder
-			pair[k] = snd
-		end
-		stepPool[name][li] = { layer = layer, pair = pair, turn = 1 }
-	end
-end
-local stride = { dist = 0, foot = 1 }
-local function footfall(set: string, quiet: boolean)
-	for _, l in stepPool[set] or stepPool.concrete do
-		local snd = l.pair[l.turn]
-		l.turn = 3 - l.turn
-		snd.PlaybackSpeed = l.layer[2] * (0.94 + math.random() * 0.12)
-		snd.Volume = l.layer[3] * (if quiet then 0.35 else 1) * (0.85 + math.random() * 0.3)
-		snd:Play()
-	end
-end
-local function stepSound(dt: number)
+local function stepSound()
 	local char = player.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local root = char and char:FindFirstChild("HumanoidRootPart")
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
-	if not root or not hum then
+	local snd = root and root:FindFirstChild("Running")
+	if not snd or not hum or not snd:IsA("Sound") then
 		return
 	end
-	local run = root:FindFirstChild("Running")
-	if run and run:IsA("Sound") then
-		run.Volume = 0
-	end
+	local prof = STEP[hum.FloorMaterial] or { 1, 0.6 }
 	local v = root.AssemblyLinearVelocity
 	local speed = Vector3.new(v.X, 0, v.Z).Magnitude
-	if hum.FloorMaterial == Enum.Material.Air or speed &lt; 1 or not app.steps or hiddenEye then
-		stride.dist = math.min(stride.dist, 1.5)
-		return
-	end
-	stride.dist += speed * dt
-	local len = if app.sneaking then 2.6 else 3.9
-	if stride.dist &gt;= len then
-		stride.dist = 0
-		footfall(MAT_SET[hum.FloorMaterial] or "concrete", app.sneaking)
-	end
+	-- медленный шаг — редкие и тихие шаги
+	snd.PlaybackSpeed = 1.85 * prof[1] * math.clamp(speed / 15, 0.45, 1.1)
+	snd.Volume = if app.steps then prof[2] * (if app.sneaking then 0.3 else 1) else 0
 end
 
 -- Нельзя забираться на экспонаты, мебель и постаменты: если персонаж встал на
@@ -11520,7 +11816,7 @@ RunService.RenderStepped:Connect(function(dt)
 	local t = os.clock()
 	darkStep(t)
 	voidStep(t, dt)
-	stepSound(dt)
+	stepSound()
 	antiClimb()
 	if app.scene then
 		return
